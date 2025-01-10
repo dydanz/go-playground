@@ -9,9 +9,28 @@ import (
 	"go-cursor/pkg/database"
 	"log"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
+	_ "go-cursor/internal/docs" // This is required for swagger
 )
 
+// @title           Go-Cursor API
+// @version         1.0
+// @description     A User Management API with PostgreSQL and Redis.
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.url    http://www.swagger.io/support
+// @contact.email  support@swagger.io
+
+// @license.name  Apache 2.0
+// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host      localhost:8080
+// @BasePath  /api
 func main() {
 	// Load config
 	cfg := config.LoadConfig()
@@ -40,14 +59,20 @@ func main() {
 	// Initialize Gin router
 	r := gin.Default()
 
+	// Swagger documentation
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// Add before routes
+	r.Use(cors.Default())
+
 	// Routes
 	api := r.Group("/api")
 	{
 		users := api.Group("/users")
 		{
-			users.GET("/", userHandler.GetAll)
+			users.GET("", userHandler.GetAll)
 			users.GET("/:id", userHandler.GetByID)
-			users.POST("/", userHandler.Create)
+			users.POST("", userHandler.Create)
 			users.PUT("/:id", userHandler.Update)
 			users.DELETE("/:id", userHandler.Delete)
 		}

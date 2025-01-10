@@ -125,7 +125,6 @@ curl -X DELETE http://localhost:8080/api/users/{user_id}
 ```
 
 ## Project Structure
-
 ```
 go-cursor/
 ├── cmd/
@@ -207,4 +206,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Gin Web Framework](https://github.com/gin-gonic/gin)
 - [Go-Redis](https://github.com/go-redis/redis)
 - [Lib/pq](https://github.com/lib/pq)
->>>>>>> main
