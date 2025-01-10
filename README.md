@@ -2,6 +2,13 @@
 
 A RESTful API service built with Go (Gin framework) that handles user management with PostgreSQL for data persistence and Redis for caching.
 
+ALL OF THESE CODE ARE GENERATED AUTOMATICALLY!
+Tech stack:
+- Go 1.21+ with Gin framework
+- PostgreSQL & Redis
+- Docker & Docker Compose
+- Generated using Cursor 0.8 + Claude 3 Sonnet in VSCode
+
 ## Features
 
 - RESTful API endpoints for user management (CRUD operations)
