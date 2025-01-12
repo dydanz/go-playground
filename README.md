@@ -1,8 +1,13 @@
-# Go-Cursor User Management API
+# Go-Playground - Random Go/Gin-Boilerplate Playground 
 
-A RESTful API service built with Go (Gin framework) that handles user management with PostgreSQL for data persistence and Redis for caching.
+A (playground) RESTful API service built with Go (Gin framework) that handles user management with PostgreSQL for data persistence and Redis for caching.
 
-ALL OF THESE CODE ARE GENERATED AUTOMATICALLY!
+#### Disclaimer
+As designated for my personal research AI-generated code, ALL OF THESE CODE ARE GENERATED AUTOMATICALLY! 
+
+But feel free to fork, clone or whatever you want at your own risk. 
+For questions or professional inquiries: [Linkedin](https://www.linkedin.com/in/dandi-diputra/)
+
 Tech stack:
 - Go 1.21+ with Gin framework
 - PostgreSQL & Redis
@@ -324,6 +329,3 @@ migrate -path internal/migrations -database ${DATABASE_URL} version
 - Verify database credentials
 - Check if database is running
 - Ensure correct permissions
-
-
-For questions or professional inquiries: [Linkedin](https://www.linkedin.com/in/dandi-diputra/)
