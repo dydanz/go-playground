@@ -37,7 +37,7 @@ func AuthMiddleware(authRepo *postgres.AuthRepository) gin.HandlerFunc {
 			return
 		}
 		if token == nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "token not found"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token not found or expired"})
 			c.Abort()
 			return
 		}

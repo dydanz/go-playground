@@ -187,3 +187,7 @@ func (s *AuthService) generateOTP() (string, error) {
 	}
 	return string(result), nil
 }
+
+func (s *AuthService) Logout(userID string) error {
+	return s.authRepo.InvalidateToken(userID)
+}
