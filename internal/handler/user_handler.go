@@ -55,9 +55,10 @@ func (h *UserHandler) Create(c *gin.Context) {
 // @Tags users
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Param id path string true "User ID"
 // @Success 200 {object} domain.User
-// @Failure 404 {object} map[string]string
+// @Failure 401 {object} map[string]string
 // @Router /users/{id} [get]
 func (h *UserHandler) GetByID(c *gin.Context) {
 	id := c.Param("id")
@@ -74,8 +75,9 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 // @Description  Retrieve all users from the system
 // @Tags         users
 // @Produce      json
+// @Security BearerAuth
 // @Success      200  {array}   domain.User
-// @Failure      500  {object}  map[string]string
+// @Failure      401  {object}  map[string]string
 // @Router       /users [get]
 func (h *UserHandler) GetAll(c *gin.Context) {
 	users, err := h.userService.GetAll()

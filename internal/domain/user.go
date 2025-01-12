@@ -2,14 +2,25 @@ package domain
 
 import "time"
 
+// UserStatus represents the possible states of a user account
+type UserStatus string
+
+const (
+	UserStatusPending UserStatus = "pending" // Initial state after registration
+	UserStatusActive  UserStatus = "active"  // Email verified, can login
+	UserStatusLocked  UserStatus = "locked"  // Account locked due to violations
+	UserStatusBanned  UserStatus = "banned"  // Account banned by admin
+)
+
 type User struct {
-	ID        string    `json:"id"` // UUID
-	Email     string    `json:"email"`
-	Password  string    `json:"-"` // Hidden from JSON responses
-	Name      string    `json:"name"`
-	Phone     string    `json:"phone"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        string     `json:"id"`
+	Email     string     `json:"email"`
+	Password  string     `json:"-"`
+	Name      string     `json:"name"`
+	Phone     string     `json:"phone"`
+	Status    UserStatus `json:"status"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
 }
 
 type CreateUserRequest struct {
