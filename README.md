@@ -324,3 +324,6 @@ migrate -path internal/migrations -database ${DATABASE_URL} version
 - Verify database credentials
 - Check if database is running
 - Ensure correct permissions
+
+
+For questions or professional inquiries: [Linkedin](https://www.linkedin.com/in/dandi-diputra/)
