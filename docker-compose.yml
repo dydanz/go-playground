@@ -5,7 +5,7 @@ services:
     image: postgres:latest
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: your_password_here
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: go_cursor
     ports:
       - "5432:5432"
@@ -14,9 +14,9 @@ services:
 
   redis:
     image: redis:latest
+    command: redis-server --requirepass redis123
     ports:
       - "6379:6379"
-    command: redis-server --requirepass your_redis_password_here
     volumes:
       - redis_data:/data
 

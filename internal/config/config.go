@@ -3,9 +3,16 @@ package config
 import (
 	"log"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 )
+
+type AuthConfig struct {
+	LoginAttemptResetPeriod time.Duration // Duration after which login attempts are reset
+	MaxLoginAttempts        int           // Maximum number of failed attempts before locking
+	LockDuration            time.Duration // How long to lock the account after max attempts
+}
 
 type Config struct {
 	// PostgreSQL settings
@@ -19,6 +26,8 @@ type Config struct {
 	RedisHost     string
 	RedisPort     string
 	RedisPassword string
+
+	Auth AuthConfig
 }
 
 func LoadConfig() *Config {
@@ -32,13 +41,19 @@ func LoadConfig() *Config {
 		DBHost:     getEnv("DB_HOST", "localhost"),
 		DBPort:     getEnv("DB_PORT", "5432"),
 		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", "your_password_here"),
+		DBPassword: getEnv("DB_PASSWORD", "postgres"),
 		DBName:     getEnv("DB_NAME", "go_cursor"),
 
 		// Redis settings
 		RedisHost:     getEnv("REDIS_HOST", "localhost"),
 		RedisPort:     getEnv("REDIS_PORT", "6379"),
 		RedisPassword: getEnv("REDIS_PASSWORD", "your_redis_password_here"),
+
+		Auth: AuthConfig{
+			LoginAttemptResetPeriod: 24 * time.Hour,   // Reset attempts after 24 hours
+			MaxLoginAttempts:        5,                // Lock after 5 failed attempts
+			LockDuration:            30 * time.Minute, // Lock for 30 minutes
+		},
 	}
 }
 

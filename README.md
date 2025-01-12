@@ -132,7 +132,6 @@ curl -X DELETE http://localhost:8080/api/users/{user_id}
 ```
 
 ## Project Structure
-
 ```
 go-cursor/
 ├── cmd/
@@ -214,4 +213,114 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Gin Web Framework](https://github.com/gin-gonic/gin)
 - [Go-Redis](https://github.com/go-redis/redis)
 - [Lib/pq](https://github.com/lib/pq)
->>>>>>> main
+
+## API Documentation (Swagger)
+
+The API documentation is available via Swagger UI at:
+```
+http://localhost:8080/swagger/index.html
+```
+
+### Generating Swagger Documentation
+
+1. Install swag:
+```bash
+go install github.com/swaggo/swag/cmd/swag@latest
+```
+
+2. Generate documentation:
+```bash
+swag init -g cmd/api/main.go -o internal/docs
+```
+
+3. Access the documentation at http://localhost:8080/swagger/index.html after starting the server
+
+### Swagger Annotations
+
+The API endpoints are documented using Swagger annotations in the handler files. Example:
+```go
+// @Summary Create a new user
+// @Description Create a new user with the provided details
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param user body domain.CreateUserRequest true "User details"
+// @Success 201 {object} domain.User
+// @Router /users [post]
+```
+
+## Database Migrations
+
+This project uses `golang-migrate` for database schema management.
+
+### Migration Files
+
+Migrations are stored in `internal/migrations/` directory:
+```
+internal/migrations/
+├── 000001_create_users_table.up.sql   # Create tables
+└── 000001_create_users_table.down.sql  # Rollback changes
+```
+
+### Running Migrations
+
+Migrations run automatically when the application starts. To run them manually:
+
+1. Install golang-migrate:
+```bash
+go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+```
+
+2. Run migrations:
+```bash
+# Apply migrations
+migrate -path internal/migrations -database "postgres://postgres:your_password_here@localhost:5432/go_cursor?sslmode=disable" up
+
+# Rollback migrations
+migrate -path internal/migrations -database "postgres://postgres:your_password_here@localhost:5432/go_cursor?sslmode=disable" down
+```
+
+### Creating New Migrations
+
+To create a new migration:
+```bash
+migrate create -ext sql -dir internal/migrations -seq add_new_feature
+```
+
+This creates two files:
+- `XXXXXX_add_new_feature.up.sql`: Forward migration
+- `XXXXXX_add_new_feature.down.sql`: Rollback migration
+
+### Migration Commands
+
+```bash
+# Apply all migrations
+migrate -path internal/migrations -database ${DATABASE_URL} up
+
+# Rollback last migration
+migrate -path internal/migrations -database ${DATABASE_URL} down 1
+
+# Rollback all migrations
+migrate -path internal/migrations -database ${DATABASE_URL} down
+
+# Force a specific version
+migrate -path internal/migrations -database ${DATABASE_URL} force VERSION
+```
+
+### Common Migration Issues
+
+1. "Dirty" Database State
+```bash
+migrate -path internal/migrations -database ${DATABASE_URL} force VERSION
+```
+
+2. Version Mismatch
+```bash
+# Check current version
+migrate -path internal/migrations -database ${DATABASE_URL} version
+```
+
+3. Connection Issues
+- Verify database credentials
+- Check if database is running
+- Ensure correct permissions

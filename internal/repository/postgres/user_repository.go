@@ -15,24 +15,24 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 
 func (r *UserRepository) Create(user *domain.User) (*domain.User, error) {
 	query := `
-		INSERT INTO users (id, email, password, name, phone, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING id, email, name, phone, created_at, updated_at
+		INSERT INTO users (email, password, name, phone, status)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, email, name, phone, status, created_at, updated_at
 	`
 
-	err := r.db.QueryRow(query,
-		user.ID,
+	err := r.db.QueryRow(
+		query,
 		user.Email,
 		user.Password,
 		user.Name,
 		user.Phone,
-		user.CreatedAt,
-		user.UpdatedAt,
+		user.Status,
 	).Scan(
 		&user.ID,
 		&user.Email,
 		&user.Name,
 		&user.Phone,
+		&user.Status,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -70,8 +70,28 @@ func (r *UserRepository) GetByID(id int64) (*domain.User, error) {
 }
 
 func (r *UserRepository) Update(user *domain.User) error {
-	// Implement update user
-	return nil
+	query := `
+		UPDATE users 
+		SET name = $1, 
+			phone = $2, 
+			status = $3,
+			updated_at = NOW()
+		WHERE id = $4
+		RETURNING created_at, updated_at
+	`
+
+	err := r.db.QueryRow(
+		query,
+		user.Name,
+		user.Phone,
+		user.Status,
+		user.ID,
+	).Scan(
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+
+	return err
 }
 
 func (r *UserRepository) Delete(id int64) error {
@@ -82,7 +102,7 @@ func (r *UserRepository) Delete(id int64) error {
 func (r *UserRepository) GetByEmail(email string) (*domain.User, error) {
 	user := &domain.User{}
 	query := `
-		SELECT id, email, password, name, phone, created_at, updated_at
+		SELECT id, email, password, name, phone, status, created_at, updated_at
 		FROM users
 		WHERE email = $1
 	`
@@ -92,6 +112,7 @@ func (r *UserRepository) GetByEmail(email string) (*domain.User, error) {
 		&user.Password,
 		&user.Name,
 		&user.Phone,
+		&user.Status,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
@@ -130,4 +151,29 @@ func (r *UserRepository) GetAll() ([]*domain.User, error) {
 		users = append(users, user)
 	}
 	return users, nil
+}
+
+func (r *UserRepository) UpdateTx(tx *sql.Tx, user *domain.User) error {
+	query := `
+		UPDATE users 
+		SET name = $1, 
+			phone = $2, 
+			status = $3,
+			updated_at = NOW()
+		WHERE id = $4
+		RETURNING created_at, updated_at
+	`
+
+	err := tx.QueryRow(
+		query,
+		user.Name,
+		user.Phone,
+		user.Status,
+		user.ID,
+	).Scan(
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+
+	return err
 }
