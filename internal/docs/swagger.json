@@ -1,8 +1,8 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "A User Management API with PostgreSQL and Redis",
-        "title": "Go-Cursor API",
+        "description": "Go-Playground - Random Go/Gin-Boilerplate Playground",
+        "title": "Go-Playground API",
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
             "name": "API Support",

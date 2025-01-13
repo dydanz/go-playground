@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 
+	"go-cursor/internal/middleware"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -85,8 +87,6 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	log.Printf("Login attempt for email: %s", req.Email)
-
 	authToken, err := h.authService.Login(&req)
 	if err != nil {
 		log.Printf("Login error: %v", err)
@@ -94,12 +94,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	// Set secure cookie with session token
+	middleware.SetSecureCookie(c, authToken.TokenHash)
+
 	response := domain.LoginResponse{
 		Token:     authToken.TokenHash,
 		ExpiresAt: authToken.ExpiresAt,
 	}
 
-	log.Printf("Login successful for email: %s", req.Email)
 	c.JSON(http.StatusOK, response)
 }
 
@@ -125,5 +127,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
+	// Clear session cookies
+	middleware.ClearSecureCookie(c)
 	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
 }

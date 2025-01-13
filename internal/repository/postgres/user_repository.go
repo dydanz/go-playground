@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"database/sql"
+	"fmt"
 	"go-cursor/internal/domain"
 )
 
@@ -44,29 +45,34 @@ func (r *UserRepository) Create(user *domain.User) (*domain.User, error) {
 	return user, nil
 }
 
-func (r *UserRepository) GetByID(id int64) (*domain.User, error) {
+func (r *UserRepository) GetByID(id string) (*domain.User, error) {
 	user := &domain.User{}
-
+	var statusStr string
 	query := `
-		SELECT id, email, password, name, phone, created_at, updated_at
+		SELECT id, name, email, phone, password, status, created_at, updated_at
 		FROM users
 		WHERE id = $1
 	`
-
 	err := r.db.QueryRow(query, id).Scan(
 		&user.ID,
-		&user.Email,
-		&user.Password,
 		&user.Name,
+		&user.Email,
 		&user.Phone,
+		&user.Password,
+		&statusStr,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return nil, fmt.Errorf("user not found")
 	}
-	return user, err
+	if err != nil {
+		return nil, err
+	}
+
+	user.Status = domain.UserStatus(statusStr)
+	return user, nil
 }
 
 func (r *UserRepository) Update(user *domain.User) error {
@@ -94,13 +100,28 @@ func (r *UserRepository) Update(user *domain.User) error {
 	return err
 }
 
-func (r *UserRepository) Delete(id int64) error {
-	// Implement delete user
+func (r *UserRepository) Delete(id string) error {
+	query := `DELETE FROM users WHERE id = $1`
+	result, err := r.db.Exec(query, id)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("user not found")
+	}
+
 	return nil
 }
 
 func (r *UserRepository) GetByEmail(email string) (*domain.User, error) {
 	user := &domain.User{}
+	var statusStr string
 	query := `
 		SELECT id, email, password, name, phone, status, created_at, updated_at
 		FROM users
@@ -112,19 +133,24 @@ func (r *UserRepository) GetByEmail(email string) (*domain.User, error) {
 		&user.Password,
 		&user.Name,
 		&user.Phone,
-		&user.Status,
+		&statusStr,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
+	if err != nil {
+		return nil, err
+	}
+
+	user.Status = domain.UserStatus(statusStr)
 	return user, err
 }
 
 func (r *UserRepository) GetAll() ([]*domain.User, error) {
 	query := `
-		SELECT id, email, password, name, phone, created_at, updated_at
+		SELECT id, email, password, name, phone, status, created_at, updated_at
 		FROM users
 	`
 	rows, err := r.db.Query(query)
@@ -136,18 +162,21 @@ func (r *UserRepository) GetAll() ([]*domain.User, error) {
 	var users []*domain.User
 	for rows.Next() {
 		user := &domain.User{}
+		var statusStr string
 		err := rows.Scan(
 			&user.ID,
 			&user.Email,
 			&user.Password,
 			&user.Name,
 			&user.Phone,
+			&statusStr,
 			&user.CreatedAt,
 			&user.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
 		}
+		user.Status = domain.UserStatus(statusStr)
 		users = append(users, user)
 	}
 	return users, nil

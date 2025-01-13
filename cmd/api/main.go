@@ -21,9 +21,9 @@ import (
 	"go-cursor/internal/middleware"
 )
 
-// @title           Go-Cursor API
+// @title           Go-Playground
 // @version         1.0
-// @description     A User Management API with PostgreSQL and Redis
+// @description     Go-Playground - Random Go/Gin-Boilerplate Playground
 // @termsOfService  http://swagger.io/terms/
 
 // @contact.name   API Support
@@ -98,6 +98,7 @@ func main() {
 		api.POST("/auth/logout", authHandler.Logout)
 		users := api.Group("/users")
 		{
+			users.GET("/me", userHandler.GetMe)
 			users.GET("", userHandler.GetAll)
 			users.GET("/:id", userHandler.GetByID)
 			users.POST("", userHandler.Create)
@@ -119,10 +120,13 @@ func main() {
 		c.HTML(http.StatusOK, "register.html", nil)
 	})
 
-	// Add dashboard route
-	r.GET("/dashboard", func(c *gin.Context) {
+	// Protected HTML routes
+	r.GET("/dashboard", middleware.AuthMiddleware(authRepo), func(c *gin.Context) {
 		c.HTML(http.StatusOK, "dashboard.html", nil)
 	})
+
+	// Add CSRF middleware
+	r.Use(middleware.CSRFMiddleware())
 
 	// Run migrations
 	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",

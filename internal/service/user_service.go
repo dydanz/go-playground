@@ -5,7 +5,7 @@ import (
 	"go-cursor/internal/domain"
 	"go-cursor/internal/repository/postgres"
 	"go-cursor/internal/repository/redis"
-	"strconv"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -62,21 +62,26 @@ func (s *UserService) Create(req *domain.CreateUserRequest) (*domain.User, error
 }
 
 func (s *UserService) GetByID(id string) (*domain.User, error) {
-	parsedID, err := strconv.ParseInt(id, 10, 64)
+	// Try to get from cache first
+	if user, err := s.cacheRepo.GetUser(id); err == nil && user != nil {
+		user.Status = user.Status
+		return user, nil
+	}
+
+	// If not in cache, get from database
+	user, err := s.userRepo.GetByID(id)
 	if err != nil {
 		return nil, err
 	}
 
-	user, err := s.userRepo.GetByID(parsedID)
-	if err != nil {
-		return nil, err
-	}
-	if user == nil {
-		return nil, errors.New("user not found")
+	// Convert status to string representation
+	user.Status = user.Status
+
+	// Store in cache for future requests
+	if err := s.cacheRepo.SetUser(user); err != nil {
+		log.Printf("Failed to cache user: %v", err)
 	}
 
-	// Clear password before returning
-	user.Password = ""
 	return user, nil
 }
 
@@ -96,12 +101,8 @@ func (s *UserService) GetAll() ([]domain.User, error) {
 }
 
 func (s *UserService) Update(id string, req *domain.UpdateUserRequest) (*domain.User, error) {
-	parsedID, err := strconv.ParseInt(id, 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	user, err := s.userRepo.GetByID(parsedID)
+	// Get existing user
+	user, err := s.userRepo.GetByID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +110,7 @@ func (s *UserService) Update(id string, req *domain.UpdateUserRequest) (*domain.
 		return nil, errors.New("user not found")
 	}
 
+	// Update fields
 	user.Name = req.Name
 	user.Phone = req.Phone
 	user.UpdatedAt = time.Now()
@@ -123,12 +125,8 @@ func (s *UserService) Update(id string, req *domain.UpdateUserRequest) (*domain.
 }
 
 func (s *UserService) Delete(id string) error {
-	parsedID, err := strconv.ParseInt(id, 10, 64)
-	if err != nil {
-		return err
-	}
-
-	user, err := s.userRepo.GetByID(parsedID)
+	// Get existing user
+	user, err := s.userRepo.GetByID(id)
 	if err != nil {
 		return err
 	}
@@ -136,5 +134,5 @@ func (s *UserService) Delete(id string) error {
 		return errors.New("user not found")
 	}
 
-	return s.userRepo.Delete(parsedID)
+	return s.userRepo.Delete(id)
 }
