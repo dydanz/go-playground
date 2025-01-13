@@ -12,6 +12,22 @@ const (
 	UserStatusBanned  UserStatus = "banned"  // Account banned by admin
 )
 
+// String returns the string representation of the status
+func (s UserStatus) String() string {
+	switch s {
+	case UserStatusPending:
+		return "Pending"
+	case UserStatusActive:
+		return "Active"
+	case UserStatusLocked:
+		return "Locked"
+	case UserStatusBanned:
+		return "Banned"
+	default:
+		return "Unknown"
+	}
+}
+
 type User struct {
 	ID        string     `json:"id"`
 	Email     string     `json:"email"`

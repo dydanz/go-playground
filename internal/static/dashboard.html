@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <div class="wrapper">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h3>Go-Playground Dashboard</h3>
+            </div>
+
+            <ul class="sidebar-menu">
+                <li class="active">
+                    <a href="/dashboard">
+                        <i class="fas fa-shop"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/tables">
+                        <i class="fas fa-table"></i>
+                        <span>Tables</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/billing">
+                        <i class="fas fa-credit-card"></i>
+                        <span>Billing</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/virtual-reality">
+                        <i class="fas fa-vr-cardboard"></i>
+                        <span>Virtual Reality</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/profile">
+                        <i class="fas fa-user"></i>
+                        <span>Profile</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Top Navigation -->
+            <nav class="top-nav">
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Type here...">
+                </div>
+                <div class="nav-right">
+                    <span class="nav-item">
+                        <i class="fas fa-user"></i>
+                        <span id="userName">Loading...</span>
+                    </span>
+                    <a href="#" class="nav-item" id="logoutBtn" title="Logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+            </nav>
+
+            <!-- Dashboard Content -->
+            <div class="dashboard-content">
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stats-card">
+                        <div class="stats-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stats-info">
+                            <h3>1,600</h3>
+                            <p>Users Active</p>
+                            <span class="stats-change positive">+55%</span>
+                        </div>
+                    </div>
+
+                    <div class="stats-card">
+                        <div class="stats-icon">
+                            <i class="fas fa-mouse-pointer"></i>
+                        </div>
+                        <div class="stats-info">
+                            <h3>357</h3>
+                            <p>Click Events</p>
+                            <span class="stats-change positive">+124%</span>
+                        </div>
+                    </div>
+
+                    <div class="stats-card">
+                        <div class="stats-icon">
+                            <i class="fas fa-cart-shopping"></i>
+                        </div>
+                        <div class="stats-info">
+                            <h3>2,300</h3>
+                            <p>Purchases</p>
+                            <span class="stats-change positive">+15%</span>
+                        </div>
+                    </div>
+
+                    <div class="stats-card">
+                        <div class="stats-icon">
+                            <i class="fas fa-heart"></i>
+                        </div>
+                        <div class="stats-info">
+                            <h3>940</h3>
+                            <p>Likes</p>
+                            <span class="stats-change positive">+90%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Projects Table -->
+                <div class="projects-section">
+                    <h2>Projects</h2>
+                    <p>30 done this month</p>
+                    <div class="table-responsive">
+                        <table class="projects-table">
+                            <thead>
+                                <tr>
+                                    <th>Project</th>
+                                    <th>Budget</th>
+                                    <th>Status</th>
+                                    <th>Completion</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <div class="project-info">
+                                            <img src="https://demos.creative-tim.com/soft-ui-dashboard/assets/img/small-logos/logo-xd.svg" alt="XD">
+                                            <span>Soft UI XD Version</span>
+                                        </div>
+                                    </td>
+                                    <td>$14,000</td>
+                                    <td>Working</td>
+                                    <td>
+                                        <div class="progress">
+                                            <div class="progress-bar" style="width: 60%"></div>
+                                            <span>60%</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- Add more project rows as needed -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="/static/js/utils.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html> 

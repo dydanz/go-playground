@@ -3,7 +3,10 @@ package handler
 import (
 	"go-cursor/internal/domain"
 	"go-cursor/internal/service"
+	"log"
 	"net/http"
+
+	"go-cursor/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -79,21 +82,52 @@ func (h *AuthHandler) Verify(c *gin.Context) {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req domain.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("Login bind error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	authToken, err := h.authService.Login(&req)
 	if err != nil {
+		log.Printf("Login error: %v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Return response in the format expected by Swagger
+	// Set secure cookie with session token
+	middleware.SetSecureCookie(c, authToken.TokenHash)
+
 	response := domain.LoginResponse{
 		Token:     authToken.TokenHash,
 		ExpiresAt: authToken.ExpiresAt,
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// @Summary User logout
+// @Description Logout user and invalidate their token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]string "message: logged out successfully"
+// @Failure 401 {object} map[string]string "error: unauthorized"
+// @Failure 500 {object} map[string]string "error: internal server error"
+// @Router /api/auth/logout [post]
+func (h *AuthHandler) Logout(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	if err := h.authService.Logout(userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Clear session cookies
+	middleware.ClearSecureCookie(c)
+	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
 }

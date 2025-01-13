@@ -126,9 +126,15 @@ func (r *AuthRepository) CreateToken(token *domain.AuthToken) error {
 	query := `
 		INSERT INTO auth_tokens (user_id, token_hash, expires_at)
 		VALUES ($1, $2, $3)
+		ON CONFLICT (user_id) 
+		DO UPDATE SET 
+			token_hash = EXCLUDED.token_hash,
+			expires_at = EXCLUDED.expires_at,
+			created_at = CURRENT_TIMESTAMP,
+			last_used_at = NULL
+		RETURNING id
 	`
-	_, err := r.db.Exec(query, token.UserID, token.TokenHash, token.ExpiresAt)
-	return err
+	return r.db.QueryRow(query, token.UserID, token.TokenHash, token.ExpiresAt).Scan(&token.ID)
 }
 
 func (r *AuthRepository) GetTokenByHash(hash string) (*domain.AuthToken, error) {
@@ -140,7 +146,6 @@ func (r *AuthRepository) GetTokenByHash(hash string) (*domain.AuthToken, error) 
 		FROM auth_tokens
 		WHERE token_hash = $1 
 		AND expires_at > NOW()
-		ORDER BY created_at DESC
 		LIMIT 1
 	`
 	err := r.db.QueryRow(query, hash).Scan(
@@ -161,6 +166,17 @@ func (r *AuthRepository) GetTokenByHash(hash string) (*domain.AuthToken, error) 
 
 	if lastUsedAt.Valid {
 		token.LastUsedAt = lastUsedAt.Time
+	}
+
+	// Update last_used_at
+	updateQuery := `
+		UPDATE auth_tokens 
+		SET last_used_at = CURRENT_TIMESTAMP
+		WHERE id = $1
+	`
+	_, err = r.db.Exec(updateQuery, token.ID)
+	if err != nil {
+		log.Printf("Failed to update last_used_at: %v", err)
 	}
 
 	return token, nil
@@ -269,5 +285,15 @@ func (r *AuthRepository) CleanupExpiredVerifications() error {
 		OR used_at IS NOT NULL
 	`
 	_, err := r.db.Exec(query)
+	return err
+}
+
+func (r *AuthRepository) InvalidateToken(userID string) error {
+	query := `
+		UPDATE auth_tokens 
+		SET expires_at = '1970-01-01 00:00:01'
+		WHERE user_id = $1
+	`
+	_, err := r.db.Exec(query, userID)
 	return err
 }

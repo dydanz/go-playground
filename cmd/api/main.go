@@ -9,6 +9,7 @@ import (
 	"go-cursor/internal/service"
 	"go-cursor/pkg/database"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -20,9 +21,9 @@ import (
 	"go-cursor/internal/middleware"
 )
 
-// @title           Go-Cursor API
+// @title           Go-Playground
 // @version         1.0
-// @description     A User Management API with PostgreSQL and Redis
+// @description     Go-Playground - Random Go/Gin-Boilerplate Playground
 // @termsOfService  http://swagger.io/terms/
 
 // @contact.name   API Support
@@ -73,7 +74,11 @@ func main() {
 	r := gin.Default()
 
 	// CORS middleware
-	r.Use(cors.Default())
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"http://localhost:8080"}
+	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
+	r.Use(cors.New(config))
 
 	// Swagger documentation - must be before routes
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -90,8 +95,10 @@ func main() {
 	api := r.Group("/api")
 	api.Use(middleware.AuthMiddleware(authRepo))
 	{
+		api.POST("/auth/logout", authHandler.Logout)
 		users := api.Group("/users")
 		{
+			users.GET("/me", userHandler.GetMe)
 			users.GET("", userHandler.GetAll)
 			users.GET("/:id", userHandler.GetByID)
 			users.POST("", userHandler.Create)
@@ -99,6 +106,27 @@ func main() {
 			users.DELETE("/:id", userHandler.Delete)
 		}
 	}
+
+	// Add static file handling
+	r.Static("/static", "./internal/static")
+	r.LoadHTMLGlob("internal/static/*.html")
+
+	// Add routes for HTML pages
+	r.GET("/login", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "login.html", nil)
+	})
+
+	r.GET("/register", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "register.html", nil)
+	})
+
+	// Protected HTML routes
+	r.GET("/dashboard", middleware.AuthMiddleware(authRepo), func(c *gin.Context) {
+		c.HTML(http.StatusOK, "dashboard.html", nil)
+	})
+
+	// Add CSRF middleware
+	r.Use(middleware.CSRFMiddleware())
 
 	// Run migrations
 	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",

@@ -1,18 +1,5 @@
 basePath: /api
 definitions:
-  domain.AuthToken:
-    properties:
-      created_at:
-        type: string
-      expires_at:
-        type: string
-      id:
-        type: string
-      last_used_at:
-        type: string
-      user_id:
-        type: string
-    type: object
   domain.CreateUserRequest:
     properties:
       email:
@@ -39,6 +26,15 @@ definitions:
     required:
     - email
     - password
+    type: object
+  domain.LoginResponse:
+    properties:
+      expires_at:
+        type: string
+      token:
+        description: Token with Bearer prefix
+        example: Bearer eyJhbGciOiJ...
+        type: string
     type: object
   domain.RegistrationRequest:
     properties:
@@ -114,12 +110,12 @@ info:
     email: support@swagger.io
     name: API Support
     url: http://www.swagger.io/support
-  description: A User Management API with PostgreSQL and Redis
+  description: Go-Playground - Random Go/Gin-Boilerplate Playground
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
-  title: Go-Cursor API
+  title: Go-Playground API
   version: "1.0"
 paths:
   /auth/login:
@@ -140,13 +136,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.AuthToken'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/domain.LoginResponse'
         "401":
           description: Unauthorized
           schema:
@@ -154,6 +144,37 @@ paths:
               type: string
             type: object
       summary: User login
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Logout user and invalidate their token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: logged out successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: User logout
       tags:
       - auth
   /auth/register:
@@ -238,12 +259,14 @@ paths:
             items:
               $ref: '#/definitions/domain.User'
             type: array
-        "500":
-          description: Internal Server Error
+        "401":
+          description: Unauthorized
           schema:
             additionalProperties:
               type: string
             type: object
+      security:
+      - BearerAuth: []
       summary: Get all users
       tags:
       - users
@@ -330,12 +353,14 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/domain.User'
-        "404":
-          description: Not Found
+        "401":
+          description: Unauthorized
           schema:
             additionalProperties:
               type: string
             type: object
+      security:
+      - BearerAuth: []
       summary: Get user by ID
       tags:
       - users
@@ -383,6 +408,8 @@ paths:
       summary: Update user
       tags:
       - users
+security:
+- BearerAuth: []
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.

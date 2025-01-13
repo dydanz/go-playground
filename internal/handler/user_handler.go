@@ -51,22 +51,28 @@ func (h *UserHandler) Create(c *gin.Context) {
 
 // @GetByID godoc
 // @Summary Get user by ID
-// @Description Get user details by their ID
+// @Description Get user by their ID
 // @Tags users
 // @Accept json
 // @Produce json
-// @Security BearerAuth
-// @Param id path string true "User ID"
+// @Param id path string true "User ID (UUID)"
 // @Success 200 {object} domain.User
-// @Failure 401 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
 // @Router /users/{id} [get]
 func (h *UserHandler) GetByID(c *gin.Context) {
 	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
+		return
+	}
+
 	user, err := h.userService.GetByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
+
 	c.JSON(http.StatusOK, user)
 }
 
@@ -136,6 +142,31 @@ func (h *UserHandler) Delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+}
+
+// @Summary Get current user
+// @Description Get current user's data
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} domain.User
+// @Failure 401 {object} map[string]string
+// @Router /users/me [get]
+func (h *UserHandler) GetMe(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	user, err := h.userService.GetByID(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
 }
 
 // Implement other handler methods (Create, Update, Delete)
