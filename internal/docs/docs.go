@@ -643,7 +643,7 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "localhost:8080",
 	BasePath:         "/api",
 	Schemes:          []string{},
-	Title:            "Go-Cursor API",
+	Title:            "Go-playground API",
 	Description:      "A User Management API with PostgreSQL and Redis",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,

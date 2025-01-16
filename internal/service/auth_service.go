@@ -3,21 +3,24 @@ package service
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
-	"go-cursor/internal/domain"
-	"go-cursor/internal/repository/postgres"
+	"go-playground/internal/domain"
 	"math/big"
 	"time"
+
+	"context"
+	"log"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
-	userRepo *postgres.UserRepository
-	authRepo *postgres.AuthRepository
+	userRepo domain.UserRepository
+	authRepo domain.AuthRepository
 }
 
-func NewAuthService(userRepo *postgres.UserRepository, authRepo *postgres.AuthRepository) *AuthService {
+func NewAuthService(userRepo domain.UserRepository, authRepo domain.AuthRepository) *AuthService {
 	return &AuthService{
 		userRepo: userRepo,
 		authRepo: authRepo,
@@ -25,41 +28,36 @@ func NewAuthService(userRepo *postgres.UserRepository, authRepo *postgres.AuthRe
 }
 
 func (s *AuthService) Register(req *domain.RegistrationRequest) (*domain.User, error) {
-	// Check if email exists
+	// Check if email already exists
 	existingUser, err := s.userRepo.GetByEmail(req.Email)
 	if err != nil {
 		return nil, err
 	}
 	if existingUser != nil {
-		return nil, fmt.Errorf("email already registered")
+		return nil, errors.New("email already exists")
 	}
 
-	// Create user with pending status
+	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
 
-	user := &domain.User{
+	// Create user
+	createReq := &domain.CreateUserRequest{
 		Email:    req.Email,
 		Password: string(hashedPassword),
 		Name:     req.Name,
 		Phone:    req.Phone,
-		Status:   domain.UserStatusPending,
 	}
 
-	user, err = s.userRepo.Create(user)
+	user, err := s.userRepo.Create(context.Background(), createReq)
 	if err != nil {
 		return nil, err
 	}
 
-	// Generate OTP
-	otp, err := s.generateOTP()
-	if err != nil {
-		return nil, err
-	}
-
-	// Create verification record
+	// Generate and store OTP
+	otp := s.generateOTP()
 	verification := &domain.RegistrationVerification{
 		UserID:    user.ID,
 		OTP:       otp,
@@ -70,8 +68,8 @@ func (s *AuthService) Register(req *domain.RegistrationRequest) (*domain.User, e
 		return nil, err
 	}
 
-	// In a real application, send email here
-	fmt.Printf("Verification OTP for %s: %s\n", user.Email, otp)
+	// TODO: Send OTP via email
+	log.Printf("OTP for %s: %s", user.Email, otp)
 
 	return user, nil
 }
@@ -85,12 +83,9 @@ func (s *AuthService) VerifyRegistration(req *domain.VerificationRequest) error 
 		return fmt.Errorf("user not found")
 	}
 
-	// Check if user is already verified
 	if user.Status == domain.UserStatusActive {
 		return fmt.Errorf("user already verified")
 	}
-
-	fmt.Printf("Attempting to verify user %s with OTP %s\n", user.ID, req.OTP)
 
 	verification, err := s.authRepo.GetVerification(user.ID, req.OTP)
 	if err != nil {
@@ -115,11 +110,7 @@ func (s *AuthService) VerifyRegistration(req *domain.VerificationRequest) error 
 		return fmt.Errorf("error updating user status: %v", err)
 	}
 
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("error committing transaction: %v", err)
-	}
-
-	return nil
+	return tx.Commit()
 }
 
 func (s *AuthService) Login(req *domain.LoginRequest) (*domain.AuthToken, error) {
@@ -175,17 +166,17 @@ func (s *AuthService) Login(req *domain.LoginRequest) (*domain.AuthToken, error)
 	return authToken, nil
 }
 
-func (s *AuthService) generateOTP() (string, error) {
+func (s *AuthService) generateOTP() string {
 	const digits = "0123456789"
 	result := make([]byte, 6)
 	for i := range result {
 		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(digits))))
 		if err != nil {
-			return "", err
+			return "000000" // fallback OTP
 		}
 		result[i] = digits[num.Int64()]
 	}
-	return string(result), nil
+	return string(result)
 }
 
 func (s *AuthService) Logout(userID string) error {

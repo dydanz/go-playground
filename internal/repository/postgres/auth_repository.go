@@ -3,8 +3,8 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
-	"go-cursor/internal/config"
-	"go-cursor/internal/domain"
+	"go-playground/internal/config"
+	"go-playground/internal/domain"
 	"log"
 )
 
@@ -63,9 +63,14 @@ func (r *AuthRepository) CreateVerification(verification *domain.RegistrationVer
 	query := `
 		INSERT INTO registration_verifications (user_id, otp, expires_at)
 		VALUES ($1, $2, $3)
+		RETURNING id
 	`
-	_, err := r.db.Exec(query, verification.UserID, verification.OTP, verification.ExpiresAt)
-	return err
+	return r.db.QueryRow(
+		query,
+		verification.UserID,
+		verification.OTP,
+		verification.ExpiresAt,
+	).Scan(&verification.ID)
 }
 
 func (r *AuthRepository) GetVerification(userID, otp string) (*domain.RegistrationVerification, error) {

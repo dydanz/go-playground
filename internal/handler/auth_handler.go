@@ -1,21 +1,20 @@
 package handler
 
 import (
-	"go-cursor/internal/domain"
-	"go-cursor/internal/service"
+	"go-playground/internal/domain"
 	"log"
 	"net/http"
 
-	"go-cursor/internal/middleware"
+	"go-playground/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
 
 type AuthHandler struct {
-	authService *service.AuthService
+	authService domain.AuthService
 }
 
-func NewAuthHandler(authService *service.AuthService) *AuthHandler {
+func NewAuthHandler(authService domain.AuthService) *AuthHandler {
 	return &AuthHandler{authService: authService}
 }
 
@@ -116,18 +115,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Failure 500 {object} map[string]string "error: internal server error"
 // @Router /api/auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
+	userID, exists := c.Get("userID")
+	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	if err := h.authService.Logout(userID); err != nil {
+	err := h.authService.Logout(userID.(string))
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Clear session cookies
-	middleware.ClearSecureCookie(c)
-	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "successfully logged out"})
 }

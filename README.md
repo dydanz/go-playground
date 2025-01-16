@@ -140,7 +140,7 @@ curl -X DELETE http://localhost:8080/api/users/{user_id}
 
 ## Project Structure
 ```
-go-cursor/
+go-playground/
 ├── cmd/
 │   └── api/
 │       └── main.go
@@ -171,9 +171,16 @@ go-cursor/
 
 ### Running Tests
 
-```bash
-go test ./... -v
-```
+First, you'll need to add the testify package to your dependencies. Run:
+``` $ go get github.com/stretchr/testify ```
+To run the test, you can use these commands:
+Run all tests in the project:
+``` $ go test ./... -v ```
+Run specific test file:
+``` $ go test ./internal/service/user_service_test.go ```
+Run with verbose output:
+``` $ go test -v ./internal/service ```
+
 
 ### Common Issues
 

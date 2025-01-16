@@ -1,23 +1,21 @@
 package service
 
 import (
+	"context"
 	"errors"
-	"go-cursor/internal/domain"
-	"go-cursor/internal/repository/postgres"
-	"go-cursor/internal/repository/redis"
+	"go-playground/internal/domain"
 	"log"
 	"time"
 
-	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
-	userRepo  *postgres.UserRepository
-	cacheRepo *redis.CacheRepository
+	userRepo  domain.UserRepository
+	cacheRepo domain.CacheRepository
 }
 
-func NewUserService(userRepo *postgres.UserRepository, cacheRepo *redis.CacheRepository) *UserService {
+func NewUserService(userRepo domain.UserRepository, cacheRepo domain.CacheRepository) *UserService {
 	return &UserService{
 		userRepo:  userRepo,
 		cacheRepo: cacheRepo,
@@ -40,18 +38,14 @@ func (s *UserService) Create(req *domain.CreateUserRequest) (*domain.User, error
 		return nil, err
 	}
 
-	now := time.Now()
-	user := &domain.User{
-		ID:        uuid.New().String(),
-		Email:     req.Email,
-		Password:  string(hashedPassword),
-		Name:      req.Name,
-		Phone:     req.Phone,
-		CreatedAt: now,
-		UpdatedAt: now,
+	user := &domain.CreateUserRequest{
+		Email:    req.Email,
+		Password: string(hashedPassword),
+		Name:     req.Name,
+		Phone:    req.Phone,
 	}
 
-	createdUser, err := s.userRepo.Create(user)
+	createdUser, err := s.userRepo.Create(context.Background(), user)
 	if err != nil {
 		return nil, err
 	}

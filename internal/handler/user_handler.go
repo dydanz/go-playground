@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"go-cursor/internal/domain"
-	"go-cursor/internal/service"
+	"go-playground/internal/domain"
+	"go-playground/internal/service"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +16,7 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 	return &UserHandler{userService: userService}
 }
 
-// @title Go-Cursor API
+// @title go-playground API
 // @version 1.0
 // @description User management API with PostgreSQL and Redis
 // @host localhost:8080
