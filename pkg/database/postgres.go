@@ -3,7 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"go-cursor/internal/config"
+	"go-playground/internal/config"
 
 	_ "github.com/lib/pq"
 )

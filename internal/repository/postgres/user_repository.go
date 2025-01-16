@@ -1,9 +1,10 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
-	"go-cursor/internal/domain"
+	"go-playground/internal/domain"
 )
 
 type UserRepository struct {
@@ -14,20 +15,22 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{db: db}
 }
 
-func (r *UserRepository) Create(user *domain.User) (*domain.User, error) {
+func (r *UserRepository) Create(ctx context.Context, req *domain.CreateUserRequest) (*domain.User, error) {
 	query := `
 		INSERT INTO users (email, password, name, phone, status)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, email, name, phone, status, created_at, updated_at
 	`
 
-	err := r.db.QueryRow(
+	user := &domain.User{}
+	err := r.db.QueryRowContext(
+		ctx,
 		query,
-		user.Email,
-		user.Password,
-		user.Name,
-		user.Phone,
-		user.Status,
+		req.Email,
+		req.Password,
+		req.Name,
+		req.Phone,
+		domain.UserStatusPending, // Default status for new users
 	).Scan(
 		&user.ID,
 		&user.Email,

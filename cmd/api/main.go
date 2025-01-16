@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"go-cursor/internal/config"
-	"go-cursor/internal/handler"
-	"go-cursor/internal/repository/postgres"
-	"go-cursor/internal/repository/redis"
-	"go-cursor/internal/service"
-	"go-cursor/pkg/database"
+	"go-playground/internal/config"
+	"go-playground/internal/handler"
+	"go-playground/internal/repository/postgres"
+	"go-playground/internal/repository/redis"
+	"go-playground/internal/service"
+	"go-playground/pkg/database"
 	"log"
 	"net/http"
 	"time"
@@ -17,8 +17,8 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	_ "go-cursor/internal/docs" // This is required for swagger
-	"go-cursor/internal/middleware"
+	_ "go-playground/internal/docs" // This is required for swagger
+	"go-playground/internal/middleware"
 )
 
 // @title           Go-Playground

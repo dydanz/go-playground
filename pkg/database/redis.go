@@ -2,7 +2,7 @@ package database
 
 import (
 	"fmt"
-	"go-cursor/internal/config"
+	"go-playground/internal/config"
 
 	"github.com/go-redis/redis/v8"
 )

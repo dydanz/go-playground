@@ -1,12 +1,12 @@
 package handler
 
 import (
-	"go-cursor/internal/domain"
-	"go-cursor/internal/service"
+	"go-playground/internal/domain"
+	"go-playground/internal/service"
 	"log"
 	"net/http"
 
-	"go-cursor/internal/middleware"
+	"go-playground/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )

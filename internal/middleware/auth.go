@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"go-cursor/internal/repository/postgres"
+	"go-playground/internal/repository/postgres"
 	"net/http"
 	"strings"
 	"time"
