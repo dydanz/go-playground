@@ -1,5 +1,7 @@
 # Go-Playground - Random Go/Gin-Boilerplate Playground 
 
+[![Go](https://github.com/dydanz/go-playground/actions/workflows/go.yml/badge.svg)](https://github.com/dydanz/go-playground/actions/workflows/go.yml)
+
 A (playground) RESTful API service built with Go (Gin framework) that handles user management with PostgreSQL for data persistence and Redis for caching.
 
 #### Disclaimer
