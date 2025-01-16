@@ -2,7 +2,6 @@ package handler
 
 import (
 	"go-playground/internal/domain"
-	"go-playground/internal/service"
 	"log"
 	"net/http"
 
@@ -12,10 +11,10 @@ import (
 )
 
 type AuthHandler struct {
-	authService *service.AuthService
+	authService domain.AuthService
 }
 
-func NewAuthHandler(authService *service.AuthService) *AuthHandler {
+func NewAuthHandler(authService domain.AuthService) *AuthHandler {
 	return &AuthHandler{authService: authService}
 }
 
