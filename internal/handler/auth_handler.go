@@ -115,18 +115,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Failure 500 {object} map[string]string "error: internal server error"
 // @Router /api/auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
+	userID, exists := c.Get("userID")
+	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	if err := h.authService.Logout(userID); err != nil {
+	err := h.authService.Logout(userID.(string))
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Clear session cookies
-	middleware.ClearSecureCookie(c)
-	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "successfully logged out"})
 }
