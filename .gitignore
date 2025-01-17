@@ -29,3 +29,4 @@
 
 # macOS specific
 .DS_Store 
+.cursorignore
