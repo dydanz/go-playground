@@ -115,7 +115,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Failure 500 {object} map[string]string "error: internal server error"
 // @Router /api/auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
-	userID, exists := c.Get("userID")
+	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
