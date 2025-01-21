@@ -74,10 +74,3 @@ type RedemptionRepository interface {
 	GetByUserID(userID string) ([]Redemption, error)
 	Update(redemption *Redemption) error
 }
-
-// EventLogRepository handles event logging operations
-type EventLogRepository interface {
-	Create(event *EventLog) error
-	GetByUserID(userID string) ([]EventLog, error)
-	GetByReferenceID(referenceID string) ([]EventLog, error)
-}

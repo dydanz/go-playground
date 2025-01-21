@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS rewards (
     description TEXT,
     points_required INTEGER NOT NULL CHECK (points_required > 0),
     available_quantity INTEGER,
+    quantity INTEGER NOT NULL DEFAULT 0,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

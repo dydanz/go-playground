@@ -59,7 +59,7 @@ func (s *RedemptionService) Create(redemption *domain.Redemption) error {
 	event := &domain.EventLog{
 		EventType:   "reward_redeemed",
 		UserID:      redemption.UserID,
-		ReferenceID: redemption.ID,
+		ReferenceID: &redemption.ID,
 		Details: map[string]interface{}{
 			"reward_id":     redemption.RewardID,
 			"points_used":   reward.PointsRequired,

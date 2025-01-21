@@ -4,7 +4,7 @@ CREATE TYPE transaction_status AS ENUM ('completed', 'pending', 'canceled');
 
 CREATE TABLE IF NOT EXISTS transactions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id),
     transaction_type transaction_type NOT NULL,
     points INTEGER NOT NULL,
     description TEXT NOT NULL,

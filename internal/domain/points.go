@@ -41,12 +41,3 @@ type Redemption struct {
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 }
-
-type EventLog struct {
-	ID          string                 `json:"id"`
-	EventType   string                 `json:"event_type"`
-	UserID      string                 `json:"user_id"`
-	ReferenceID string                 `json:"reference_id,omitempty"`
-	Details     map[string]interface{} `json:"details"`
-	CreatedAt   time.Time              `json:"created_at"`
-}

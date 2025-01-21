@@ -41,7 +41,7 @@ func (s *TransactionService) Create(tx *domain.Transaction) error {
 	event := &domain.EventLog{
 		EventType:   "transaction",
 		UserID:      tx.UserID,
-		ReferenceID: tx.ID,
+		ReferenceID: &tx.ID,
 		Details: map[string]interface{}{
 			"type":        tx.TransactionType,
 			"points":      tx.Points,

@@ -4,7 +4,7 @@ CREATE TYPE event_type AS ENUM ('transaction', 'balance_update', 'reward_redeeme
 CREATE TABLE IF NOT EXISTS event_log (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_type event_type NOT NULL,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id),
     details JSONB NOT NULL DEFAULT '{}'::jsonb,
     event_timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     reference_id UUID, -- Optional reference to related transaction/redemption
