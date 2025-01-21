@@ -61,14 +61,27 @@ func main() {
 	userRepo := postgres.NewUserRepository(db)
 	cacheRepo := redis.NewCacheRepository(rdb)
 	authRepo := postgres.NewAuthRepository(db, &cfg.Auth)
+	pointsRepo := postgres.NewPointsRepository(db)
+	transactionRepo := postgres.NewTransactionRepository(db)
+	rewardsRepo := postgres.NewRewardsRepository(db)
+	redemptionRepo := postgres.NewRedemptionRepository(db)
+	eventRepo := postgres.NewEventLogRepository(db)
 
 	// Initialize services
 	userService := service.NewUserService(userRepo, cacheRepo)
 	authService := service.NewAuthService(userRepo, authRepo)
+	pointsService := service.NewPointsService(pointsRepo, eventRepo)
+	transactionService := service.NewTransactionService(transactionRepo, pointsService, eventRepo)
+	rewardsService := service.NewRewardsService(rewardsRepo)
+	redemptionService := service.NewRedemptionService(redemptionRepo, rewardsRepo, pointsService, eventRepo)
 
 	// Initialize handlers
 	userHandler := handler.NewUserHandler(userService)
 	authHandler := handler.NewAuthHandler(authService)
+	pointsHandler := handler.NewPointsHandler(pointsService)
+	transactionHandler := handler.NewTransactionHandler(transactionService)
+	rewardsHandler := handler.NewRewardsHandler(rewardsService)
+	redemptionHandler := handler.NewRedemptionHandler(redemptionService)
 
 	// Initialize Gin router
 	r := gin.Default()
@@ -104,6 +117,40 @@ func main() {
 			users.POST("", userHandler.Create)
 			users.PUT("/:id", userHandler.Update)
 			users.DELETE("/:id", userHandler.Delete)
+		}
+
+		// Points routes
+		points := api.Group("/points")
+		{
+			points.GET("/:user_id", pointsHandler.GetBalance)
+			points.PUT("/:user_id", pointsHandler.UpdateBalance)
+		}
+
+		// Transactions routes
+		transactions := api.Group("/transactions")
+		{
+			transactions.POST("", transactionHandler.Create)
+			transactions.GET("/:id", transactionHandler.GetByID)
+			transactions.GET("/user/:user_id", transactionHandler.GetByUserID)
+		}
+
+		// Rewards routes
+		rewards := api.Group("/rewards")
+		{
+			rewards.POST("", rewardsHandler.Create)
+			rewards.GET("", rewardsHandler.GetAll)
+			rewards.GET("/:id", rewardsHandler.GetByID)
+			rewards.PUT("/:id", rewardsHandler.Update)
+			rewards.DELETE("/:id", rewardsHandler.Delete)
+		}
+
+		// Redemptions routes
+		redemptions := api.Group("/redemptions")
+		{
+			redemptions.POST("", redemptionHandler.Create)
+			redemptions.GET("/:id", redemptionHandler.GetByID)
+			redemptions.GET("/user/:user_id", redemptionHandler.GetByUserID)
+			redemptions.PUT("/:id/status", redemptionHandler.UpdateStatus)
 		}
 	}
 

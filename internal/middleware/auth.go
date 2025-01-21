@@ -49,7 +49,7 @@ func AuthMiddleware(authRepo *postgres.AuthRepository) gin.HandlerFunc {
 		SetSecureCookie(c, tokenCookie)
 
 		// After validating the token, set the user ID in a cookie
-		c.SetCookie("user_id", token.UserID, int(24*time.Hour.Seconds()), "/", "", true, true)
+		c.SetCookie("user_id", token.UserID, int(24*time.Hour.Seconds()), "/", "", true, false)
 		c.Set("user_id", token.UserID)
 		c.Next()
 	}
