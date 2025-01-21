@@ -1,0 +1,28 @@
+# Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+
+# Binaries and objects
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Dependencies
+/vendor/
+
+# Logs
+*.log
+
+# Database
+*.db 
+
+# macOS specific
+.DS_Store 

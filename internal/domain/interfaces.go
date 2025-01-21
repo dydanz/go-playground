@@ -42,3 +42,42 @@ type AuthService interface {
 	Logout(userID string) error
 	VerifyRegistration(req *VerificationRequest) error
 }
+
+// PointsRepository handles points balance operations
+type PointsRepository interface {
+	Create(balance *PointsBalance) error
+	GetByUserID(userID string) (*PointsBalance, error)
+	Update(balance *PointsBalance) error
+}
+
+// TransactionRepository handles transaction operations
+type TransactionRepository interface {
+	Create(tx *Transaction) error
+	GetByID(id string) (*Transaction, error)
+	GetByUserID(userID string) ([]Transaction, error)
+	Update(tx *Transaction) error
+}
+
+// RewardsRepository handles rewards operations
+type RewardsRepository interface {
+	Create(reward *Reward) error
+	GetByID(id string) (*Reward, error)
+	GetAll(activeOnly bool) ([]Reward, error)
+	Update(reward *Reward) error
+	Delete(id string) error
+}
+
+// RedemptionRepository handles redemption operations
+type RedemptionRepository interface {
+	Create(redemption *Redemption) error
+	GetByID(id string) (*Redemption, error)
+	GetByUserID(userID string) ([]Redemption, error)
+	Update(redemption *Redemption) error
+}
+
+// EventLogRepository handles event logging operations
+type EventLogRepository interface {
+	Create(event *EventLog) error
+	GetByUserID(userID string) ([]EventLog, error)
+	GetByReferenceID(referenceID string) ([]EventLog, error)
+}
