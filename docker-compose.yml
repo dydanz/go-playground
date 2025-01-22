@@ -13,6 +13,7 @@ x-postgres-common:
 
 services:
   postgres_primary:
+    container_name: postgres_primary
     <<: *postgres-common
     environment:
       POSTGRES_USER: postgres
@@ -33,6 +34,7 @@ services:
          - ./00_init.sql:/docker-entrypoint-initdb.d/00_init.sql
 
   postgres_replica:
+    container_name: postgres_replica
     <<: *postgres-common
     ports:
       - 5433:5432
@@ -54,6 +56,7 @@ services:
       - postgres_primary
 
   redis:
+    container_name: redis_primary
     image: redis:7.4-alpine
     command: redis-server --requirepass redis123
     ports:
