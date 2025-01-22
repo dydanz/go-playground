@@ -37,8 +37,8 @@ func (m *MockAuthService) Login(req *domain.LoginRequest) (*domain.AuthToken, er
 	return args.Get(0).(*domain.AuthToken), args.Error(1)
 }
 
-func (m *MockAuthService) Logout(userID string) error {
-	return m.Called(userID).Error(0)
+func (m *MockAuthService) Logout(userID string, tokenHash string) error {
+	return m.Called(userID, tokenHash).Error(0)
 }
 
 func (m *MockAuthService) VerifyRegistration(req *domain.VerificationRequest) error {

@@ -36,7 +36,7 @@ func (r *SessionRepository) StoreSession(ctx context.Context, userID, tokenHash 
 		return fmt.Errorf("failed to marshal session: %w", err)
 	}
 
-	key := fmt.Sprintf("session:token:%s", tokenHash)
+	key := fmt.Sprintf("session:userid:%s", userID)
 	duration := time.Until(expiresAt)
 
 	// Use context for the Redis command
@@ -44,8 +44,8 @@ func (r *SessionRepository) StoreSession(ctx context.Context, userID, tokenHash 
 	return err
 }
 
-func (r *SessionRepository) GetSession(ctx context.Context, tokenHash string) (*Session, error) {
-	key := fmt.Sprintf("session:token:%s", tokenHash)
+func (r *SessionRepository) GetSession(ctx context.Context, userID string) (*Session, error) {
+	key := fmt.Sprintf("session:userid:%s", userID)
 
 	// Use context for the Redis command
 	sessionJSON, err := r.client.Get(ctx, key).Result()
@@ -64,12 +64,12 @@ func (r *SessionRepository) GetSession(ctx context.Context, tokenHash string) (*
 	return &session, nil
 }
 
-func (r *SessionRepository) DeleteSession(ctx context.Context, tokenHash string) error {
-	return r.client.Del(ctx, "session:"+tokenHash).Err()
+func (r *SessionRepository) DeleteSession(ctx context.Context, userid string) error {
+	return r.client.Del(ctx, "session:userid"+userid).Err()
 }
 
-func (r *SessionRepository) RefreshSession(ctx context.Context, oldToken, newToken string, expiration time.Duration) error {
-	session, err := r.GetSession(ctx, oldToken)
+func (r *SessionRepository) RefreshSession(ctx context.Context, userid, newToken string, expiration time.Duration) error {
+	session, err := r.GetSession(ctx, userid)
 	if err != nil {
 		return err
 	}
@@ -88,8 +88,8 @@ func (r *SessionRepository) RefreshSession(ctx context.Context, oldToken, newTok
 		return err
 	}
 
-	pipe.Set(ctx, "session:"+newToken, sessionJSON, expiration)
-	pipe.Del(ctx, "session:"+oldToken)
+	pipe.Set(ctx, "session:userid:"+newToken, sessionJSON, expiration)
+	pipe.Del(ctx, "session:userid:"+userid)
 
 	_, err = pipe.Exec(ctx)
 	return err

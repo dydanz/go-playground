@@ -39,7 +39,7 @@ type TxManager interface {
 type AuthService interface {
 	Register(req *RegistrationRequest) (*User, error)
 	Login(req *LoginRequest) (*AuthToken, error)
-	Logout(userID string) error
+	Logout(userID string, tokenHash string) error
 	VerifyRegistration(req *VerificationRequest) error
 }
 

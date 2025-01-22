@@ -1,6 +1,7 @@
 package config
 
 import (
+	"database/sql"
 	"log"
 	"os"
 	"time"
@@ -14,13 +15,23 @@ type AuthConfig struct {
 	LockDuration            time.Duration // How long to lock the account after max attempts
 }
 
+type DbConnection struct {
+	RW *sql.DB
+	RR *sql.DB
+}
+
 type Config struct {
-	// PostgreSQL settings
+	// PostgreSQL Primary settings
 	DBHost     string
 	DBPort     string
 	DBUser     string
 	DBPassword string
 	DBName     string
+
+	// PostgreSQL Replication settings
+	DBReplicationUser     string
+	DBReplicationPassword string
+	DBReplicationPort     string
 
 	// Redis settings
 	RedisHost     string
@@ -43,6 +54,11 @@ func LoadConfig() *Config {
 		DBUser:     getEnv("DB_USER", "postgres"),
 		DBPassword: getEnv("DB_PASSWORD", "postgres"),
 		DBName:     getEnv("DB_NAME", "go_cursor"),
+
+		// PostgreSQL Replication settings
+		DBReplicationUser:     getEnv("DB_REPLICATION_USER", "replicator"),
+		DBReplicationPassword: getEnv("DB_REPLICATION_PASSWORD", "replicator_password"),
+		DBReplicationPort:     getEnv("DB_REPLICATION_PORT", "5433"),
 
 		// Redis settings
 		RedisHost:     getEnv("REDIS_HOST", "localhost"),
