@@ -5,7 +5,7 @@
 A (playground) RESTful API service built with Go (Gin framework) that handles user management with PostgreSQL for data persistence and Redis for caching.
 
 #### Disclaimer
-As designated for my personal research AI-generated code, ALL OF THESE CODE ARE GENERATED AUTOMATICALLY! 
+As designated for my personal research AI-generated code, most of the code are less-caffeinated-machine-generated
 
 But feel free to fork, clone or whatever you want at your own risk. 
 For questions or professional inquiries: [Linkedin](https://www.linkedin.com/in/dandi-diputra/)
@@ -19,8 +19,10 @@ Tech stack:
 ## Features
 
 - RESTful API endpoints for user management (CRUD operations)
-- PostgreSQL database with UUID as primary key
+- PostgreSQL database with Replication for CQRS Approach
+--- future plan, table archival will be implemented to introduce advance hot-cold data separation.
 - Password hashing using bcrypt
+--- not sure SSO will be implemented, but it's a good idea to implement it.
 - Redis caching
 - Docker support for local development
 - Environment-based configuration
