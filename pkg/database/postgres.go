@@ -23,3 +23,19 @@ func NewPostgresConnection(cfg *config.Config) (*sql.DB, error) {
 
 	return db, nil
 }
+
+func NewPostgresReplicationConnection(cfg *config.Config) (*sql.DB, error) {
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		cfg.DBHost, cfg.DBReplicationPort, cfg.DBReplicationUser, cfg.DBReplicationPassword, cfg.DBName)
+
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := db.Ping(); err != nil {
+		return nil, err
+	}
+
+	return db, nil
+}

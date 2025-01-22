@@ -2,14 +2,15 @@ package postgres
 
 import (
 	"database/sql"
+	"go-playground/internal/config"
 	"go-playground/internal/domain"
 )
 
 type TransactionRepository struct {
-	db *sql.DB
+	db config.DbConnection
 }
 
-func NewTransactionRepository(db *sql.DB) *TransactionRepository {
+func NewTransactionRepository(db config.DbConnection) *TransactionRepository {
 	return &TransactionRepository{db: db}
 }
 
@@ -21,7 +22,7 @@ func (r *TransactionRepository) Create(tx *domain.Transaction) error {
 		) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
 		RETURNING id, transaction_date, created_at, updated_at
 	`
-	return r.db.QueryRow(
+	return r.db.RW.QueryRow(
 		query,
 		tx.UserID,
 		tx.TransactionType,
@@ -44,7 +45,7 @@ func (r *TransactionRepository) GetByID(id string) (*domain.Transaction, error) 
 		FROM transactions
 		WHERE id = $1
 	`
-	err := r.db.QueryRow(query, id).Scan(
+	err := r.db.RR.QueryRow(query, id).Scan(
 		&tx.ID,
 		&tx.UserID,
 		&tx.TransactionType,
@@ -69,7 +70,7 @@ func (r *TransactionRepository) GetByUserID(userID string) ([]domain.Transaction
 		WHERE user_id = $1
 		ORDER BY transaction_date DESC
 	`
-	rows, err := r.db.Query(query, userID)
+	rows, err := r.db.RR.Query(query, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -104,5 +105,5 @@ func (r *TransactionRepository) Update(tx *domain.Transaction) error {
 		WHERE id = $2
 		RETURNING updated_at
 	`
-	return r.db.QueryRow(query, tx.Status, tx.ID).Scan(&tx.UpdatedAt)
+	return r.db.RW.QueryRow(query, tx.Status, tx.ID).Scan(&tx.UpdatedAt)
 }

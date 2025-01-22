@@ -46,30 +46,48 @@ func main() {
 	// Load config
 	cfg := config.LoadConfig()
 
-	// Initialize PostgreSQL
+	// Initialize PostgreSQL Primary
 	db, err := database.NewPostgresConnection(cfg)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
+	// Initialize PostgreSQL Replication
+	dbReplication, err := database.NewPostgresReplicationConnection(cfg)
+	if err != nil {
+		log.Fatalf("Failed to connect to replication database: %v", err)
+	}
+	defer dbReplication.Close()
+
+	dbConnection := config.DbConnection{
+		RW: db,
+		RR: dbReplication,
+	}
+
 	// Initialize Redis
 	rdb := database.NewRedisConnection(cfg)
 	defer rdb.Close()
+
+	// Initialize Session Repository
+	sessionRepo := redis.NewSessionRepository(rdb)
 
 	// Initialize repositories
 	userRepo := postgres.NewUserRepository(db)
 	cacheRepo := redis.NewCacheRepository(rdb)
 	authRepo := postgres.NewAuthRepository(db, &cfg.Auth)
 	pointsRepo := postgres.NewPointsRepository(db)
-	transactionRepo := postgres.NewTransactionRepository(db)
+
+	// example of using the Primary and Replication connection
+	transactionRepo := postgres.NewTransactionRepository(dbConnection)
+
 	rewardsRepo := postgres.NewRewardsRepository(db)
 	redemptionRepo := postgres.NewRedemptionRepository(db)
 	eventRepo := postgres.NewEventLogRepository(db)
 
 	// Initialize services
 	userService := service.NewUserService(userRepo, cacheRepo)
-	authService := service.NewAuthService(userRepo, authRepo)
+	authService := service.NewAuthService(userRepo, authRepo, sessionRepo)
 	pointsService := service.NewPointsService(pointsRepo, eventRepo)
 	transactionService := service.NewTransactionService(transactionRepo, pointsService, eventRepo)
 	rewardsService := service.NewRewardsService(rewardsRepo)

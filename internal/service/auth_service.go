@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"go-playground/internal/domain"
+	"go-playground/internal/repository/redis"
 	"math/big"
 	"time"
 
@@ -16,14 +17,16 @@ import (
 )
 
 type AuthService struct {
-	userRepo domain.UserRepository
-	authRepo domain.AuthRepository
+	userRepo    domain.UserRepository
+	authRepo    domain.AuthRepository
+	sessionRepo redis.SessionRepository
 }
 
-func NewAuthService(userRepo domain.UserRepository, authRepo domain.AuthRepository) *AuthService {
+func NewAuthService(userRepo domain.UserRepository, authRepo domain.AuthRepository, sessionRepo redis.SessionRepository) *AuthService {
 	return &AuthService{
-		userRepo: userRepo,
-		authRepo: authRepo,
+		userRepo:    userRepo,
+		authRepo:    authRepo,
+		sessionRepo: sessionRepo,
 	}
 }
 
@@ -163,6 +166,11 @@ func (s *AuthService) Login(req *domain.LoginRequest) (*domain.AuthToken, error)
 		return nil, err
 	}
 
+	// Store session data
+	if err := s.sessionRepo.StoreSession(context.Background(), user.ID, token, authToken.ExpiresAt); err != nil {
+		log.Printf("Failed to store session: %v", err)
+	}
+
 	return authToken, nil
 }
 
@@ -179,6 +187,7 @@ func (s *AuthService) generateOTP() string {
 	return string(result)
 }
 
-func (s *AuthService) Logout(userID string) error {
+func (s *AuthService) Logout(userID string, tokenHash string) error {
+	s.sessionRepo.DeleteSession(context.Background(), userID)
 	return s.authRepo.InvalidateToken(userID)
 }

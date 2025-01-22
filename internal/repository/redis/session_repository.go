@@ -10,8 +10,12 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-type SessionRepository struct {
-	client *redis.Client
+// SessionRepository defines the methods for session management
+type SessionRepository interface {
+	StoreSession(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error
+	GetSession(ctx context.Context, userID string) (*Session, error)
+	DeleteSession(ctx context.Context, userID string) error
+	RefreshSession(ctx context.Context, userID, newToken string, expiration time.Duration) error
 }
 
 type Session struct {
@@ -20,11 +24,16 @@ type Session struct {
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
-func NewSessionRepository(client *redis.Client) *SessionRepository {
-	return &SessionRepository{client: client}
+// SessionRepository struct for actual implementation
+type sessionRepository struct {
+	client *redis.Client
 }
 
-func (r *SessionRepository) StoreSession(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error {
+func NewSessionRepository(client *redis.Client) SessionRepository {
+	return &sessionRepository{client: client}
+}
+
+func (r *sessionRepository) StoreSession(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error {
 	session := Session{
 		UserID:    userID,
 		TokenHash: tokenHash,
@@ -36,7 +45,7 @@ func (r *SessionRepository) StoreSession(ctx context.Context, userID, tokenHash 
 		return fmt.Errorf("failed to marshal session: %w", err)
 	}
 
-	key := fmt.Sprintf("session:token:%s", tokenHash)
+	key := fmt.Sprintf("session:userid:%s", userID)
 	duration := time.Until(expiresAt)
 
 	// Use context for the Redis command
@@ -44,8 +53,8 @@ func (r *SessionRepository) StoreSession(ctx context.Context, userID, tokenHash 
 	return err
 }
 
-func (r *SessionRepository) GetSession(ctx context.Context, tokenHash string) (*Session, error) {
-	key := fmt.Sprintf("session:token:%s", tokenHash)
+func (r *sessionRepository) GetSession(ctx context.Context, userID string) (*Session, error) {
+	key := fmt.Sprintf("session:userid:%s", userID)
 
 	// Use context for the Redis command
 	sessionJSON, err := r.client.Get(ctx, key).Result()
@@ -64,12 +73,12 @@ func (r *SessionRepository) GetSession(ctx context.Context, tokenHash string) (*
 	return &session, nil
 }
 
-func (r *SessionRepository) DeleteSession(ctx context.Context, tokenHash string) error {
-	return r.client.Del(ctx, "session:"+tokenHash).Err()
+func (r *sessionRepository) DeleteSession(ctx context.Context, userID string) error {
+	return r.client.Del(ctx, "session:userid"+userID).Err()
 }
 
-func (r *SessionRepository) RefreshSession(ctx context.Context, oldToken, newToken string, expiration time.Duration) error {
-	session, err := r.GetSession(ctx, oldToken)
+func (r *sessionRepository) RefreshSession(ctx context.Context, userID, newToken string, expiration time.Duration) error {
+	session, err := r.GetSession(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -88,8 +97,8 @@ func (r *SessionRepository) RefreshSession(ctx context.Context, oldToken, newTok
 		return err
 	}
 
-	pipe.Set(ctx, "session:"+newToken, sessionJSON, expiration)
-	pipe.Del(ctx, "session:"+oldToken)
+	pipe.Set(ctx, "session:userid:"+newToken, sessionJSON, expiration)
+	pipe.Del(ctx, "session:userid:"+userID)
 
 	_, err = pipe.Exec(ctx)
 	return err
