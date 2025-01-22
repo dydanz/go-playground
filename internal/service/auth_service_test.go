@@ -5,11 +5,14 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/lib/pq" // Import the PostgreSQL driver
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/crypto/bcrypt"
 
 	"go-playground/internal/domain"
+	"go-playground/internal/repository/redis"
 )
 
 // Mock for SQL transaction
@@ -51,9 +54,6 @@ func (m *MockAuthRepository) MarkVerificationUsedTx(tx *sql.Tx, verificationID s
 
 func (m *MockAuthRepository) BeginTx() (*sql.Tx, error) {
 	args := m.Called()
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
 	return args.Get(0).(*sql.Tx), args.Error(1)
 }
 
@@ -78,7 +78,8 @@ func (m *MockAuthRepository) UpdateLoginAttempts(email string, increment bool) (
 func TestAuthService_Register_Success(t *testing.T) {
 	mockUserRepo := new(MockUserRepository)
 	mockAuthRepo := new(MockAuthRepository)
-	service := NewAuthService(mockUserRepo, mockAuthRepo)
+	mockSessionRepo := new(redis.MockSessionRepository)
+	service := NewAuthService(mockUserRepo, mockAuthRepo, mockSessionRepo)
 
 	req := &domain.RegistrationRequest{
 		Email:    "test@example.com",
@@ -112,7 +113,8 @@ func TestAuthService_Register_Success(t *testing.T) {
 func TestAuthService_Register_EmailExists(t *testing.T) {
 	mockUserRepo := new(MockUserRepository)
 	mockAuthRepo := new(MockAuthRepository)
-	service := NewAuthService(mockUserRepo, mockAuthRepo)
+	mockSessionRepo := new(redis.MockSessionRepository)
+	service := NewAuthService(mockUserRepo, mockAuthRepo, mockSessionRepo)
 
 	existingUser := &domain.User{
 		ID:    "existing123",
@@ -137,7 +139,8 @@ func TestAuthService_Register_EmailExists(t *testing.T) {
 func TestAuthService_Login_Success(t *testing.T) {
 	mockUserRepo := new(MockUserRepository)
 	mockAuthRepo := new(MockAuthRepository)
-	service := NewAuthService(mockUserRepo, mockAuthRepo)
+	mockSessionRepo := new(redis.MockSessionRepository)
+	service := NewAuthService(mockUserRepo, mockAuthRepo, mockSessionRepo)
 
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	user := &domain.User{
@@ -161,6 +164,8 @@ func TestAuthService_Login_Success(t *testing.T) {
 		return token.UserID == "user123"
 	})).Return(nil)
 
+	mockSessionRepo.On("StoreSession", mock.Anything, "user123", mock.Anything, mock.Anything).Return(nil)
+
 	req := &domain.LoginRequest{
 		Email:    "test@example.com",
 		Password: "password123",
@@ -173,12 +178,14 @@ func TestAuthService_Login_Success(t *testing.T) {
 
 	mockUserRepo.AssertExpectations(t)
 	mockAuthRepo.AssertExpectations(t)
+	mockSessionRepo.AssertExpectations(t)
 }
 
 func TestAuthService_Login_AccountLocked(t *testing.T) {
 	mockUserRepo := new(MockUserRepository)
 	mockAuthRepo := new(MockAuthRepository)
-	service := NewAuthService(mockUserRepo, mockAuthRepo)
+	mockSessionRepo := new(redis.MockSessionRepository)
+	service := NewAuthService(mockUserRepo, mockAuthRepo, mockSessionRepo)
 
 	lockedUntil := time.Now().Add(15 * time.Minute)
 	mockAuthRepo.On("UpdateLoginAttempts", "test@example.com", true).Return(&domain.LoginAttempt{
@@ -205,7 +212,8 @@ func TestAuthService_Login_AccountLocked(t *testing.T) {
 	func TestAuthService_VerifyRegistration_Success(t *testing.T) {
 		mockUserRepo := new(MockUserRepository)
 		mockAuthRepo := new(MockAuthRepository)
-		service := NewAuthService(mockUserRepo, mockAuthRepo)
+		mockSessionRepo := new(redis.MockSessionRepository)
+		service := NewAuthService(mockUserRepo, mockAuthRepo, mockSessionRepo)
 
 		user := &domain.User{
 			ID:     "user123",
@@ -214,9 +222,10 @@ func TestAuthService_Login_AccountLocked(t *testing.T) {
 		}
 
 		verification := &domain.RegistrationVerification{
-			ID:     "ver123",
-			UserID: "user123",
-			OTP:    "123456",
+			ID:        "ver123",
+			UserID:    "user123",
+			OTP:       "123456",
+			ExpiresAt: time.Now().Add(1 * time.Hour),
 		}
 
 		tx := &sql.Tx{}
@@ -231,6 +240,8 @@ func TestAuthService_Login_AccountLocked(t *testing.T) {
 			return u.Status == domain.UserStatusActive
 		})).Return(nil)
 
+		mockSessionRepo.On("StoreSession", mock.Anything, "user123", mock.Anything, mock.Anything).Return(nil)
+
 		req := &domain.VerificationRequest{
 			Email: "test@example.com",
 			OTP:   "123456",
@@ -241,25 +252,32 @@ func TestAuthService_Login_AccountLocked(t *testing.T) {
 
 		mockUserRepo.AssertExpectations(t)
 		mockAuthRepo.AssertExpectations(t)
-	}
+		mockSessionRepo.AssertExpectations(t)
+
+}
 */
 func TestAuthService_Logout_Success(t *testing.T) {
 	mockUserRepo := new(MockUserRepository)
 	mockAuthRepo := new(MockAuthRepository)
-	service := NewAuthService(mockUserRepo, mockAuthRepo)
+	mockSessionRepo := new(redis.MockSessionRepository)
+	service := NewAuthService(mockUserRepo, mockAuthRepo, mockSessionRepo)
 
 	mockAuthRepo.On("InvalidateToken", "user123").Return(nil)
 
-	err := service.Logout("user123")
+	mockSessionRepo.On("DeleteSession", mock.Anything, "user123").Return(nil)
+
+	err := service.Logout("user123", "token123")
 	assert.NoError(t, err)
 
 	mockAuthRepo.AssertExpectations(t)
+	mockSessionRepo.AssertExpectations(t)
 }
 
 func TestAuthService_Login_InvalidCredentials(t *testing.T) {
 	mockUserRepo := new(MockUserRepository)
 	mockAuthRepo := new(MockAuthRepository)
-	service := NewAuthService(mockUserRepo, mockAuthRepo)
+	mockSessionRepo := new(redis.MockSessionRepository)
+	service := NewAuthService(mockUserRepo, mockAuthRepo, mockSessionRepo)
 
 	mockAuthRepo.On("UpdateLoginAttempts", "test@example.com", true).Return(&domain.LoginAttempt{
 		Email:        "test@example.com",
@@ -274,6 +292,7 @@ func TestAuthService_Login_InvalidCredentials(t *testing.T) {
 		Email:    "test@example.com",
 		Password: "wrongpassword",
 	}
+	mockSessionRepo.On("StoreSession", mock.Anything, "user123", mock.Anything, mock.Anything).Return(nil)
 
 	token, err := service.Login(req)
 	assert.Error(t, err)

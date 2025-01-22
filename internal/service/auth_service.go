@@ -19,10 +19,10 @@ import (
 type AuthService struct {
 	userRepo    domain.UserRepository
 	authRepo    domain.AuthRepository
-	sessionRepo *redis.SessionRepository
+	sessionRepo redis.SessionRepository
 }
 
-func NewAuthService(userRepo domain.UserRepository, authRepo domain.AuthRepository, sessionRepo *redis.SessionRepository) *AuthService {
+func NewAuthService(userRepo domain.UserRepository, authRepo domain.AuthRepository, sessionRepo redis.SessionRepository) *AuthService {
 	return &AuthService{
 		userRepo:    userRepo,
 		authRepo:    authRepo,
