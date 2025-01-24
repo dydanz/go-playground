@@ -41,11 +41,6 @@ func (m *MockRedemptionRepository) Update(redemption *domain.Redemption) error {
 	return args.Error(0)
 }
 
-// Mock for RewardsRepository
-type MockRewardsRepository struct {
-	mock.Mock
-}
-
 func (m *MockRewardsRepository) GetByID(id string) (*domain.Reward, error) {
 	args := m.Called(id)
 	if args.Get(0) == nil {
