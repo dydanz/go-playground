@@ -174,6 +174,7 @@ paths:
             type: object
       security:
       - BearerAuth: []
+      - UserIdAuth: []
       summary: User logout
       tags:
       - auth
@@ -267,6 +268,7 @@ paths:
             type: object
       security:
       - BearerAuth: []
+      - UserIdAuth: []
       summary: Get all users
       tags:
       - users
@@ -361,6 +363,7 @@ paths:
             type: object
       security:
       - BearerAuth: []
+      - UserIdAuth: []
       summary: Get user by ID
       tags:
       - users
@@ -410,10 +413,17 @@ paths:
       - users
 security:
 - BearerAuth: []
+- UserIdAuth: []
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.
     in: header
     name: Authorization
     type: apiKey
+  UserIdAuth:
+    description: User ID
+    in: header
+    name: X-User-Id
+    type: apiKey
+
 swagger: "2.0"

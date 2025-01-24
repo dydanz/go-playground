@@ -22,6 +22,7 @@ func NewRewardsHandler(rewardsService *service.RewardsService) *RewardsHandler {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Security UserIdAuth
 // @Param reward body domain.Reward true "Reward details"
 // @Success 201 {object} domain.Reward
 // @Failure 400 {object} map[string]string
@@ -47,6 +48,7 @@ func (h *RewardsHandler) Create(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Security UserIdAuth
 // @Param id path string true "Reward ID"
 // @Success 200 {object} domain.Reward
 // @Failure 404 {object} map[string]string
@@ -67,6 +69,7 @@ func (h *RewardsHandler) GetByID(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Security UserIdAuth
 // @Param active query bool false "Filter active rewards only"
 // @Success 200 {array} domain.Reward
 // @Router /rewards [get]
@@ -86,6 +89,7 @@ func (h *RewardsHandler) GetAll(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Security UserIdAuth
 // @Param id path string true "Reward ID"
 // @Param reward body domain.Reward true "Updated reward details"
 // @Success 200 {object} domain.Reward
@@ -113,6 +117,7 @@ func (h *RewardsHandler) Update(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Security UserIdAuth
 // @Param id path string true "Reward ID"
 // @Success 200 {object} map[string]string
 // @Failure 404 {object} map[string]string

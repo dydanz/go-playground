@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -74,7 +75,14 @@ func (r *sessionRepository) GetSession(ctx context.Context, userID string) (*Ses
 }
 
 func (r *sessionRepository) DeleteSession(ctx context.Context, userID string) error {
-	return r.client.Del(ctx, "session:userid"+userID).Err()
+	key := fmt.Sprintf("session:userid:%s", userID)
+	err := r.client.Del(ctx, key).Err()
+	if err != nil {
+		log.Printf("Failed to delete session for userID %s: %v", userID, err)
+		return fmt.Errorf("failed to delete session: %w", err)
+	}
+	log.Printf("Successfully deleted session for userID %s", userID)
+	return nil
 }
 
 func (r *sessionRepository) RefreshSession(ctx context.Context, userID, newToken string, expiration time.Duration) error {

@@ -22,6 +22,7 @@ func NewRedemptionHandler(redemptionService *service.RedemptionService) *Redempt
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Security UserIdAuth
 // @Param redemption body domain.Redemption true "Redemption details"
 // @Success 201 {object} domain.Redemption
 // @Failure 400 {object} map[string]string
@@ -47,6 +48,7 @@ func (h *RedemptionHandler) Create(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Security UserIdAuth
 // @Param id path string true "Redemption ID"
 // @Success 200 {object} domain.Redemption
 // @Failure 404 {object} map[string]string
@@ -67,6 +69,7 @@ func (h *RedemptionHandler) GetByID(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Security UserIdAuth
 // @Param user_id path string true "User ID"
 // @Success 200 {array} domain.Redemption
 // @Failure 404 {object} map[string]string
@@ -87,6 +90,7 @@ func (h *RedemptionHandler) GetByUserID(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Security UserIdAuth
 // @Param id path string true "Redemption ID"
 // @Param status body string true "New status" Enums(completed, pending, failed, canceled)
 // @Success 200 {object} map[string]string

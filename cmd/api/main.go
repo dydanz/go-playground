@@ -124,7 +124,7 @@ func main() {
 
 	// Protected routes
 	api := r.Group("/api")
-	api.Use(middleware.AuthMiddleware(authRepo))
+	api.Use(middleware.AuthMiddleware(authRepo, sessionRepo))
 	{
 		api.POST("/auth/logout", authHandler.Logout)
 		users := api.Group("/users")
@@ -186,7 +186,7 @@ func main() {
 	})
 
 	// Protected HTML routes
-	r.GET("/dashboard", middleware.AuthMiddleware(authRepo), func(c *gin.Context) {
+	r.GET("/dashboard", middleware.AuthMiddleware(authRepo, sessionRepo), func(c *gin.Context) {
 		c.HTML(http.StatusOK, "dashboard.html", nil)
 	})
 

@@ -82,6 +82,7 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 // @Tags         users
 // @Produce      json
 // @Security BearerAuth
+// @Security UserIdAuth
 // @Success      200  {array}   domain.User
 // @Failure      401  {object}  map[string]string
 // @Router       /users [get]
@@ -150,6 +151,7 @@ func (h *UserHandler) Delete(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Security UserIdAuth
 // @Success 200 {object} domain.User
 // @Failure 401 {object} map[string]string
 // @Router /users/me [get]

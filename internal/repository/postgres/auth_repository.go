@@ -294,6 +294,7 @@ func (r *AuthRepository) CleanupExpiredVerifications() error {
 }
 
 func (r *AuthRepository) InvalidateToken(userID string) error {
+	// Set the expiration time to 1970-01-01 00:00:01
 	query := `
 		UPDATE auth_tokens 
 		SET expires_at = '1970-01-01 00:00:01'
