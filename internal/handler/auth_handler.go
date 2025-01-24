@@ -4,6 +4,7 @@ import (
 	"go-playground/internal/domain"
 	"log"
 	"net/http"
+	"strings"
 
 	"go-playground/internal/middleware"
 
@@ -118,18 +119,36 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Router /api/auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
 	userID, exists := c.Get("user_id")
+	log.Printf("User ID: %v", userID)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User unauthorized"})
 		return
 	}
 
-	tokenHash, exists := c.Get("token_hash")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
+	// First try to get token from cookie
+	tokenHash, err := c.Cookie("session_token")
+	log.Printf("Validating authHeader header: %s\n", tokenHash)
+	if err != nil {
+		// Fallback to Authorization header
+		authHeader := c.GetHeader("Authorization")
+
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token Header unauthorized"})
+			c.Abort()
+			return
+		}
+
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
+			c.Abort()
+			return
+		}
+
+		tokenHash = parts[1]
 	}
 
-	err := h.authService.Logout(userID.(string), tokenHash.(string))
+	err = h.authService.Logout(userID.(string), tokenHash)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

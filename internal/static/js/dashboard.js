@@ -63,7 +63,7 @@ function setupLogout() {
                 const response = await fetchWithCSRF('/api/auth/logout', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${getCSRFToken()}`,
+                        'Authorization': `Bearer ${getCookie('session_token')}`,
                         'X-User-Id': `${getCookie('user_id')}`
                     }
                 });
