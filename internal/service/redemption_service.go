@@ -5,17 +5,22 @@ import (
 	"go-playground/internal/domain"
 )
 
+type PointsServiceInterface interface {
+	GetBalance(userID string) (*domain.PointsBalance, error)
+	UpdateBalance(userID string, points int) error
+}
+
 type RedemptionService struct {
 	redemptionRepo domain.RedemptionRepository
 	rewardsRepo    domain.RewardsRepository
-	pointsService  *PointsService
+	pointsService  PointsServiceInterface
 	eventRepo      domain.EventLogRepository
 }
 
 func NewRedemptionService(
 	redemptionRepo domain.RedemptionRepository,
 	rewardsRepo domain.RewardsRepository,
-	pointsService *PointsService,
+	pointsService PointsServiceInterface,
 	eventRepo domain.EventLogRepository,
 ) *RedemptionService {
 	return &RedemptionService{
