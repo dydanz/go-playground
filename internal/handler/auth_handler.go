@@ -110,6 +110,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Security User-ID
+// @Param User-ID header string true "User ID for authentication"
 // @Success 200 {object} map[string]string "message: logged out successfully"
 // @Failure 401 {object} map[string]string "error: unauthorized"
 // @Failure 500 {object} map[string]string "error: internal server error"

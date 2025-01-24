@@ -63,7 +63,7 @@ func LoadConfig() *Config {
 		// Redis settings
 		RedisHost:     getEnv("REDIS_HOST", "localhost"),
 		RedisPort:     getEnv("REDIS_PORT", "6379"),
-		RedisPassword: getEnv("REDIS_PASSWORD", "your_redis_password_here"),
+		RedisPassword: getEnv("REDIS_PASSWORD", "redis123"),
 
 		Auth: AuthConfig{
 			LoginAttemptResetPeriod: 24 * time.Hour,   // Reset attempts after 24 hours

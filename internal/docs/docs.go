@@ -71,7 +71,8 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BearerAuth": [],
+                        "UserIdAuth": []
                     }
                 ],
                 "description": "Logout user and invalidate their token",
@@ -227,7 +228,8 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BearerAuth": [],
+                        "UserIdAuth": []
                     }
                 ],
                 "description": "Retrieve all users from the system",
@@ -314,7 +316,8 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "BearerAuth": [],
+                        "UserIdAuth": []
                     }
                 ],
                 "description": "Get user details by their ID",
@@ -838,11 +841,18 @@ const docTemplate = `{
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"
+        },
+        "UserIdAuth": {
+            "description": "User ID.",
+            "type": "apiKey",
+            "name": "X-User-Id",
+            "in": "header"
         }
     },
     "security": [
         {
-            "BearerAuth": []
+            "BearerAuth": [],
+            "UserIdAuth": []
         }
     ]
 }`

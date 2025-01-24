@@ -168,7 +168,7 @@ func (s *AuthService) Login(req *domain.LoginRequest) (*domain.AuthToken, error)
 
 	// Store session data
 	if err := s.sessionRepo.StoreSession(context.Background(), user.ID, token, authToken.ExpiresAt); err != nil {
-		log.Printf("Failed to store session: %v", err)
+		log.Fatal("Failed to store session in cache:", err)
 	}
 
 	return authToken, nil

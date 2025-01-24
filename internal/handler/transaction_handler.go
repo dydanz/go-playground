@@ -22,6 +22,7 @@ func NewTransactionHandler(transactionService *service.TransactionService) *Tran
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Security UserIdAuth
 // @Param transaction body domain.Transaction true "Transaction details"
 // @Success 201 {object} domain.Transaction
 // @Failure 400 {object} map[string]string
@@ -47,6 +48,7 @@ func (h *TransactionHandler) Create(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Security UserIdAuth
 // @Param id path string true "Transaction ID"
 // @Success 200 {object} domain.Transaction
 // @Failure 404 {object} map[string]string
@@ -67,6 +69,7 @@ func (h *TransactionHandler) GetByID(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Security UserIdAuth
 // @Param user_id path string true "User ID"
 // @Success 200 {array} domain.Transaction
 // @Failure 404 {object} map[string]string

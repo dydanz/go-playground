@@ -77,11 +77,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function logout() {
     const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('user_id');
     try {
         const response = await fetch('/api/auth/logout', {
             method: 'POST',
             headers: {
-                'Authorization': token
+                'Authorization': token,
+                'X-User-Id': userId
             }
         });
 

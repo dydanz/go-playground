@@ -14,12 +14,33 @@ const (
 	csrfHeaderName  = "X-CSRF-Token"
 )
 
+// GenerateCSRFToken creates a cryptographically secure random token for CSRF protection.
+//
+// The function generates a random token of length specified by csrfTokenLength constant
+// and encodes it using URL-safe base64 encoding.
+//
+// Returns:
+//   - string: A URL-safe base64 encoded random token
 func GenerateCSRFToken() string {
 	b := make([]byte, csrfTokenLength)
 	rand.Read(b)
 	return base64.URLEncoding.EncodeToString(b)
 }
 
+// CSRFMiddleware creates a Gin middleware function that provides CSRF protection for routes.
+//
+// This middleware implements the following security measures:
+// 1. Skips CSRF validation for GET requests and authentication endpoints (login/register)
+// 2. Validates the presence of CSRF token in both cookie and request header
+// 3. Ensures the tokens match to prevent cross-site request forgery attacks
+//
+// Returns:
+//   - gin.HandlerFunc: A middleware function that can be used in Gin routes
+//
+// The middleware will abort the request with appropriate status codes in case of:
+//   - Missing CSRF cookie (403 Forbidden)
+//   - Missing CSRF header token (403 Forbidden)
+//   - Token mismatch between cookie and header (403 Forbidden)
 func CSRFMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Skip CSRF check for login/register

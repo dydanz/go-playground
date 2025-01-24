@@ -21,6 +21,7 @@ func NewPointsHandler(pointsService *service.PointsService) *PointsHandler {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Security UserIdAuth
 // @Param user_id path string true "User ID"
 // @Success 200 {object} domain.PointsBalance
 // @Failure 404 {object} map[string]string
@@ -41,6 +42,7 @@ func (h *PointsHandler) GetBalance(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Security UserIdAuth
 // @Param user_id path string true "User ID"
 // @Param points body int true "Points to add/subtract"
 // @Success 200 {object} domain.PointsBalance
