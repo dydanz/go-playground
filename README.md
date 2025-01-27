@@ -1,6 +1,7 @@
 # Go-Playground - Random Go/Gin-Boilerplate Playground 
 
 [![Go Build](https://github.com/dydanz/go-playground/actions/workflows/go.yml/badge.svg)](https://github.com/dydanz/go-playground/actions/workflows/go.yml) [![Docker](https://github.com/dydanz/go-playground/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/dydanz/go-playground/actions/workflows/docker-publish.yml) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/00bb0e4faf7c4cd493b14ff5d587ea68)](https://app.codacy.com/gh/dydanz/go-playground/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+[![Jekyll / GitHub Pages](https://github.com/dydanz/go-playground/actions/workflows/jekyll-gh-pages.yml/badge.svg)](https://github.com/dydanz/go-playground/actions/workflows/jekyll-gh-pages.yml)
 
 A (playground) RESTful API service built with Go (Gin framework) that handles user management with PostgreSQL for data persistence and Redis for caching.
 
