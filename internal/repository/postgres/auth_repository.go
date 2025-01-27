@@ -28,35 +28,18 @@ func NewAuthRepository(db *sql.DB, config *config.AuthConfig) *AuthRepository {
 }
 
 func (r *AuthRepository) ensureLoginAttemptsTable() error {
-	// Create table if not exists
-	createTable := `
-	CREATE TABLE IF NOT EXISTS login_attempts (
-		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-			email VARCHAR(255) NOT NULL,
-			attempt_count INT NOT NULL DEFAULT 1,
-			last_attempt_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-			locked_until TIMESTAMP WITH TIME ZONE
-	)
-	`
-	if _, err := r.db.Exec(createTable); err != nil {
-		return err
-	}
-
-	// Add unique constraint if not exists
-	addConstraint := `
-	DO $$ 
-	BEGIN 
-		IF NOT EXISTS (
-			SELECT 1 
-			FROM pg_constraint 
-			WHERE conname = 'login_attempts_email_key'
-		) THEN
-			ALTER TABLE login_attempts ADD CONSTRAINT login_attempts_email_key UNIQUE(email);
-		END IF;
-	END $$;
-	`
-	_, err := r.db.Exec(addConstraint)
-	return err
+    // Create table if not exists
+    createTable := `
+    CREATE TABLE IF NOT EXISTS login_attempts (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        email VARCHAR(255) NOT NULL UNIQUE,  -- Add UNIQUE constraint directly
+        attempt_count INT NOT NULL DEFAULT 1,
+        last_attempt_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        locked_until TIMESTAMP WITH TIME ZONE
+    )
+    `
+    _, err := r.db.Exec(createTable)
+    return err
 }
 
 func (r *AuthRepository) CreateVerification(verification *domain.RegistrationVerification) error {
