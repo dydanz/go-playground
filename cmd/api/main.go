@@ -100,9 +100,14 @@ func main() {
 	transactionHandler := handler.NewTransactionHandler(transactionService)
 	rewardsHandler := handler.NewRewardsHandler(rewardsService)
 	redemptionHandler := handler.NewRedemptionHandler(redemptionService)
+	pingHandler := handler.NewPingHandler(db, dbReplication, rdb)
+	testHandler := handler.NewTestHandler(authService) // Add test handler
 
 	// Initialize Gin router
 	r := gin.Default()
+
+	// Add ping endpoint before CORS middleware
+	r.GET("/ping", pingHandler.Ping)
 
 	// CORS middleware
 	config := cors.DefaultConfig()
@@ -120,6 +125,7 @@ func main() {
 		auth.POST("/register", authHandler.Register)
 		auth.POST("/verify", authHandler.Verify)
 		auth.POST("/login", authHandler.Login)
+		auth.GET("/test/get-verification/code", testHandler.GetVerificationCode) // Add test endpoint
 	}
 
 	// Protected routes

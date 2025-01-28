@@ -75,6 +75,40 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+async function handleLogin(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    try {
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(Object.fromEntries(formData)),
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Store both session token and user ID in cookies
+            setCookie('session_token', data.token);
+            setCookie('user_id', data.user_id); // Make sure your backend sends user_id in response
+            
+            showMessage('Login successful!', 'success');
+            setTimeout(() => {
+                window.location.href = '/dashboard';
+            }, 1000);
+        } else {
+            showMessage(data.error || 'Login failed', 'error');
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        showMessage('Error during login', 'error');
+    }
+}
+
 async function logout() {
     const token = localStorage.getItem('token');
     const userId = localStorage.getItem('user_id');
@@ -107,4 +141,4 @@ if (logoutBtn) {
         e.preventDefault();
         logout();
     });
-} 
+}

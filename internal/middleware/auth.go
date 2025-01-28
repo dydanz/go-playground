@@ -56,14 +56,13 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 			tokenCookie = parts[1]
 		}
 
-		// Validate User-ID header
-		userIDHeader, err := c.Cookie(userIdCookieName)
-
-		if err != nil {
-			// Fallback to User ID Header header
-			userIDHeader := c.GetHeader("X-User-Id")
-			if userIDHeader == "" {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "User-ID header is required"})
+		// Get User-ID from header first, then fallback to cookie
+		userIDHeader := c.GetHeader("X-User-Id")
+		if userIDHeader == "" {
+			// Fallback to cookie
+			userIDHeader, err = c.Cookie(userIdCookieName)
+			if err != nil {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "User-ID is required"})
 				c.Abort()
 				return
 			}

@@ -19,27 +19,7 @@ func NewAuthRepository(db *sql.DB, config *config.AuthConfig) *AuthRepository {
 		config: config,
 	}
 
-	// Ensure table exists
-	if err := repo.ensureLoginAttemptsTable(); err != nil {
-		log.Printf("Failed to create login_attempts table: %v", err)
-	}
-
 	return repo
-}
-
-func (r *AuthRepository) ensureLoginAttemptsTable() error {
-    // Create table if not exists
-    createTable := `
-    CREATE TABLE IF NOT EXISTS login_attempts (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        email VARCHAR(255) NOT NULL UNIQUE,  -- Add UNIQUE constraint directly
-        attempt_count INT NOT NULL DEFAULT 1,
-        last_attempt_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        locked_until TIMESTAMP WITH TIME ZONE
-    )
-    `
-    _, err := r.db.Exec(createTable)
-    return err
 }
 
 func (r *AuthRepository) CreateVerification(verification *domain.RegistrationVerification) error {
@@ -285,4 +265,39 @@ func (r *AuthRepository) InvalidateToken(userID string) error {
 	`
 	_, err := r.db.Exec(query, userID)
 	return err
+}
+
+func (r *AuthRepository) GetLatestVerification(userID string) (*domain.RegistrationVerification, error) {
+	verification := &domain.RegistrationVerification{}
+	var usedAt sql.NullTime
+
+	query := `
+		SELECT id, user_id, otp, expires_at, created_at, used_at
+		FROM registration_verifications
+		WHERE user_id = $1
+		ORDER BY created_at DESC
+		LIMIT 1
+	`
+
+	err := r.db.QueryRow(query, userID).Scan(
+		&verification.ID,
+		&verification.UserID,
+		&verification.OTP,
+		&verification.ExpiresAt,
+		&verification.CreatedAt,
+		&usedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("database error: %v", err)
+	}
+
+	if usedAt.Valid {
+		verification.UsedAt = usedAt.Time
+	}
+
+	return verification, nil
 }

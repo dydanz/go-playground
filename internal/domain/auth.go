@@ -51,4 +51,5 @@ type RegistrationVerification struct {
 type LoginResponse struct {
 	Token     string    `json:"token" example:"Bearer eyJhbGciOiJ..."` // Token with Bearer prefix
 	ExpiresAt time.Time `json:"expires_at"`
+	UserID    string    `json:"user_id"`
 }

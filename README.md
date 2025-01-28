@@ -341,3 +341,26 @@ migrate -path internal/migrations -database ${DATABASE_URL} version
 - Verify database credentials
 - Check if database is running
 - Ensure correct permissions
+
+### Locust Load Testing
+Locust is used for load testing the API.
+
+1. Inside folder testing, run:
+ ```bash
+# Check current version
+python3 -m venv venv
+```
+Install Locust:
+2. Inside folder testing, run:
+ ```bash
+source venv/bin/activate 
+
+# make sure you are in activated-venv (virtual environment)
+(venv) pip install locust
+```
+
+3. Run Locust:
+ ```bash
+ (venv) locust
+```
+4. Open the browser and go to the browser and go to http://localhost:8089/
