@@ -28,8 +28,8 @@ CREATE TABLE auth_tokens (
 -- Create login attempts table for rate limiting
 CREATE TABLE login_attempts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    email VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
     attempt_count INT NOT NULL DEFAULT 1,
     last_attempt_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     locked_until TIMESTAMP WITH TIME ZONE
-); 
+);

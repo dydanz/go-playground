@@ -518,6 +518,10 @@
                     "description": "Token with Bearer prefix",
                     "type": "string",
                     "example": "Bearer eyJhbGciOiJ..."
+                },
+                "user_id": {
+                    "type": "string",
+                    "description": "Unique identifier of the logged in user"
                 }
             }
         },

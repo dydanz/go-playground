@@ -35,6 +35,9 @@ definitions:
         description: Token with Bearer prefix
         example: Bearer eyJhbGciOiJ...
         type: string
+      user_id:
+        type: string
+        description: Unique identifier of the logged in user
     type: object
   domain.RegistrationRequest:
     properties:

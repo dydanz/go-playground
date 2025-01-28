@@ -29,6 +29,7 @@ type AuthRepository interface {
 	UpdateLoginAttempts(email string, increment bool) (*LoginAttempt, error)
 	CreateToken(token *AuthToken) error
 	InvalidateToken(userID string) error
+	GetLatestVerification(userID string) (*RegistrationVerification, error)
 	TxManager
 }
 
@@ -41,6 +42,8 @@ type AuthService interface {
 	Login(req *LoginRequest) (*AuthToken, error)
 	Logout(userID string, tokenHash string) error
 	VerifyRegistration(req *VerificationRequest) error
+	GetUserByEmail(email string) (*User, error)
+	GetVerificationByUserID(userID string) (*RegistrationVerification, error)
 }
 
 // PointsRepository handles points balance operations

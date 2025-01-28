@@ -191,3 +191,11 @@ func (s *AuthService) Logout(userID string, tokenHash string) error {
 	s.sessionRepo.DeleteSession(context.Background(), userID)
 	return s.authRepo.InvalidateToken(userID)
 }
+
+func (s *AuthService) GetUserByEmail(email string) (*domain.User, error) {
+	return s.userRepo.GetByEmail(email)
+}
+
+func (s *AuthService) GetVerificationByUserID(userID string) (*domain.RegistrationVerification, error) {
+	return s.authRepo.GetLatestVerification(userID)
+}

@@ -100,6 +100,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	response := domain.LoginResponse{
 		Token:     authToken.TokenHash,
 		ExpiresAt: authToken.ExpiresAt,
+		UserID:    authToken.UserID,
 	}
 
 	c.JSON(http.StatusOK, response)

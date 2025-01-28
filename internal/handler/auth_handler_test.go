@@ -46,6 +46,22 @@ func (m *MockAuthService) VerifyRegistration(req *domain.VerificationRequest) er
 	return args.Error(0)
 }
 
+func (m *MockAuthService) GetUserByEmail(email string) (*domain.User, error) {
+	args := m.Called(email)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.User), args.Error(1)
+}
+
+func (m *MockAuthService) GetVerificationByUserID(userID string) (*domain.RegistrationVerification, error) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.RegistrationVerification), args.Error(1)
+}
+
 func setupTest() (*gin.Engine, *MockAuthService) {
 	gin.SetMode(gin.TestMode)
 	mockService := new(MockAuthService)

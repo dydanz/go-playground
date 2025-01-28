@@ -75,6 +75,14 @@ func (m *MockAuthRepository) UpdateLoginAttempts(email string, increment bool) (
 	return args.Get(0).(*domain.LoginAttempt), args.Error(1)
 }
 
+func (m *MockAuthRepository) GetLatestVerification(userID string) (*domain.RegistrationVerification, error) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.RegistrationVerification), args.Error(1)
+}
+
 func TestAuthService_Register_Success(t *testing.T) {
 	mockUserRepo := new(MockUserRepository)
 	mockAuthRepo := new(MockAuthRepository)

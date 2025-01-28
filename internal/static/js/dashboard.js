@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM fully loaded and parsed');
+    if (!checkAuth()) {
+        return;
+    }
     fetchUserData();
     setupLogout();
 });
@@ -8,19 +10,15 @@ async function fetchUserData() {
     console.log('Fetching user data...');
     try {
         const userId = getCookie('user_id');
-        console.log('User ID from cookie:', userId);
         if (!userId) {
             showMessage('User ID not found', 'error');
-            setTimeout(() => {
-                window.location.href = '/login';
-            }, 10000);
+            window.location.href = '/login';
             return;
         }
 
         const response = await fetchWithCSRF(`/api/users/${userId}`, {
             headers: {
-                'Authorization': `Bearer ${getCookie('session_token')}`,
-                'X-User-Id': userId,
+                'Authorization': `Bearer ${getCookie('session_token')}`
             }
         });
 
@@ -63,8 +61,8 @@ function setupLogout() {
                 const response = await fetchWithCSRF('/api/auth/logout', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${getCookie('session_token')}`,
-                        'X-User-Id': `${getCookie('user_id')}`
+                        'Authorization': `Bearer ${getCookie('session_token')}`
+                        // X-User-Id is automatically added by fetchWithCSRF
                     }
                 });
 
@@ -115,4 +113,4 @@ function getCookie(name) {
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) return parts.pop().split(';').shift();
     return null;
-} 
+}

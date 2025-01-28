@@ -11,6 +11,7 @@
 # Environment files
 .env
 .env.local
+.venv/
 
 # IDE specific files
 .idea/
