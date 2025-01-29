@@ -343,24 +343,29 @@ migrate -path internal/migrations -database ${DATABASE_URL} version
 - Ensure correct permissions
 
 ### Locust Load Testing
-Locust is used for load testing the API.
+This project uses Locust for API load testing and performance analysis.
 
-1. Inside folder , run:
- ```bash
-# Check current version
+1. Create a Python virtual environment:
+```bash
+cd locust-test
 python3 -m venv venv
 ```
-Install Locust:
-2. Inside folder testing, run:
- ```bash
-source venv/bin/activate 
 
-# make sure you are in activated-venv (virtual environment)
-(venv) pip install locust
-```
+2. Activate virtual environment and install Locust:
+```bash
+# Activate virtual environment
+source venv/bin/activate
 
-3. Run Locust:
- ```bash
- (venv) locust
+# Install Locust package
+pip install locust
 ```
-4. Open the browser and go to the browser and go to http://localhost:8089/
+3. Start Locust server:
+```bash
+# Make sure you're in the locust-test directory with activated virtual environment
+locust -f locustfile.py <test-class-name>
+```
+4. Access Locust Web Interface:
+- Open your browser and navigate to http://localhost:8089
+- Set number of users, spawn rate, and target host
+- Click "Start swarming" to begin the load test
+Note: Ensure your API server is running before starting the load test.
