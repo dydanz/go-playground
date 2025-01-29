@@ -1,7 +1,24 @@
 from locust import HttpUser, task
 import json
-import random
+import secrets
 import string
+
+
+host = "http://localhost:8080"
+
+# TODO: add a method to generate random email, name, phone, password 
+# using https://faker.readthedocs.io/en/master/index.html
+def generate_random_email():
+    # Generate a random string for the email prefix
+    prefix = ''.join(secrets.choice(string.ascii_lowercase) for _ in range(8))
+
+    return f"{prefix}@example.com"
+
+def generate_random_name():
+    return ''.join(secrets.choice(string.ascii_lowercase) for _ in range(8))
+
+def generate_random_phone():
+    return ''.join(secrets.choice(string.digits) for _ in range(10))   
 
 class HelloWorldUser(HttpUser):
     host = "http://localhost:8080"
@@ -9,29 +26,15 @@ class HelloWorldUser(HttpUser):
     @task(1)
     def ping_connection_status(self):
         self.client.get("/ping")
-
-class RegisterUser(HttpUser):
-    host = "http://localhost:8080"
-
-    # TODO: add a method to generate random email, name, phone, password 
-    # using https://faker.readthedocs.io/en/master/index.html
-    def generate_random_email(self):
-        # Generate a random string for the email prefix
-        prefix = ''.join(random.choices(string.ascii_lowercase, k=8))
-        return f"{prefix}@example.com"
-
-    def generate_random_name(self):
-        return ''.join(random.choices(string.ascii_letters, k=8))
-
-    def generate_random_phone(self):
-        return ''.join(random.choices(string.digits, k=10))   
      
+class RegisterUser(HttpUser):
+
     @task(1)
     def registration_flow(self):
         # Generate random user data
-        email = self.generate_random_email()
-        name = self.generate_random_name()
-        phone = self.generate_random_phone()
+        email = generate_random_email()
+        name = generate_random_name()
+        phone = generate_random_phone()
         password = "12345678"
 
         # Step 1: Register new user
@@ -82,21 +85,6 @@ class RegisterUser(HttpUser):
             return
 
 class MultipleLoginUser(HttpUser):
-    host = "http://localhost:8080"
-
-    # TODO: add a method to generate random email, name, phone, password 
-    # using https://faker.readthedocs.io/en/master/index.html
-    def generate_random_email(self):
-        # Generate a random string for the email prefix
-        prefix = ''.join(random.choices(string.ascii_lowercase, k=8))
-        return f"{prefix}@example.com"
-
-    def generate_random_name(self):
-        return ''.join(random.choices(string.ascii_letters, k=8))
-
-    def generate_random_phone(self):
-        return ''.join(random.choices(string.digits, k=10))
-    
     @task(1)
     def login_and_profile_flow(self):
         # Use fixed test credentials for login
@@ -138,22 +126,7 @@ class MultipleLoginUser(HttpUser):
         if profile_response.status_code != 200:
             return
 
-class LoginAndUpdatePointsUser(HttpUser):
-    host = "http://localhost:8080"
-
-    # TODO: add a method to generate random email, name, phone, password 
-    # using https://faker.readthedocs.io/en/master/index.html
-    def generate_random_email(self):
-        # Generate a random string for the email prefix
-        prefix = ''.join(random.choices(string.ascii_lowercase, k=8))
-        return f"{prefix}@example.com"
-
-    def generate_random_name(self):
-        return ''.join(random.choices(string.ascii_letters, k=8))
-
-    def generate_random_phone(self):
-        return ''.join(random.choices(string.digits, k=10))
-    
+class LoginAndUpdatePointsUser(HttpUser): 
     @task(1)
     def random_user_login_and_points_flow(self):
         # Step 1: Get random active user
