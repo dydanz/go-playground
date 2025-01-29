@@ -1,5 +1,20 @@
 basePath: /api
 definitions:
+  domain.CreateMerchantRequest:
+    properties:
+      merchant_name:
+        type: string
+      merchant_type:
+        allOf:
+        - $ref: '#/definitions/domain.MerchantType'
+        enum:
+        - bank
+        - e-commerce
+        - repair_shop
+    required:
+    - merchant_name
+    - merchant_type
+    type: object
   domain.CreateUserRequest:
     properties:
       email:
@@ -37,7 +52,58 @@ definitions:
         type: string
       user_id:
         type: string
-        description: Unique identifier of the logged in user
+    type: object
+  domain.Merchant:
+    properties:
+      created_at:
+        type: string
+      merchant_id:
+        type: string
+      merchant_name:
+        type: string
+      merchant_type:
+        $ref: '#/definitions/domain.MerchantType'
+      updated_at:
+        type: string
+    type: object
+  domain.MerchantType:
+    enum:
+    - bank
+    - e-commerce
+    - repair_shop
+    type: string
+    x-enum-varnames:
+    - MerchantTypeBank
+    - MerchantTypeEcommerce
+    - MerchantTypeRepairShop
+  domain.PointsBalance:
+    properties:
+      id:
+        type: string
+      last_updated:
+        type: string
+      total_points:
+        type: integer
+      user_id:
+        type: string
+    type: object
+  domain.Redemption:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      redeemed_at:
+        type: string
+      reward_id:
+        type: string
+      status:
+        description: '"completed", "pending", "failed", "canceled"'
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
     type: object
   domain.RegistrationRequest:
     properties:
@@ -55,6 +121,63 @@ definitions:
     - name
     - password
     - phone
+    type: object
+  domain.Reward:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      points_required:
+        type: integer
+      quantity:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  domain.Transaction:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      points:
+        type: integer
+      status:
+        description: '"completed", "pending", "canceled"'
+        type: string
+      transaction_date:
+        type: string
+      transaction_type:
+        description: '"earn" or "redeem"'
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  domain.UpdateMerchantRequest:
+    properties:
+      merchant_name:
+        type: string
+      merchant_type:
+        allOf:
+        - $ref: '#/definitions/domain.MerchantType'
+        enum:
+        - bank
+        - e-commerce
+        - repair_shop
+    required:
+    - merchant_name
+    - merchant_type
     type: object
   domain.UpdateUserRequest:
     properties:
@@ -118,9 +241,47 @@ info:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
-  title: Go-Playground API
+  title: Go-Playground
   version: "1.0"
 paths:
+  /api/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Logout user and invalidate their token
+      parameters:
+      - description: User ID for authentication
+        in: header
+        name: User-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'message: logged out successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: 'error: unauthorized'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: 'error: internal server error'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - User-ID: []
+      summary: User logout
+      tags:
+      - auth
   /auth/login:
     post:
       consumes:
@@ -147,38 +308,6 @@ paths:
               type: string
             type: object
       summary: User login
-      tags:
-      - auth
-  /auth/logout:
-    post:
-      consumes:
-      - application/json
-      description: Logout user and invalidate their token
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 'message: logged out successfully'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: 'error: unauthorized'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: 'error: internal server error'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      - UserIdAuth: []
-      summary: User logout
       tags:
       - auth
   /auth/register:
@@ -215,6 +344,71 @@ paths:
       summary: Register new user
       tags:
       - auth
+  /auth/test/get-verification/code:
+    get:
+      consumes:
+      - application/json
+      description: Get OTP verification code by email (for testing purposes only)
+      parameters:
+      - description: Email address
+        in: query
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get verification code for testing
+      tags:
+      - test
+  /auth/test/random-user:
+    get:
+      consumes:
+      - application/json
+      description: Get a random verified user's credentials (for testing purposes
+        only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get random verified user
+      tags:
+      - test
   /auth/verify:
     post:
       consumes:
@@ -251,6 +445,603 @@ paths:
       summary: Verify user registration
       tags:
       - auth
+  /merchants:
+    get:
+      description: Get all merchants
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Merchant'
+            type: array
+      summary: Get all merchants
+      tags:
+      - merchants
+    post:
+      consumes:
+      - application/json
+      description: Create a new merchant
+      parameters:
+      - description: Merchant details
+        in: body
+        name: merchant
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CreateMerchantRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Merchant'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create merchant
+      tags:
+      - merchants
+  /merchants/{id}:
+    delete:
+      description: Delete a merchant
+      parameters:
+      - description: Merchant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete merchant
+      tags:
+      - merchants
+    get:
+      description: Get merchant details by ID
+      parameters:
+      - description: Merchant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Merchant'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get merchant by ID
+      tags:
+      - merchants
+    put:
+      consumes:
+      - application/json
+      description: Update merchant details
+      parameters:
+      - description: Merchant ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Merchant details
+        in: body
+        name: merchant
+        required: true
+        schema:
+          $ref: '#/definitions/domain.UpdateMerchantRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Merchant'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update merchant
+      tags:
+      - merchants
+  /ping:
+    get:
+      description: Check the health of database and Redis connections
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Health check
+      tags:
+      - system
+  /points/{user_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get points balance for a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.PointsBalance'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Get user points balance
+      tags:
+      - points
+    put:
+      consumes:
+      - application/json
+      description: Update points balance for a user
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: Points to add/subtract
+        in: body
+        name: points
+        required: true
+        schema:
+          type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.PointsBalance'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Update points balance
+      tags:
+      - points
+  /redemptions:
+    post:
+      consumes:
+      - application/json
+      description: Create a new redemption request
+      parameters:
+      - description: Redemption details
+        in: body
+        name: redemption
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Redemption'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Redemption'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Create redemption
+      tags:
+      - redemptions
+  /redemptions/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get redemption details by ID
+      parameters:
+      - description: Redemption ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Redemption'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Get redemption by ID
+      tags:
+      - redemptions
+  /redemptions/{id}/status:
+    put:
+      consumes:
+      - application/json
+      description: Update the status of a redemption
+      parameters:
+      - description: Redemption ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New status
+        in: body
+        name: status
+        required: true
+        schema:
+          enum:
+          - completed
+          - pending
+          - failed
+          - canceled
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Update redemption status
+      tags:
+      - redemptions
+  /redemptions/user/{user_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get all redemptions for a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Redemption'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Get user redemptions
+      tags:
+      - redemptions
+  /rewards:
+    get:
+      consumes:
+      - application/json
+      description: Get all available rewards
+      parameters:
+      - description: Filter active rewards only
+        in: query
+        name: active
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Reward'
+            type: array
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Get all rewards
+      tags:
+      - rewards
+    post:
+      consumes:
+      - application/json
+      description: Create a new reward
+      parameters:
+      - description: Reward details
+        in: body
+        name: reward
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Reward'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Reward'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Create reward
+      tags:
+      - rewards
+  /rewards/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a reward
+      parameters:
+      - description: Reward ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Delete reward
+      tags:
+      - rewards
+    get:
+      consumes:
+      - application/json
+      description: Get reward details by ID
+      parameters:
+      - description: Reward ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Reward'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Get reward by ID
+      tags:
+      - rewards
+    put:
+      consumes:
+      - application/json
+      description: Update reward details
+      parameters:
+      - description: Reward ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated reward details
+        in: body
+        name: reward
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Reward'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Reward'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Update reward
+      tags:
+      - rewards
+  /transactions:
+    post:
+      consumes:
+      - application/json
+      description: Create a new transaction
+      parameters:
+      - description: Transaction details
+        in: body
+        name: transaction
+        required: true
+        schema:
+          $ref: '#/definitions/domain.Transaction'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Transaction'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Create transaction
+      tags:
+      - transactions
+  /transactions/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get transaction details by ID
+      parameters:
+      - description: Transaction ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Transaction'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Get transaction by ID
+      tags:
+      - transactions
+  /transactions/user/{user_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get all transactions for a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Transaction'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Get user transactions
+      tags:
+      - transactions
   /users:
     get:
       description: Retrieve all users from the system
@@ -344,9 +1135,9 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get user details by their ID
+      description: Get user by their ID
       parameters:
-      - description: User ID
+      - description: User ID (UUID)
         in: path
         name: id
         required: true
@@ -358,15 +1149,18 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/domain.User'
-        "401":
-          description: Unauthorized
+        "400":
+          description: Bad Request
           schema:
             additionalProperties:
               type: string
             type: object
-      security:
-      - BearerAuth: []
-      - UserIdAuth: []
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       summary: Get user by ID
       tags:
       - users
@@ -414,6 +1208,30 @@ paths:
       summary: Update user
       tags:
       - users
+  /users/me:
+    get:
+      consumes:
+      - application/json
+      description: Get current user's data
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.User'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Get current user
+      tags:
+      - users
 security:
 - BearerAuth: []
 - UserIdAuth: []
@@ -424,9 +1242,8 @@ securityDefinitions:
     name: Authorization
     type: apiKey
   UserIdAuth:
-    description: User ID
+    description: User ID for authentication
     in: header
     name: X-User-Id
     type: apiKey
-
 swagger: "2.0"

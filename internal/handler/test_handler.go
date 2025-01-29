@@ -54,3 +54,29 @@ func (h *TestHandler) GetVerificationCode(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"otp": verification.OTP})
 }
+
+// @Summary Get random verified user
+// @Description Get a random verified user's credentials (for testing purposes only)
+// @Tags test
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /auth/test/random-user [get]
+func (h *TestHandler) GetRandomVerifiedUser(c *gin.Context) {
+	user, err := h.authService.GetRandomActiveUser()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if user == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no active users found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"email":    user.Email,
+		"password": user.Password, // Return default test password or handle as needed
+	})
+}

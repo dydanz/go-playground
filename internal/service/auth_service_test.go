@@ -1,7 +1,6 @@
 package service
 
 import (
-	"database/sql"
 	"testing"
 	"time"
 
@@ -12,7 +11,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"go-playground/internal/domain"
-	"go-playground/internal/repository/redis"
+	"go-playground/internal/mocks/repository/postgres"
+	"go-playground/internal/mocks/repository/redis"
 )
 
 // Mock for SQL transaction
@@ -30,62 +30,9 @@ func (m *MockTx) Rollback() error {
 	return args.Error(0)
 }
 
-type MockAuthRepository struct {
-	mock.Mock
-}
-
-func (m *MockAuthRepository) CreateVerification(v *domain.RegistrationVerification) error {
-	args := m.Called(v)
-	return args.Error(0)
-}
-
-func (m *MockAuthRepository) GetVerification(userID, otp string) (*domain.RegistrationVerification, error) {
-	args := m.Called(userID, otp)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.RegistrationVerification), args.Error(1)
-}
-
-func (m *MockAuthRepository) MarkVerificationUsedTx(tx *sql.Tx, verificationID string) error {
-	args := m.Called(tx, verificationID)
-	return args.Error(0)
-}
-
-func (m *MockAuthRepository) BeginTx() (*sql.Tx, error) {
-	args := m.Called()
-	return args.Get(0).(*sql.Tx), args.Error(1)
-}
-
-func (m *MockAuthRepository) CreateToken(token *domain.AuthToken) error {
-	args := m.Called(token)
-	return args.Error(0)
-}
-
-func (m *MockAuthRepository) InvalidateToken(userID string) error {
-	args := m.Called(userID)
-	return args.Error(0)
-}
-
-func (m *MockAuthRepository) UpdateLoginAttempts(email string, increment bool) (*domain.LoginAttempt, error) {
-	args := m.Called(email, increment)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.LoginAttempt), args.Error(1)
-}
-
-func (m *MockAuthRepository) GetLatestVerification(userID string) (*domain.RegistrationVerification, error) {
-	args := m.Called(userID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.RegistrationVerification), args.Error(1)
-}
-
 func TestAuthService_Register_Success(t *testing.T) {
 	mockUserRepo := new(MockUserRepository)
-	mockAuthRepo := new(MockAuthRepository)
+	mockAuthRepo := new(postgres.MockAuthRepository)
 	mockSessionRepo := new(redis.MockSessionRepository)
 	service := NewAuthService(mockUserRepo, mockAuthRepo, mockSessionRepo)
 
@@ -120,7 +67,7 @@ func TestAuthService_Register_Success(t *testing.T) {
 
 func TestAuthService_Register_EmailExists(t *testing.T) {
 	mockUserRepo := new(MockUserRepository)
-	mockAuthRepo := new(MockAuthRepository)
+	mockAuthRepo := new(postgres.MockAuthRepository)
 	mockSessionRepo := new(redis.MockSessionRepository)
 	service := NewAuthService(mockUserRepo, mockAuthRepo, mockSessionRepo)
 
@@ -146,7 +93,7 @@ func TestAuthService_Register_EmailExists(t *testing.T) {
 
 func TestAuthService_Login_Success(t *testing.T) {
 	mockUserRepo := new(MockUserRepository)
-	mockAuthRepo := new(MockAuthRepository)
+	mockAuthRepo := new(postgres.MockAuthRepository)
 	mockSessionRepo := new(redis.MockSessionRepository)
 	service := NewAuthService(mockUserRepo, mockAuthRepo, mockSessionRepo)
 
@@ -191,7 +138,7 @@ func TestAuthService_Login_Success(t *testing.T) {
 
 func TestAuthService_Login_AccountLocked(t *testing.T) {
 	mockUserRepo := new(MockUserRepository)
-	mockAuthRepo := new(MockAuthRepository)
+	mockAuthRepo := new(postgres.MockAuthRepository)
 	mockSessionRepo := new(redis.MockSessionRepository)
 	service := NewAuthService(mockUserRepo, mockAuthRepo, mockSessionRepo)
 
@@ -219,7 +166,7 @@ func TestAuthService_Login_AccountLocked(t *testing.T) {
 /*
 	func TestAuthService_VerifyRegistration_Success(t *testing.T) {
 		mockUserRepo := new(MockUserRepository)
-		mockAuthRepo := new(MockAuthRepository)
+		mockAuthRepo := new(postgres.MockAuthRepository)
 		mockSessionRepo := new(redis.MockSessionRepository)
 		service := NewAuthService(mockUserRepo, mockAuthRepo, mockSessionRepo)
 
@@ -266,7 +213,7 @@ func TestAuthService_Login_AccountLocked(t *testing.T) {
 */
 func TestAuthService_Logout_Success(t *testing.T) {
 	mockUserRepo := new(MockUserRepository)
-	mockAuthRepo := new(MockAuthRepository)
+	mockAuthRepo := new(postgres.MockAuthRepository)
 	mockSessionRepo := new(redis.MockSessionRepository)
 	service := NewAuthService(mockUserRepo, mockAuthRepo, mockSessionRepo)
 
@@ -283,7 +230,7 @@ func TestAuthService_Logout_Success(t *testing.T) {
 
 func TestAuthService_Login_InvalidCredentials(t *testing.T) {
 	mockUserRepo := new(MockUserRepository)
-	mockAuthRepo := new(MockAuthRepository)
+	mockAuthRepo := new(postgres.MockAuthRepository)
 	mockSessionRepo := new(redis.MockSessionRepository)
 	service := NewAuthService(mockUserRepo, mockAuthRepo, mockSessionRepo)
 

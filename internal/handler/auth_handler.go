@@ -128,7 +128,6 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 
 	// First try to get token from cookie
 	tokenHash, err := c.Cookie("session_token")
-	log.Printf("Validating authHeader header: %s\n", tokenHash)
 	if err != nil {
 		// Fallback to Authorization header
 		authHeader := c.GetHeader("Authorization")

@@ -8,78 +8,12 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"go-playground/internal/domain"
+	"go-playground/internal/mocks/repository/postgres"
 )
 
-// Mock for PointsRepository
-type MockPointsRepository struct {
-	mock.Mock
-}
-
-func (m *MockPointsRepository) Create(balance *domain.PointsBalance) error {
-	args := m.Called(balance)
-	return args.Error(0)
-}
-
-func (m *MockPointsRepository) GetByUserID(userID string) (*domain.PointsBalance, error) {
-	args := m.Called(userID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.PointsBalance), args.Error(1)
-}
-
-func (m *MockPointsRepository) Update(balance *domain.PointsBalance) error {
-	args := m.Called(balance)
-	return args.Error(0)
-}
-
-// Mock for EventLogRepository
-type MockEventLogRepository struct {
-	mock.Mock
-}
-
-func (m *MockEventLogRepository) Create(event *domain.EventLog) error {
-	args := m.Called(event)
-	return args.Error(0)
-}
-
-func (m *MockEventLogRepository) Update(event *domain.EventLog) error {
-	args := m.Called(event)
-	return args.Error(0)
-}
-
-func (m *MockEventLogRepository) GetByReferenceID(referenceID string) (*domain.EventLog, error) {
-	args := m.Called(referenceID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.EventLog), args.Error(1)
-}
-
-func (m *MockEventLogRepository) GetByID(id string) (*domain.EventLog, error) {
-	args := m.Called(id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.EventLog), args.Error(1)
-}
-
-func (m *MockEventLogRepository) Delete(id string) error {
-	args := m.Called(id)
-	return args.Error(0)
-}
-
-func (m *MockEventLogRepository) GetByUserID(userID string) ([]domain.EventLog, error) {
-	args := m.Called(userID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]domain.EventLog), args.Error(1)
-}
-
 func TestPointsService_GetBalance_Success(t *testing.T) {
-	mockPointsRepo := new(MockPointsRepository)
-	mockEventRepo := new(MockEventLogRepository)
+	mockPointsRepo := new(postgres.MockPointsRepository)
+	mockEventRepo := new(postgres.MockEventLogRepository)
 	// Add GetByID method to MockEventLogRepository before creating service
 	mockEventRepo.On("GetByID", mock.Anything).Return(&domain.EventLog{}, nil)
 	service := NewPointsService(mockPointsRepo, mockEventRepo)
@@ -104,8 +38,8 @@ func TestPointsService_GetBalance_Success(t *testing.T) {
 }
 
 func TestPointsService_GetBalance_NotFound(t *testing.T) {
-	mockPointsRepo := new(MockPointsRepository)
-	mockEventRepo := new(MockEventLogRepository)
+	mockPointsRepo := new(postgres.MockPointsRepository)
+	mockEventRepo := new(postgres.MockEventLogRepository)
 	service := NewPointsService(mockPointsRepo, mockEventRepo)
 
 	mockPointsRepo.On("GetByUserID", "nonexistent").Return(nil, nil)
@@ -118,8 +52,8 @@ func TestPointsService_GetBalance_NotFound(t *testing.T) {
 }
 
 func TestPointsService_GetBalance_Error(t *testing.T) {
-	mockPointsRepo := new(MockPointsRepository)
-	mockEventRepo := new(MockEventLogRepository)
+	mockPointsRepo := new(postgres.MockPointsRepository)
+	mockEventRepo := new(postgres.MockEventLogRepository)
 	service := NewPointsService(mockPointsRepo, mockEventRepo)
 
 	mockPointsRepo.On("GetByUserID", "user123").Return(nil, errors.New("database error"))
@@ -133,8 +67,8 @@ func TestPointsService_GetBalance_Error(t *testing.T) {
 }
 
 func TestPointsService_UpdateBalance_CreateNew(t *testing.T) {
-	mockPointsRepo := new(MockPointsRepository)
-	mockEventRepo := new(MockEventLogRepository)
+	mockPointsRepo := new(postgres.MockPointsRepository)
+	mockEventRepo := new(postgres.MockEventLogRepository)
 	service := NewPointsService(mockPointsRepo, mockEventRepo)
 
 	mockPointsRepo.On("GetByUserID", "user123").Return(nil, nil)
@@ -149,8 +83,8 @@ func TestPointsService_UpdateBalance_CreateNew(t *testing.T) {
 }
 
 func TestPointsService_UpdateBalance_UpdateExisting(t *testing.T) {
-	mockPointsRepo := new(MockPointsRepository)
-	mockEventRepo := new(MockEventLogRepository)
+	mockPointsRepo := new(postgres.MockPointsRepository)
+	mockEventRepo := new(postgres.MockEventLogRepository)
 	service := NewPointsService(mockPointsRepo, mockEventRepo)
 
 	existingBalance := &domain.PointsBalance{
@@ -179,8 +113,8 @@ func TestPointsService_UpdateBalance_UpdateExisting(t *testing.T) {
 }
 
 func TestPointsService_UpdateBalance_InsufficientPoints(t *testing.T) {
-	mockPointsRepo := new(MockPointsRepository)
-	mockEventRepo := new(MockEventLogRepository)
+	mockPointsRepo := new(postgres.MockPointsRepository)
+	mockEventRepo := new(postgres.MockEventLogRepository)
 	service := NewPointsService(mockPointsRepo, mockEventRepo)
 
 	existingBalance := &domain.PointsBalance{
@@ -199,8 +133,8 @@ func TestPointsService_UpdateBalance_InsufficientPoints(t *testing.T) {
 }
 
 func TestPointsService_UpdateBalance_UpdateError(t *testing.T) {
-	mockPointsRepo := new(MockPointsRepository)
-	mockEventRepo := new(MockEventLogRepository)
+	mockPointsRepo := new(postgres.MockPointsRepository)
+	mockEventRepo := new(postgres.MockEventLogRepository)
 	service := NewPointsService(mockPointsRepo, mockEventRepo)
 
 	existingBalance := &domain.PointsBalance{

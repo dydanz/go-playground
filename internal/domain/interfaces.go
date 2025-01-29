@@ -13,6 +13,7 @@ type UserRepository interface {
 	Update(user *User) error
 	Delete(id string) error
 	UpdateTx(tx *sql.Tx, user *User) error
+	GetRandomActiveUser() (*User, error)
 }
 
 type CacheRepository interface {
@@ -44,6 +45,7 @@ type AuthService interface {
 	VerifyRegistration(req *VerificationRequest) error
 	GetUserByEmail(email string) (*User, error)
 	GetVerificationByUserID(userID string) (*RegistrationVerification, error)
+	GetRandomActiveUser() (*User, error)
 }
 
 // PointsRepository handles points balance operations

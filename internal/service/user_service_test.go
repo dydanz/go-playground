@@ -62,6 +62,14 @@ func (m *MockUserRepository) UpdateTx(tx *sql.Tx, user *domain.User) error {
 	return args.Error(0)
 }
 
+func (m *MockUserRepository) GetRandomActiveUser() (*domain.User, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.User), args.Error(1)
+}
+
 type MockCacheRepository struct {
 	mock.Mock
 }

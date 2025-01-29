@@ -2,7 +2,9 @@ package postgres
 
 import (
 	"database/sql"
+	"encoding/json"
 	"go-playground/internal/domain"
+	"log"
 )
 
 // EventLogRepository struct
@@ -17,18 +19,31 @@ func NewEventLogRepository(db *sql.DB) *EventLogRepository {
 
 // Create inserts a new event log entry
 func (r *EventLogRepository) Create(eventLog *domain.EventLog) error {
+	jsonDetails, err := json.Marshal(eventLog.Details)
+	if err != nil {
+		return err
+	}
+
 	query := `
-		INSERT INTO event_log (event_type, user_id, details, reference_id)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO event_log (event_type, user_id, details, reference_id, event_timestamp)
+		VALUES ($1::event_type, $2, $3::jsonb, $4, CURRENT_TIMESTAMP)
 		RETURNING id, event_timestamp, created_at
 	`
-	return r.db.QueryRow(
+
+	err = r.db.QueryRow(
 		query,
 		eventLog.EventType,
 		eventLog.UserID,
-		eventLog.Details,
+		jsonDetails, // Pass marshaled JSON instead of map
 		eventLog.ReferenceID,
 	).Scan(&eventLog.ID, &eventLog.EventTimestamp, &eventLog.CreatedAt)
+
+	if err != nil {
+		log.Printf("Error creating event log: %v", err)
+		return err
+	}
+
+	return nil
 }
 
 // GetByID retrieves an event log entry by its ID

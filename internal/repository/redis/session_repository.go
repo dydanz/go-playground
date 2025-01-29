@@ -17,6 +17,7 @@ type SessionRepository interface {
 	GetSession(ctx context.Context, userID string) (*Session, error)
 	DeleteSession(ctx context.Context, userID string) error
 	RefreshSession(ctx context.Context, userID, newToken string, expiration time.Duration) error
+	DeleteAllSession(ctx context.Context) error
 }
 
 type Session struct {
@@ -110,4 +111,30 @@ func (r *sessionRepository) RefreshSession(ctx context.Context, userID, newToken
 
 	_, err = pipe.Exec(ctx)
 	return err
+}
+
+func (r *sessionRepository) DeleteAllSession(ctx context.Context) error {
+	// Get all keys with pattern "session:*"
+	iter := r.client.Scan(ctx, 0, "session:*", 0).Iterator()
+
+	// Create a pipeline for batch deletion
+	pipe := r.client.Pipeline()
+
+	// Iterate through all matching keys and queue delete commands
+	for iter.Next(ctx) {
+		pipe.Del(ctx, iter.Val())
+	}
+
+	if err := iter.Err(); err != nil {
+		return fmt.Errorf("error scanning keys: %w", err)
+	}
+
+	// Execute all delete commands
+	_, err := pipe.Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("error deleting sessions: %w", err)
+	}
+
+	log.Printf("Successfully deleted all sessions")
+	return nil
 }

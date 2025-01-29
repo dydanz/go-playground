@@ -3,6 +3,8 @@ package service
 import (
 	"errors"
 	"go-playground/internal/domain"
+	"go-playground/internal/mocks/repository/postgres"
+
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -44,7 +46,7 @@ func TestTransactionService_Create(t *testing.T) {
 	tests := []struct {
 		name           string
 		tx             *domain.Transaction
-		setupMocks     func(*MockTransactionRepository, *PointsService, *MockEventLogRepository)
+		setupMocks     func(*MockTransactionRepository, *PointsService, *postgres.MockEventLogRepository)
 		expectedError  error
 		transactionErr error
 		pointsErr      error
@@ -60,8 +62,8 @@ func TestTransactionService_Create(t *testing.T) {
 				Description:     "Test earn",
 				Status:          "completed",
 			},
-			setupMocks: func(tr *MockTransactionRepository, ps *PointsService, er *MockEventLogRepository) {
-				mockPointsRepo := ps.pointsRepo.(*MockPointsRepository)
+			setupMocks: func(tr *MockTransactionRepository, ps *PointsService, er *postgres.MockEventLogRepository) {
+				mockPointsRepo := ps.pointsRepo.(*postgres.MockPointsRepository)
 				mockPointsRepo.On("GetByUserID", "user1").Return(&domain.PointsBalance{UserID: "user1", TotalPoints: 200}, nil)
 				mockPointsRepo.On("Update", mock.AnythingOfType("*domain.PointsBalance")).Return(nil)
 				tr.On("Create", mock.AnythingOfType("*domain.Transaction")).Return(nil)
@@ -79,8 +81,8 @@ func TestTransactionService_Create(t *testing.T) {
 				Description:     "Test redeem",
 				Status:          "completed",
 			},
-			setupMocks: func(tr *MockTransactionRepository, ps *PointsService, er *MockEventLogRepository) {
-				mockPointsRepo := ps.pointsRepo.(*MockPointsRepository)
+			setupMocks: func(tr *MockTransactionRepository, ps *PointsService, er *postgres.MockEventLogRepository) {
+				mockPointsRepo := ps.pointsRepo.(*postgres.MockPointsRepository)
 				mockPointsRepo.On("GetByUserID", "user1").Return(&domain.PointsBalance{UserID: "user1", TotalPoints: 200}, nil)
 				mockPointsRepo.On("Update", mock.AnythingOfType("*domain.PointsBalance")).Return(nil)
 				tr.On("Create", mock.AnythingOfType("*domain.Transaction")).Return(nil)
@@ -96,7 +98,7 @@ func TestTransactionService_Create(t *testing.T) {
 				TransactionType: "earn",
 				Points:          100,
 			},
-			setupMocks: func(tr *MockTransactionRepository, ps *PointsService, er *MockEventLogRepository) {
+			setupMocks: func(tr *MockTransactionRepository, ps *PointsService, er *postgres.MockEventLogRepository) {
 				tr.On("Create", mock.AnythingOfType("*domain.Transaction")).Return(errors.New("db error"))
 			},
 			expectedError: errors.New("db error"),
@@ -107,8 +109,8 @@ func TestTransactionService_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup mocks
 			mockTxRepo := new(MockTransactionRepository)
-			mockEventRepo := new(MockEventLogRepository)
-			mockPointsRepo := new(MockPointsRepository)
+			mockEventRepo := new(postgres.MockEventLogRepository)
+			mockPointsRepo := new(postgres.MockPointsRepository)
 			pointsService := NewPointsService(mockPointsRepo, mockEventRepo)
 
 			// Setup mock expectations

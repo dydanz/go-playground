@@ -362,7 +362,7 @@ pip install locust
 3. Start Locust server:
 ```bash
 # Make sure you're in the locust-test directory with activated virtual environment
-locust -f locustfile.py
+locust -f locustfile.py <test-class-name>
 ```
 4. Access Locust Web Interface:
 - Open your browser and navigate to http://localhost:8089
