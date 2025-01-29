@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/mock"
+
+	"go-playground/internal/repository/redis"
 )
 
 // MockSessionRepository is a mock implementation of the SessionRepository interface
@@ -18,9 +20,12 @@ func (m *MockSessionRepository) StoreSession(ctx context.Context, userID, tokenH
 	return args.Error(0)
 }
 
-func (m *MockSessionRepository) GetSession(ctx context.Context, userID string) (*Session, error) {
+func (m *MockSessionRepository) GetSession(ctx context.Context, userID string) (*redis.Session, error) {
 	args := m.Called(ctx, userID)
-	return args.Get(0).(*Session), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*redis.Session), args.Error(1)
 }
 
 func (m *MockSessionRepository) DeleteSession(ctx context.Context, userID string) error {
@@ -30,6 +35,11 @@ func (m *MockSessionRepository) DeleteSession(ctx context.Context, userID string
 
 func (m *MockSessionRepository) RefreshSession(ctx context.Context, userID, newToken string, expiration time.Duration) error {
 	args := m.Called(ctx, userID, newToken, expiration)
+	return args.Error(0)
+}
+
+func (m *MockSessionRepository) DeleteAllSession(ctx context.Context) error {
+	args := m.Called(ctx)
 	return args.Error(0)
 }
 

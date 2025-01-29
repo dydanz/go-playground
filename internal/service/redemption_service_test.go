@@ -8,94 +8,15 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"go-playground/internal/domain"
+	"go-playground/internal/mocks/repository/postgres"
+	"go-playground/internal/mocks/service"
 )
 
-// Mock for RedemptionRepository
-type MockRedemptionRepository struct {
-	mock.Mock
-}
-
-func (m *MockRedemptionRepository) Create(redemption *domain.Redemption) error {
-	args := m.Called(redemption)
-	return args.Error(0)
-}
-
-func (m *MockRedemptionRepository) GetByID(id string) (*domain.Redemption, error) {
-	args := m.Called(id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.Redemption), args.Error(1)
-}
-
-func (m *MockRedemptionRepository) GetByUserID(userID string) ([]domain.Redemption, error) {
-	args := m.Called(userID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]domain.Redemption), args.Error(1)
-}
-
-func (m *MockRedemptionRepository) Update(redemption *domain.Redemption) error {
-	args := m.Called(redemption)
-	return args.Error(0)
-}
-
-func (m *MockRewardsRepository) GetByID(id string) (*domain.Reward, error) {
-	args := m.Called(id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.Reward), args.Error(1)
-}
-
-func (m *MockRewardsRepository) GetAll(activeOnly bool) ([]domain.Reward, error) {
-	args := m.Called(activeOnly)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]domain.Reward), args.Error(1)
-}
-
-func (m *MockRewardsRepository) Create(reward *domain.Reward) error {
-	args := m.Called(reward)
-	return args.Error(0)
-}
-
-func (m *MockRewardsRepository) Update(reward *domain.Reward) error {
-	args := m.Called(reward)
-	return args.Error(0)
-}
-
-// Mock for PointsService
-type MockPointsService struct {
-	mock.Mock
-}
-
-func (m *MockPointsService) GetBalance(userID string) (*domain.PointsBalance, error) {
-	args := m.Called(userID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*domain.PointsBalance), args.Error(1)
-}
-
-func (m *MockPointsService) UpdateBalance(userID string, points int) error {
-	args := m.Called(userID, points)
-	return args.Error(0)
-}
-
-// Test cases
-func (m *MockRewardsRepository) Delete(id string) error {
-	args := m.Called(id)
-	return args.Error(0)
-}
-
 func TestRedemptionService_Create_Success(t *testing.T) {
-	mockRedemptionRepo := new(MockRedemptionRepository)
-	mockRewardsRepo := new(MockRewardsRepository)
-	mockEventRepo := new(MockEventLogRepository)
-	mockPointsService := new(MockPointsService)
+	mockRedemptionRepo := new(postgres.MockRedemptionRepository)
+	mockRewardsRepo := new(postgres.MockRewardsRepository)
+	mockEventRepo := new(postgres.MockEventLogRepository)
+	mockPointsService := new(service.MockPointsService)
 
 	service := NewRedemptionService(
 		mockRedemptionRepo,
@@ -142,10 +63,10 @@ func TestRedemptionService_Create_Success(t *testing.T) {
 }
 
 func TestRedemptionService_Create_InactiveReward(t *testing.T) {
-	mockRedemptionRepo := new(MockRedemptionRepository)
-	mockRewardsRepo := new(MockRewardsRepository)
-	mockEventRepo := new(MockEventLogRepository)
-	mockPointsService := new(MockPointsService)
+	mockRedemptionRepo := new(postgres.MockRedemptionRepository)
+	mockRewardsRepo := new(postgres.MockRewardsRepository)
+	mockEventRepo := new(postgres.MockEventLogRepository)
+	mockPointsService := new(service.MockPointsService)
 
 	service := NewRedemptionService(
 		mockRedemptionRepo,
@@ -176,10 +97,10 @@ func TestRedemptionService_Create_InactiveReward(t *testing.T) {
 }
 
 func TestRedemptionService_Create_InsufficientPoints(t *testing.T) {
-	mockRedemptionRepo := new(MockRedemptionRepository)
-	mockRewardsRepo := new(MockRewardsRepository)
-	mockEventRepo := new(MockEventLogRepository)
-	mockPointsService := new(MockPointsService)
+	mockRedemptionRepo := new(postgres.MockRedemptionRepository)
+	mockRewardsRepo := new(postgres.MockRewardsRepository)
+	mockEventRepo := new(postgres.MockEventLogRepository)
+	mockPointsService := new(service.MockPointsService)
 
 	service := NewRedemptionService(
 		mockRedemptionRepo,
@@ -217,10 +138,10 @@ func TestRedemptionService_Create_InsufficientPoints(t *testing.T) {
 }
 
 func TestRedemptionService_GetByID_Success(t *testing.T) {
-	mockRedemptionRepo := new(MockRedemptionRepository)
-	mockRewardsRepo := new(MockRewardsRepository)
-	mockEventRepo := new(MockEventLogRepository)
-	mockPointsService := new(MockPointsService)
+	mockRedemptionRepo := new(postgres.MockRedemptionRepository)
+	mockRewardsRepo := new(postgres.MockRewardsRepository)
+	mockEventRepo := new(postgres.MockEventLogRepository)
+	mockPointsService := new(service.MockPointsService)
 
 	service := NewRedemptionService(
 		mockRedemptionRepo,
@@ -246,10 +167,10 @@ func TestRedemptionService_GetByID_Success(t *testing.T) {
 }
 
 func TestRedemptionService_GetByUserID_Success(t *testing.T) {
-	mockRedemptionRepo := new(MockRedemptionRepository)
-	mockRewardsRepo := new(MockRewardsRepository)
-	mockEventRepo := new(MockEventLogRepository)
-	mockPointsService := new(MockPointsService)
+	mockRedemptionRepo := new(postgres.MockRedemptionRepository)
+	mockRewardsRepo := new(postgres.MockRewardsRepository)
+	mockEventRepo := new(postgres.MockEventLogRepository)
+	mockPointsService := new(service.MockPointsService)
 
 	service := NewRedemptionService(
 		mockRedemptionRepo,
@@ -283,10 +204,10 @@ func TestRedemptionService_GetByUserID_Success(t *testing.T) {
 }
 
 func TestRedemptionService_UpdateStatus_Success(t *testing.T) {
-	mockRedemptionRepo := new(MockRedemptionRepository)
-	mockRewardsRepo := new(MockRewardsRepository)
-	mockEventRepo := new(MockEventLogRepository)
-	mockPointsService := new(MockPointsService)
+	mockRedemptionRepo := new(postgres.MockRedemptionRepository)
+	mockRewardsRepo := new(postgres.MockRewardsRepository)
+	mockEventRepo := new(postgres.MockEventLogRepository)
+	mockPointsService := new(service.MockPointsService)
 
 	service := NewRedemptionService(
 		mockRedemptionRepo,
@@ -323,10 +244,10 @@ func TestRedemptionService_UpdateStatus_Success(t *testing.T) {
 }
 
 func TestRedemptionService_UpdateStatus_NotFound(t *testing.T) {
-	mockRedemptionRepo := new(MockRedemptionRepository)
-	mockRewardsRepo := new(MockRewardsRepository)
-	mockEventRepo := new(MockEventLogRepository)
-	mockPointsService := new(MockPointsService)
+	mockRedemptionRepo := new(postgres.MockRedemptionRepository)
+	mockRewardsRepo := new(postgres.MockRewardsRepository)
+	mockEventRepo := new(postgres.MockEventLogRepository)
+	mockPointsService := new(service.MockPointsService)
 
 	service := NewRedemptionService(
 		mockRedemptionRepo,

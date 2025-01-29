@@ -199,3 +199,7 @@ func (s *AuthService) GetUserByEmail(email string) (*domain.User, error) {
 func (s *AuthService) GetVerificationByUserID(userID string) (*domain.RegistrationVerification, error) {
 	return s.authRepo.GetLatestVerification(userID)
 }
+
+func (s *AuthService) GetRandomActiveUser() (*domain.User, error) {
+	return s.userRepo.GetRandomActiveUser()
+}

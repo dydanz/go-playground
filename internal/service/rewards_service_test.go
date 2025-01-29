@@ -8,16 +8,12 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"go-playground/internal/domain"
+	"go-playground/internal/mocks/repository/postgres"
 )
-
-// Mock for RewardsRepository
-type MockRewardsRepository struct {
-	mock.Mock
-}
 
 // Test cases
 func TestRewardsService_Create_Success(t *testing.T) {
-	mockRepo := new(MockRewardsRepository)
+	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
 	reward := &domain.Reward{
@@ -35,7 +31,7 @@ func TestRewardsService_Create_Success(t *testing.T) {
 }
 
 func TestRewardsService_Create_InvalidPoints(t *testing.T) {
-	mockRepo := new(MockRewardsRepository)
+	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
 	reward := &domain.Reward{
@@ -52,7 +48,7 @@ func TestRewardsService_Create_InvalidPoints(t *testing.T) {
 }
 
 func TestRewardsService_GetByID_Success(t *testing.T) {
-	mockRepo := new(MockRewardsRepository)
+	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
 	expectedReward := &domain.Reward{
@@ -71,7 +67,7 @@ func TestRewardsService_GetByID_Success(t *testing.T) {
 }
 
 func TestRewardsService_GetByID_NotFound(t *testing.T) {
-	mockRepo := new(MockRewardsRepository)
+	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
 	mockRepo.On("GetByID", "nonexistent").Return(nil, errors.New("not found"))
@@ -84,7 +80,7 @@ func TestRewardsService_GetByID_NotFound(t *testing.T) {
 }
 
 func TestRewardsService_GetAll_Success(t *testing.T) {
-	mockRepo := new(MockRewardsRepository)
+	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
 	expectedRewards := []domain.Reward{
@@ -110,7 +106,7 @@ func TestRewardsService_GetAll_Success(t *testing.T) {
 }
 
 func TestRewardsService_Update_Success(t *testing.T) {
-	mockRepo := new(MockRewardsRepository)
+	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
 	reward := &domain.Reward{
@@ -128,7 +124,7 @@ func TestRewardsService_Update_Success(t *testing.T) {
 }
 
 func TestRewardsService_Update_InvalidPoints(t *testing.T) {
-	mockRepo := new(MockRewardsRepository)
+	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
 	reward := &domain.Reward{
@@ -145,7 +141,7 @@ func TestRewardsService_Update_InvalidPoints(t *testing.T) {
 }
 
 func TestRewardsService_Delete_Success(t *testing.T) {
-	mockRepo := new(MockRewardsRepository)
+	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
 	mockRepo.On("Delete", "reward123").Return(nil)
@@ -157,7 +153,7 @@ func TestRewardsService_Delete_Success(t *testing.T) {
 }
 
 func TestRewardsService_UpdateAvailability_Success(t *testing.T) {
-	mockRepo := new(MockRewardsRepository)
+	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
 	existingReward := &domain.Reward{
@@ -178,7 +174,7 @@ func TestRewardsService_UpdateAvailability_Success(t *testing.T) {
 }
 
 func TestRewardsService_UpdateAvailability_NotFound(t *testing.T) {
-	mockRepo := new(MockRewardsRepository)
+	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
 	mockRepo.On("GetByID", "nonexistent").Return(nil, errors.New("not found"))

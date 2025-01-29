@@ -345,7 +345,7 @@ migrate -path internal/migrations -database ${DATABASE_URL} version
 ### Locust Load Testing
 Locust is used for load testing the API.
 
-1. Inside folder testing, run:
+1. Inside folder , run:
  ```bash
 # Check current version
 python3 -m venv venv

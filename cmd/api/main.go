@@ -41,7 +41,13 @@ import (
 // @name Authorization
 // @description Type "Bearer" followed by a space and JWT token.
 
+// @securityDefinitions.apikey UserIdAuth
+// @in header
+// @name X-User-Id
+// @description User ID for authentication
+
 // @Security BearerAuth
+// @Security UserIdAuth
 func main() {
 	// Load config
 	cfg := config.LoadConfig()
@@ -84,6 +90,7 @@ func main() {
 	rewardsRepo := postgres.NewRewardsRepository(db)
 	redemptionRepo := postgres.NewRedemptionRepository(db)
 	eventRepo := postgres.NewEventLogRepository(db)
+	merchantRepo := postgres.NewMerchantRepository(db)
 
 	// Initialize services
 	userService := service.NewUserService(userRepo, cacheRepo)
@@ -92,6 +99,7 @@ func main() {
 	transactionService := service.NewTransactionService(transactionRepo, pointsService, eventRepo)
 	rewardsService := service.NewRewardsService(rewardsRepo)
 	redemptionService := service.NewRedemptionService(redemptionRepo, rewardsRepo, pointsService, eventRepo)
+	merchantService := service.NewMerchantService(merchantRepo)
 
 	// Initialize handlers
 	userHandler := handler.NewUserHandler(userService)
@@ -102,33 +110,46 @@ func main() {
 	redemptionHandler := handler.NewRedemptionHandler(redemptionService)
 	pingHandler := handler.NewPingHandler(db, dbReplication, rdb)
 	testHandler := handler.NewTestHandler(authService) // Add test handler
+	merchantHandler := handler.NewMerchantHandler(merchantService)
 
 	// Initialize Gin router
 	r := gin.Default()
-
-	// Add ping endpoint before CORS middleware
-	r.GET("/ping", pingHandler.Ping)
 
 	// CORS middleware
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"http://localhost:8080"}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
+	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization", "X-User-Id"} // Add X-User-Id
 	r.Use(cors.New(config))
 
-	// Swagger documentation - must be before routes
+	// Move CSRF middleware before routes but after CORS
+	r.Use(middleware.CSRFMiddleware())
+
+	// Swagger documentation
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// Public routes
+	// Public routes (before protected routes)
+	r.GET("/ping", pingHandler.Ping)
+	r.GET("/login", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "login.html", nil)
+	})
+	r.GET("/register", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "register.html", nil)
+	})
+
+	// Public auth routes
 	auth := r.Group("/api/auth")
 	{
 		auth.POST("/register", authHandler.Register)
 		auth.POST("/verify", authHandler.Verify)
 		auth.POST("/login", authHandler.Login)
-		auth.GET("/test/get-verification/code", testHandler.GetVerificationCode) // Add test endpoint
+
+		// FOR LOAD TEST ONLY
+		auth.GET("/test/get-verification/code", testHandler.GetVerificationCode)
+		auth.GET("/test/random-user", testHandler.GetRandomVerifiedUser)
 	}
 
-	// Protected routes
+	// Protected routes with auth middleware
 	api := r.Group("/api")
 	api.Use(middleware.AuthMiddleware(authRepo, sessionRepo))
 	{
@@ -176,22 +197,18 @@ func main() {
 			redemptions.GET("/user/:user_id", redemptionHandler.GetByUserID)
 			redemptions.PUT("/:id/status", redemptionHandler.UpdateStatus)
 		}
+
+		merchants := api.Group("/merchants")
+		{
+			merchants.POST("", merchantHandler.Create)
+			merchants.GET("", merchantHandler.GetAll)
+			merchants.GET("/:id", merchantHandler.GetByID)
+			merchants.PUT("/:id", merchantHandler.Update)
+			merchants.DELETE("/:id", merchantHandler.Delete)
+		}
 	}
 
-	// Add static file handling
-	r.Static("/static", "./internal/static")
-	r.LoadHTMLGlob("internal/static/*.html")
-
-	// Add routes for HTML pages
-	r.GET("/login", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "login.html", nil)
-	})
-
-	r.GET("/register", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "register.html", nil)
-	})
-
-	// Protected HTML routes
+	// Protected HTML routes should be after API routes
 	r.GET("/dashboard", middleware.AuthMiddleware(authRepo, sessionRepo), func(c *gin.Context) {
 		c.HTML(http.StatusOK, "dashboard.html", nil)
 	})
@@ -205,6 +222,9 @@ func main() {
 	if err := database.RunMigrations(dbURL); err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
+
+	// Start Cleanup User Session
+	sessionRepo.DeleteAllSession(rdb.Context())
 
 	// Start cleanup goroutine
 	go func() {

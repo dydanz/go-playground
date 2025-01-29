@@ -209,3 +209,35 @@ func (r *UserRepository) UpdateTx(tx *sql.Tx, user *domain.User) error {
 
 	return err
 }
+
+func (r *UserRepository) GetRandomActiveUser() (*domain.User, error) {
+	user := &domain.User{}
+	var statusStr string
+	query := `
+		SELECT id, email, password, name, phone, status, created_at, updated_at
+		FROM users
+		WHERE status = $1
+		ORDER BY RANDOM()
+		LIMIT 1
+	`
+	err := r.db.QueryRow(query, domain.UserStatusActive).Scan(
+		&user.ID,
+		&user.Email,
+		&user.Password,
+		&user.Name,
+		&user.Phone,
+		&statusStr,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	user.Status = domain.UserStatus(statusStr)
+	return user, nil
+}

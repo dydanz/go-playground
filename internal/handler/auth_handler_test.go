@@ -62,6 +62,14 @@ func (m *MockAuthService) GetVerificationByUserID(userID string) (*domain.Regist
 	return args.Get(0).(*domain.RegistrationVerification), args.Error(1)
 }
 
+func (m *MockAuthService) GetRandomActiveUser() (*domain.User, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.User), args.Error(1)
+}
+
 func setupTest() (*gin.Engine, *MockAuthService) {
 	gin.SetMode(gin.TestMode)
 	mockService := new(MockAuthService)
