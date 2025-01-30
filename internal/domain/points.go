@@ -1,24 +1,20 @@
 package domain
 
-import "time"
+import (
+	"time"
 
-type PointsBalance struct {
-	ID          string    `json:"id"`
-	UserID      string    `json:"user_id"`
-	TotalPoints int       `json:"total_points"`
-	LastUpdated time.Time `json:"last_updated"`
-}
+	"github.com/google/uuid"
+)
 
-type Transaction struct {
-	ID              string    `json:"id"`
-	UserID          string    `json:"user_id"`
-	TransactionType string    `json:"transaction_type"` // "earn" or "redeem"
-	Points          int       `json:"points"`
-	Description     string    `json:"description"`
-	Status          string    `json:"status"` // "completed", "pending", "canceled"
-	TransactionDate time.Time `json:"transaction_date"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+type PointsLedger struct {
+	LedgerID       uuid.UUID  `json:"ledger_id"`
+	CustomerID     uuid.UUID  `json:"customer_id"`
+	ProgramID      uuid.UUID  `json:"program_id"`
+	PointsEarned   int        `json:"points_earned"`
+	PointsRedeemed int        `json:"points_redeemed"`
+	PointsBalance  int        `json:"points_balance"`
+	TransactionID  *uuid.UUID `json:"transaction_id,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
 }
 
 type Reward struct {
@@ -36,6 +32,7 @@ type Redemption struct {
 	ID         string    `json:"id"`
 	UserID     string    `json:"user_id"`
 	RewardID   string    `json:"reward_id"`
+	ProgramID  string    `json:"program_id"`
 	Status     string    `json:"status"` // "completed", "pending", "failed", "canceled"
 	RedeemedAt time.Time `json:"redeemed_at"`
 	CreatedAt  time.Time `json:"created_at"`

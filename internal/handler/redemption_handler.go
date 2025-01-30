@@ -34,7 +34,7 @@ func (h *RedemptionHandler) Create(c *gin.Context) {
 		return
 	}
 
-	if err := h.redemptionService.Create(&redemption); err != nil {
+	if err := h.redemptionService.Create(c, &redemption); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -104,7 +104,7 @@ func (h *RedemptionHandler) UpdateStatus(c *gin.Context) {
 		return
 	}
 
-	if err := h.redemptionService.UpdateStatus(id, status); err != nil {
+	if err := h.redemptionService.UpdateStatus(c, id, status); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}

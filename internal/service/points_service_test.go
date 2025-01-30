@@ -1,9 +1,11 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -11,42 +13,49 @@ import (
 	"go-playground/internal/mocks/repository/postgres"
 )
 
-func TestPointsService_GetBalance_Success(t *testing.T) {
+func TestPointsService_GetLedger_Success(t *testing.T) {
 	mockPointsRepo := new(postgres.MockPointsRepository)
 	mockEventRepo := new(postgres.MockEventLogRepository)
-	// Add GetByID method to MockEventLogRepository before creating service
-	mockEventRepo.On("GetByID", mock.Anything).Return(&domain.EventLog{}, nil)
 	service := NewPointsService(mockPointsRepo, mockEventRepo)
 
-	// Add missing GetByID method to MockEventLogRepository
-	mockEventRepo.On("GetByID", mock.Anything).Return(&domain.EventLog{}, nil)
+	customerID := uuid.New()
+	programID := uuid.New()
 
-	expectedBalance := &domain.PointsBalance{
-		ID:          "balance123",
-		UserID:      "user123",
-		TotalPoints: 100,
+	expectedLedger := []*domain.PointsLedger{
+		{
+			LedgerID:       uuid.New(),
+			CustomerID:     customerID,
+			ProgramID:      programID,
+			PointsEarned:   100,
+			PointsRedeemed: 0,
+			PointsBalance:  100,
+		},
 	}
 
-	mockPointsRepo.On("GetByUserID", "user123").Return(expectedBalance, nil)
+	mockPointsRepo.On("GetByCustomerAndProgram", mock.Anything, customerID, programID).Return(expectedLedger, nil)
 
-	balance, err := service.GetBalance("user123")
+	ledger, err := service.GetLedger(context.Background(), customerID, programID)
 	assert.NoError(t, err)
-	assert.NotNil(t, balance)
-	assert.Equal(t, expectedBalance.TotalPoints, balance.TotalPoints)
+	assert.NotNil(t, ledger)
+	assert.Equal(t, expectedLedger, ledger)
 
 	mockPointsRepo.AssertExpectations(t)
 }
 
-func TestPointsService_GetBalance_NotFound(t *testing.T) {
+func TestPointsService_GetBalance_Success(t *testing.T) {
 	mockPointsRepo := new(postgres.MockPointsRepository)
 	mockEventRepo := new(postgres.MockEventLogRepository)
 	service := NewPointsService(mockPointsRepo, mockEventRepo)
 
-	mockPointsRepo.On("GetByUserID", "nonexistent").Return(nil, nil)
+	customerID := uuid.New()
+	programID := uuid.New()
+	expectedBalance := 100
 
-	balance, err := service.GetBalance("nonexistent")
+	mockPointsRepo.On("GetCurrentBalance", mock.Anything, customerID, programID).Return(expectedBalance, nil)
+
+	balance, err := service.GetBalance(context.Background(), customerID, programID)
 	assert.NoError(t, err)
-	assert.Nil(t, balance)
+	assert.Equal(t, expectedBalance, balance)
 
 	mockPointsRepo.AssertExpectations(t)
 }
@@ -56,99 +65,109 @@ func TestPointsService_GetBalance_Error(t *testing.T) {
 	mockEventRepo := new(postgres.MockEventLogRepository)
 	service := NewPointsService(mockPointsRepo, mockEventRepo)
 
-	mockPointsRepo.On("GetByUserID", "user123").Return(nil, errors.New("database error"))
+	customerID := uuid.New()
+	programID := uuid.New()
 
-	balance, err := service.GetBalance("user123")
+	mockPointsRepo.On("GetCurrentBalance", mock.Anything, customerID, programID).Return(0, errors.New("database error"))
+
+	balance, err := service.GetBalance(context.Background(), customerID, programID)
 	assert.Error(t, err)
-	assert.Nil(t, balance)
+	assert.Equal(t, 0, balance)
 	assert.Equal(t, "database error", err.Error())
 
 	mockPointsRepo.AssertExpectations(t)
 }
 
-func TestPointsService_UpdateBalance_CreateNew(t *testing.T) {
+func TestPointsService_EarnPoints_Success(t *testing.T) {
 	mockPointsRepo := new(postgres.MockPointsRepository)
 	mockEventRepo := new(postgres.MockEventLogRepository)
 	service := NewPointsService(mockPointsRepo, mockEventRepo)
 
-	mockPointsRepo.On("GetByUserID", "user123").Return(nil, nil)
-	mockPointsRepo.On("Create", mock.MatchedBy(func(balance *domain.PointsBalance) bool {
-		return balance.UserID == "user123" && balance.TotalPoints == 50
-	})).Return(nil)
+	customerID := uuid.New()
+	programID := uuid.New()
+	transactionID := uuid.New()
 
-	err := service.UpdateBalance("user123", 50)
-	assert.NoError(t, err)
-
-	mockPointsRepo.AssertExpectations(t)
-}
-
-func TestPointsService_UpdateBalance_UpdateExisting(t *testing.T) {
-	mockPointsRepo := new(postgres.MockPointsRepository)
-	mockEventRepo := new(postgres.MockEventLogRepository)
-	service := NewPointsService(mockPointsRepo, mockEventRepo)
-
-	existingBalance := &domain.PointsBalance{
-		ID:          "balance123",
-		UserID:      "user123",
-		TotalPoints: 100,
-	}
-
-	mockPointsRepo.On("GetByUserID", "user123").Return(existingBalance, nil)
-	mockPointsRepo.On("Update", mock.MatchedBy(func(balance *domain.PointsBalance) bool {
-		return balance.TotalPoints == 150
+	mockPointsRepo.On("GetCurrentBalance", mock.Anything, customerID, programID).Return(100, nil)
+	mockPointsRepo.On("Create", mock.Anything, mock.MatchedBy(func(ledger *domain.PointsLedger) bool {
+		return ledger.CustomerID == customerID &&
+			ledger.ProgramID == programID &&
+			ledger.PointsEarned == 50 &&
+			ledger.PointsBalance == 150
 	})).Return(nil)
 
 	mockEventRepo.On("Create", mock.MatchedBy(func(event *domain.EventLog) bool {
-		return event.EventType == "balance_update" &&
-			event.UserID == "user123" &&
-			event.Details["points_changed"].(int) == 50 &&
+		return event.EventType == "points_earned" &&
+			event.UserID == customerID.String() &&
+			event.Details["points_earned"].(int) == 50 &&
 			event.Details["new_balance"].(int) == 150
 	})).Return(nil)
 
-	err := service.UpdateBalance("user123", 50)
+	err := service.EarnPoints(context.Background(), customerID, programID, 50, &transactionID)
 	assert.NoError(t, err)
 
 	mockPointsRepo.AssertExpectations(t)
 	mockEventRepo.AssertExpectations(t)
 }
 
-func TestPointsService_UpdateBalance_InsufficientPoints(t *testing.T) {
+func TestPointsService_EarnPoints_InvalidPoints(t *testing.T) {
 	mockPointsRepo := new(postgres.MockPointsRepository)
 	mockEventRepo := new(postgres.MockEventLogRepository)
 	service := NewPointsService(mockPointsRepo, mockEventRepo)
 
-	existingBalance := &domain.PointsBalance{
-		ID:          "balance123",
-		UserID:      "user123",
-		TotalPoints: 50,
-	}
+	customerID := uuid.New()
+	programID := uuid.New()
 
-	mockPointsRepo.On("GetByUserID", "user123").Return(existingBalance, nil)
-
-	err := service.UpdateBalance("user123", -100)
+	err := service.EarnPoints(context.Background(), customerID, programID, 0, nil)
 	assert.Error(t, err)
-	assert.Equal(t, "insufficient points balance", err.Error())
+	assert.Equal(t, ErrInvalidPoints, err)
 
-	mockPointsRepo.AssertExpectations(t)
+	mockPointsRepo.AssertNotCalled(t, "Create")
 }
 
-func TestPointsService_UpdateBalance_UpdateError(t *testing.T) {
+func TestPointsService_RedeemPoints_Success(t *testing.T) {
 	mockPointsRepo := new(postgres.MockPointsRepository)
 	mockEventRepo := new(postgres.MockEventLogRepository)
 	service := NewPointsService(mockPointsRepo, mockEventRepo)
 
-	existingBalance := &domain.PointsBalance{
-		ID:          "balance123",
-		UserID:      "user123",
-		TotalPoints: 100,
-	}
+	customerID := uuid.New()
+	programID := uuid.New()
+	transactionID := uuid.New()
 
-	mockPointsRepo.On("GetByUserID", "user123").Return(existingBalance, nil)
-	mockPointsRepo.On("Update", mock.Anything).Return(errors.New("update error"))
+	mockPointsRepo.On("GetCurrentBalance", mock.Anything, customerID, programID).Return(100, nil)
+	mockPointsRepo.On("Create", mock.Anything, mock.MatchedBy(func(ledger *domain.PointsLedger) bool {
+		return ledger.CustomerID == customerID &&
+			ledger.ProgramID == programID &&
+			ledger.PointsRedeemed == 50 &&
+			ledger.PointsBalance == 50
+	})).Return(nil)
 
-	err := service.UpdateBalance("user123", 50)
-	assert.Error(t, err)
-	assert.Equal(t, "update error", err.Error())
+	mockEventRepo.On("Create", mock.MatchedBy(func(event *domain.EventLog) bool {
+		return event.EventType == "points_redeemed" &&
+			event.UserID == customerID.String() &&
+			event.Details["points_redeemed"].(int) == 50 &&
+			event.Details["new_balance"].(int) == 50
+	})).Return(nil)
+
+	err := service.RedeemPoints(context.Background(), customerID, programID, 50, &transactionID)
+	assert.NoError(t, err)
 
 	mockPointsRepo.AssertExpectations(t)
+	mockEventRepo.AssertExpectations(t)
+}
+
+func TestPointsService_RedeemPoints_InsufficientPoints(t *testing.T) {
+	mockPointsRepo := new(postgres.MockPointsRepository)
+	mockEventRepo := new(postgres.MockEventLogRepository)
+	service := NewPointsService(mockPointsRepo, mockEventRepo)
+
+	customerID := uuid.New()
+	programID := uuid.New()
+
+	mockPointsRepo.On("GetCurrentBalance", mock.Anything, customerID, programID).Return(50, nil)
+
+	err := service.RedeemPoints(context.Background(), customerID, programID, 100, nil)
+	assert.Error(t, err)
+	assert.Equal(t, ErrInsufficientPoints, err)
+
+	mockPointsRepo.AssertNotCalled(t, "Create")
 }

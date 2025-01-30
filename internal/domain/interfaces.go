@@ -3,6 +3,9 @@ package domain
 import (
 	"context"
 	"database/sql"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 type UserRepository interface {
@@ -50,17 +53,19 @@ type AuthService interface {
 
 // PointsRepository handles points balance operations
 type PointsRepository interface {
-	Create(balance *PointsBalance) error
-	GetByUserID(userID string) (*PointsBalance, error)
-	Update(balance *PointsBalance) error
+	Create(ctx context.Context, ledger *PointsLedger) error
+	GetByCustomerAndProgram(ctx context.Context, customerID, programID uuid.UUID) ([]*PointsLedger, error)
+	GetCurrentBalance(ctx context.Context, customerID, programID uuid.UUID) (int, error)
+	GetByTransactionID(ctx context.Context, transactionID uuid.UUID) (*PointsLedger, error)
 }
 
 // TransactionRepository handles transaction operations
 type TransactionRepository interface {
-	Create(tx *Transaction) error
-	GetByID(id string) (*Transaction, error)
-	GetByUserID(userID string) ([]Transaction, error)
-	Update(tx *Transaction) error
+	Create(ctx context.Context, tx *Transaction) error
+	GetByID(ctx context.Context, transactionID uuid.UUID) (*Transaction, error)
+	GetByCustomerID(ctx context.Context, customerID uuid.UUID) ([]*Transaction, error)
+	GetByMerchantID(ctx context.Context, merchantID uuid.UUID) ([]*Transaction, error)
+	UpdateStatus(ctx context.Context, transactionID uuid.UUID, status string) error
 }
 
 // RewardsRepository handles rewards operations
@@ -78,4 +83,20 @@ type RedemptionRepository interface {
 	GetByID(id string) (*Redemption, error)
 	GetByUserID(userID string) ([]Redemption, error)
 	Update(redemption *Redemption) error
+}
+
+type PointsServiceInterface interface {
+	GetLedger(ctx context.Context, customerID, programID uuid.UUID) ([]*PointsLedger, error)
+	GetBalance(ctx context.Context, customerID, programID uuid.UUID) (int, error)
+	EarnPoints(ctx context.Context, customerID, programID uuid.UUID, points int, transactionID *uuid.UUID) error
+	RedeemPoints(ctx context.Context, customerID, programID uuid.UUID, points int, transactionID *uuid.UUID) error
+}
+
+type ProgramRuleRepository interface {
+	Create(ctx context.Context, rule *ProgramRule) error
+	GetByID(ctx context.Context, id uuid.UUID) (*ProgramRule, error)
+	GetByProgramID(ctx context.Context, programID uuid.UUID) ([]*ProgramRule, error)
+	Update(ctx context.Context, rule *ProgramRule) error
+	Delete(ctx context.Context, id uuid.UUID) error
+	GetActiveRules(ctx context.Context, programID uuid.UUID, timestamp time.Time) ([]*ProgramRule, error)
 }
