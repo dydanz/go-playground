@@ -1,2 +1,0 @@
-DROP TABLE IF EXISTS event_log;
-DROP TYPE IF EXISTS event_type; 
