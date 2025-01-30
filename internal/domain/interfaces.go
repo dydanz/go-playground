@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -89,4 +90,13 @@ type PointsServiceInterface interface {
 	GetBalance(ctx context.Context, customerID, programID uuid.UUID) (int, error)
 	EarnPoints(ctx context.Context, customerID, programID uuid.UUID, points int, transactionID *uuid.UUID) error
 	RedeemPoints(ctx context.Context, customerID, programID uuid.UUID, points int, transactionID *uuid.UUID) error
+}
+
+type ProgramRuleRepository interface {
+	Create(ctx context.Context, rule *ProgramRule) error
+	GetByID(ctx context.Context, id uuid.UUID) (*ProgramRule, error)
+	GetByProgramID(ctx context.Context, programID uuid.UUID) ([]*ProgramRule, error)
+	Update(ctx context.Context, rule *ProgramRule) error
+	Delete(ctx context.Context, id uuid.UUID) error
+	GetActiveRules(ctx context.Context, programID uuid.UUID, timestamp time.Time) ([]*ProgramRule, error)
 }

@@ -15,6 +15,56 @@ definitions:
     - merchant_name
     - merchant_type
     type: object
+  domain.CreateProgramRuleRequest:
+    properties:
+      condition_type:
+        type: string
+      condition_value:
+        type: string
+      effective_from:
+        type: string
+      effective_to:
+        type: string
+      multiplier:
+        type: number
+      points_awarded:
+        minimum: 0
+        type: integer
+      program_id:
+        type: string
+      rule_name:
+        type: string
+    required:
+    - condition_type
+    - condition_value
+    - effective_from
+    - multiplier
+    - points_awarded
+    - program_id
+    - rule_name
+    type: object
+  domain.CreateTransactionRequest:
+    properties:
+      branch_id:
+        type: string
+      customer_id:
+        type: string
+      merchant_id:
+        type: string
+      transaction_amount:
+        type: number
+      transaction_type:
+        enum:
+        - purchase
+        - refund
+        - bonus
+        type: string
+    required:
+    - customer_id
+    - merchant_id
+    - transaction_amount
+    - transaction_type
+    type: object
   domain.CreateUserRequest:
     properties:
       email:
@@ -76,15 +126,48 @@ definitions:
     - MerchantTypeBank
     - MerchantTypeEcommerce
     - MerchantTypeRepairShop
-  domain.PointsBalance:
+  domain.PointsLedger:
     properties:
+      created_at:
+        type: string
+      customer_id:
+        type: string
+      ledger_id:
+        type: string
+      points_balance:
+        type: integer
+      points_earned:
+        type: integer
+      points_redeemed:
+        type: integer
+      program_id:
+        type: string
+      transaction_id:
+        type: string
+    type: object
+  domain.ProgramRule:
+    properties:
+      condition_type:
+        type: string
+      condition_value:
+        type: string
+      created_at:
+        type: string
+      effective_from:
+        type: string
+      effective_to:
+        type: string
       id:
         type: string
-      last_updated:
-        type: string
-      total_points:
+      multiplier:
+        type: number
+      points_awarded:
         type: integer
-      user_id:
+      program_id:
+        type: string
+      rule_name:
+        type: string
+      updated_at:
         type: string
     type: object
   domain.Redemption:
@@ -92,6 +175,8 @@ definitions:
       created_at:
         type: string
       id:
+        type: string
+      program_id:
         type: string
       redeemed_at:
         type: string
@@ -143,25 +228,24 @@ definitions:
     type: object
   domain.Transaction:
     properties:
+      branch_id:
+        type: string
       created_at:
         type: string
-      description:
+      customer_id:
         type: string
-      id:
+      merchant_id:
         type: string
-      points:
-        type: integer
       status:
-        description: '"completed", "pending", "canceled"'
         type: string
+      transaction_amount:
+        type: number
       transaction_date:
         type: string
+      transaction_id:
+        type: string
       transaction_type:
-        description: '"earn" or "redeem"'
-        type: string
-      updated_at:
-        type: string
-      user_id:
+        description: purchase, refund, bonus
         type: string
     type: object
   domain.UpdateMerchantRequest:
@@ -178,6 +262,23 @@ definitions:
     required:
     - merchant_name
     - merchant_type
+    type: object
+  domain.UpdateProgramRuleRequest:
+    properties:
+      condition_type:
+        type: string
+      condition_value:
+        type: string
+      effective_from:
+        type: string
+      effective_to:
+        type: string
+      multiplier:
+        type: number
+      points_awarded:
+        type: integer
+      rule_name:
+        type: string
     type: object
   domain.UpdateUserRequest:
     properties:
@@ -242,6 +343,24 @@ definitions:
     - merchant_id
     - point_currency_name
     - program_name
+    type: object
+  handler.EarnPointsRequest:
+    properties:
+      points:
+        type: integer
+      transaction_id:
+        type: string
+    required:
+    - points
+    type: object
+  handler.RedeemPointsRequest:
+    properties:
+      points:
+        type: integer
+      transaction_id:
+        type: string
+    required:
+    - points
     type: object
   handler.UpdateProgramRequest:
     properties:
@@ -623,15 +742,20 @@ paths:
       summary: Health check
       tags:
       - system
-  /points/{user_id}:
+  /points/{customer_id}/{program_id}/balance:
     get:
       consumes:
       - application/json
-      description: Get points balance for a specific user
+      description: Get current points balance for a customer in a program
       parameters:
-      - description: User ID
+      - description: Customer ID
         in: path
-        name: user_id
+        name: customer_id
+        required: true
+        type: string
+      - description: Program ID
+        in: path
+        name: program_id
         required: true
         type: string
       produces:
@@ -640,9 +764,17 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.PointsBalance'
-        "404":
-          description: Not Found
+            additionalProperties:
+              type: integer
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
           schema:
             additionalProperties:
               type: string
@@ -650,32 +782,169 @@ paths:
       security:
       - BearerAuth: []
       - UserIdAuth: []
-      summary: Get user points balance
+      summary: Get points balance
       tags:
       - points
-    put:
+  /points/{customer_id}/{program_id}/earn:
+    post:
       consumes:
       - application/json
-      description: Update points balance for a user
+      description: Add points to a customer's balance in a program
       parameters:
-      - description: User ID
+      - description: Customer ID
         in: path
-        name: user_id
+        name: customer_id
         required: true
         type: string
-      - description: Points to add/subtract
+      - description: Program ID
+        in: path
+        name: program_id
+        required: true
+        type: string
+      - description: Points to earn
         in: body
         name: points
         required: true
         schema:
-          type: integer
+          $ref: '#/definitions/handler.EarnPointsRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/domain.PointsBalance'
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Earn points
+      tags:
+      - points
+  /points/{customer_id}/{program_id}/ledger:
+    get:
+      consumes:
+      - application/json
+      description: Get points ledger entries for a customer in a program
+      parameters:
+      - description: Customer ID
+        in: path
+        name: customer_id
+        required: true
+        type: string
+      - description: Program ID
+        in: path
+        name: program_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.PointsLedger'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Get points ledger
+      tags:
+      - points
+  /points/{customer_id}/{program_id}/redeem:
+    post:
+      consumes:
+      - application/json
+      description: Redeem points from a customer's balance in a program
+      parameters:
+      - description: Customer ID
+        in: path
+        name: customer_id
+        required: true
+        type: string
+      - description: Program ID
+        in: path
+        name: program_id
+        required: true
+        type: string
+      - description: Points to redeem
+        in: body
+        name: points
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RedeemPointsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Redeem points
+      tags:
+      - points
+  /program-rules:
+    post:
+      consumes:
+      - application/json
+      description: Create a new program rule
+      parameters:
+      - description: Program rule details
+        in: body
+        name: rule
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CreateProgramRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.ProgramRule'
         "400":
           description: Bad Request
           schema:
@@ -685,9 +954,183 @@ paths:
       security:
       - BearerAuth: []
       - UserIdAuth: []
-      summary: Update points balance
+      summary: Create program rule
       tags:
-      - points
+      - program-rules
+  /program-rules/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an existing program rule
+      parameters:
+      - description: Program Rule ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Delete program rule
+      tags:
+      - program-rules
+    get:
+      consumes:
+      - application/json
+      description: Get program rule details by ID
+      parameters:
+      - description: Program Rule ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.ProgramRule'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Get program rule by ID
+      tags:
+      - program-rules
+    put:
+      consumes:
+      - application/json
+      description: Update an existing program rule
+      parameters:
+      - description: Program Rule ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Program rule details to update
+        in: body
+        name: rule
+        required: true
+        schema:
+          $ref: '#/definitions/domain.UpdateProgramRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.ProgramRule'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Update program rule
+      tags:
+      - program-rules
+  /program-rules/program/{program_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get all program rules for a specific program
+      parameters:
+      - description: Program ID
+        in: path
+        name: program_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.ProgramRule'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Get program rules by program ID
+      tags:
+      - program-rules
+  /program-rules/program/{program_id}/active:
+    get:
+      consumes:
+      - application/json
+      description: Get all active program rules for a specific program
+      parameters:
+      - description: Program ID
+        in: path
+        name: program_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.ProgramRule'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Get active program rules
+      tags:
+      - program-rules
   /programs:
     post:
       consumes:
@@ -1241,7 +1684,7 @@ paths:
         name: transaction
         required: true
         schema:
-          $ref: '#/definitions/domain.Transaction'
+          $ref: '#/definitions/domain.CreateTransactionRequest'
       produces:
       - application/json
       responses:
@@ -1279,6 +1722,12 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/domain.Transaction'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "404":
           description: Not Found
           schema:
@@ -1291,15 +1740,15 @@ paths:
       summary: Get transaction by ID
       tags:
       - transactions
-  /transactions/user/{user_id}:
+  /transactions/customer/{customer_id}:
     get:
       consumes:
       - application/json
-      description: Get all transactions for a specific user
+      description: Get all transactions for a specific customer
       parameters:
-      - description: User ID
+      - description: Customer ID
         in: path
-        name: user_id
+        name: customer_id
         required: true
         type: string
       produces:
@@ -1311,6 +1760,12 @@ paths:
             items:
               $ref: '#/definitions/domain.Transaction'
             type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "404":
           description: Not Found
           schema:
@@ -1320,7 +1775,45 @@ paths:
       security:
       - BearerAuth: []
       - UserIdAuth: []
-      summary: Get user transactions
+      summary: Get customer transactions
+      tags:
+      - transactions
+  /transactions/merchant/{merchant_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get all transactions for a specific merchant
+      parameters:
+      - description: Merchant ID
+        in: path
+        name: merchant_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Transaction'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Get merchant transactions
       tags:
       - transactions
   /users:
