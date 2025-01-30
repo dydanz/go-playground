@@ -13,11 +13,11 @@ const (
 )
 
 type Merchant struct {
-	ID           string       `json:"merchant_id"`
-	Name         string       `json:"merchant_name"`
-	Type         MerchantType `json:"merchant_type"`
-	CreatedAt    time.Time    `json:"created_at"`
-	UpdatedAt    time.Time    `json:"updated_at"`
+	ID        string       `json:"merchant_id"`
+	Name      string       `json:"merchant_name"`
+	Type      MerchantType `json:"merchant_type"`
+	CreatedAt time.Time    `json:"created_at"`
+	UpdatedAt time.Time    `json:"updated_at"`
 }
 
 type CreateMerchantRequest struct {

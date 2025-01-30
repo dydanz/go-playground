@@ -60,10 +60,11 @@ type PointsRepository interface {
 
 // TransactionRepository handles transaction operations
 type TransactionRepository interface {
-	Create(tx *Transaction) error
-	GetByID(id string) (*Transaction, error)
-	GetByUserID(userID string) ([]Transaction, error)
-	Update(tx *Transaction) error
+	Create(ctx context.Context, tx *Transaction) error
+	GetByID(ctx context.Context, transactionID uuid.UUID) (*Transaction, error)
+	GetByCustomerID(ctx context.Context, customerID uuid.UUID) ([]*Transaction, error)
+	GetByMerchantID(ctx context.Context, merchantID uuid.UUID) ([]*Transaction, error)
+	UpdateStatus(ctx context.Context, transactionID uuid.UUID, status string) error
 }
 
 // RewardsRepository handles rewards operations

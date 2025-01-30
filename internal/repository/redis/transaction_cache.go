@@ -24,7 +24,7 @@ func (c *TransactionCache) CacheTransaction(tx *domain.Transaction) error {
 		return err
 	}
 
-	key := fmt.Sprintf("transaction:%s", tx.ID)
+	key := fmt.Sprintf("transaction:%s", tx.TransactionID)
 	return c.client.Set(context.Background(), key, data, 24*time.Hour).Err()
 }
 

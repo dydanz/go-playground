@@ -1,9 +1,13 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"go-playground/internal/config"
 	"go-playground/internal/domain"
+
+	"github.com/google/uuid"
 )
 
 type TransactionRepository struct {
@@ -14,47 +18,48 @@ func NewTransactionRepository(db config.DbConnection) *TransactionRepository {
 	return &TransactionRepository{db: db}
 }
 
-func (r *TransactionRepository) Create(tx *domain.Transaction) error {
+func (r *TransactionRepository) Create(ctx context.Context, tx *domain.Transaction) error {
 	query := `
 		INSERT INTO transactions (
-			user_id, transaction_type, points, description, status, 
-			transaction_date
-		) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
-		RETURNING id, transaction_date, created_at, updated_at
+			transaction_id, merchant_id, customer_id, 
+			transaction_type, transaction_amount, transaction_date,
+			branch_id
+		) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6)
+		RETURNING transaction_date, created_at
 	`
-	return r.db.RW.QueryRow(
+	return r.db.RW.QueryRowContext(
+		ctx,
 		query,
-		tx.UserID,
+		tx.TransactionID,
+		tx.MerchantID,
+		tx.CustomerID,
 		tx.TransactionType,
-		tx.Points,
-		tx.Description,
-		tx.Status,
+		tx.TransactionAmount,
+		tx.BranchID,
 	).Scan(
-		&tx.ID,
 		&tx.TransactionDate,
 		&tx.CreatedAt,
-		&tx.UpdatedAt,
 	)
 }
 
-func (r *TransactionRepository) GetByID(id string) (*domain.Transaction, error) {
-	tx := &domain.Transaction{}
+func (r *TransactionRepository) GetByID(ctx context.Context, transactionID uuid.UUID) (*domain.Transaction, error) {
 	query := `
-		SELECT id, user_id, transaction_type, points, description, 
-			   status, transaction_date, created_at, updated_at
+		SELECT transaction_id, merchant_id, customer_id, 
+			   transaction_type, transaction_amount, transaction_date,
+			   branch_id, created_at
 		FROM transactions
-		WHERE id = $1
+		WHERE transaction_id = $1
 	`
-	err := r.db.RR.QueryRow(query, id).Scan(
-		&tx.ID,
-		&tx.UserID,
+	tx := &domain.Transaction{}
+	err := r.db.RR.QueryRowContext(ctx, query, transactionID).Scan(
+		&tx.TransactionID,
+		&tx.MerchantID,
+		&tx.CustomerID,
 		&tx.TransactionType,
-		&tx.Points,
-		&tx.Description,
-		&tx.Status,
+		&tx.TransactionAmount,
 		&tx.TransactionDate,
+		&tx.BranchID,
 		&tx.CreatedAt,
-		&tx.UpdatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -62,33 +67,33 @@ func (r *TransactionRepository) GetByID(id string) (*domain.Transaction, error) 
 	return tx, err
 }
 
-func (r *TransactionRepository) GetByUserID(userID string) ([]domain.Transaction, error) {
+func (r *TransactionRepository) GetByCustomerID(ctx context.Context, customerID uuid.UUID) ([]*domain.Transaction, error) {
 	query := `
-		SELECT id, user_id, transaction_type, points, description, 
-			   status, transaction_date, created_at, updated_at
+		SELECT transaction_id, merchant_id, customer_id, 
+			   transaction_type, transaction_amount, transaction_date,
+			   branch_id, created_at
 		FROM transactions
-		WHERE user_id = $1
+		WHERE customer_id = $1
 		ORDER BY transaction_date DESC
 	`
-	rows, err := r.db.RR.Query(query, userID)
+	rows, err := r.db.RR.QueryContext(ctx, query, customerID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var transactions []domain.Transaction
+	var transactions []*domain.Transaction
 	for rows.Next() {
-		var tx domain.Transaction
+		tx := &domain.Transaction{}
 		err := rows.Scan(
-			&tx.ID,
-			&tx.UserID,
+			&tx.TransactionID,
+			&tx.MerchantID,
+			&tx.CustomerID,
 			&tx.TransactionType,
-			&tx.Points,
-			&tx.Description,
-			&tx.Status,
+			&tx.TransactionAmount,
 			&tx.TransactionDate,
+			&tx.BranchID,
 			&tx.CreatedAt,
-			&tx.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -98,12 +103,58 @@ func (r *TransactionRepository) GetByUserID(userID string) ([]domain.Transaction
 	return transactions, nil
 }
 
-func (r *TransactionRepository) Update(tx *domain.Transaction) error {
+func (r *TransactionRepository) GetByMerchantID(ctx context.Context, merchantID uuid.UUID) ([]*domain.Transaction, error) {
 	query := `
-		UPDATE transactions
-		SET status = $1, updated_at = CURRENT_TIMESTAMP
-		WHERE id = $2
-		RETURNING updated_at
+		SELECT transaction_id, merchant_id, customer_id, 
+			   transaction_type, transaction_amount, transaction_date,
+			   branch_id, created_at
+		FROM transactions
+		WHERE merchant_id = $1
+		ORDER BY transaction_date DESC
 	`
-	return r.db.RW.QueryRow(query, tx.Status, tx.ID).Scan(&tx.UpdatedAt)
+	rows, err := r.db.RR.QueryContext(ctx, query, merchantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var transactions []*domain.Transaction
+	for rows.Next() {
+		tx := &domain.Transaction{}
+		err := rows.Scan(
+			&tx.TransactionID,
+			&tx.MerchantID,
+			&tx.CustomerID,
+			&tx.TransactionType,
+			&tx.TransactionAmount,
+			&tx.TransactionDate,
+			&tx.BranchID,
+			&tx.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		transactions = append(transactions, tx)
+	}
+	return transactions, nil
+}
+
+// Notes: Table Transactions should be can not be updated/deleted.
+func (r *TransactionRepository) UpdateStatus(ctx context.Context, transactionID uuid.UUID, status string) error {
+	query := `UPDATE transactions SET status = $1 WHERE transaction_id = $2`
+	result, err := r.db.RW.ExecContext(ctx, query, status, transactionID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return errors.New("transaction not found")
+	}
+
+	return nil
 }

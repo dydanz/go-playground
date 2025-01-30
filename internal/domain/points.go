@@ -17,18 +17,6 @@ type PointsLedger struct {
 	CreatedAt      time.Time  `json:"created_at"`
 }
 
-type Transaction struct {
-	ID              string    `json:"id"`
-	UserID          string    `json:"user_id"`
-	TransactionType string    `json:"transaction_type"` // "earn" or "redeem"
-	Points          int       `json:"points"`
-	Description     string    `json:"description"`
-	Status          string    `json:"status"` // "completed", "pending", "canceled"
-	TransactionDate time.Time `json:"transaction_date"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
-}
-
 type Reward struct {
 	ID             string    `json:"id"`
 	Name           string    `json:"name"`

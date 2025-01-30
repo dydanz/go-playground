@@ -1,283 +1,213 @@
 package service
 
 import (
+	"context"
 	"errors"
+	"testing"
+
 	"go-playground/internal/domain"
 	"go-playground/internal/mocks/repository/postgres"
-
-	"testing"
+	"go-playground/internal/mocks/service"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-// Mock implementations
-type MockTransactionRepository struct {
-	mock.Mock
+func TestTransactionService_Create_Success(t *testing.T) {
+	mockTransactionRepo := new(postgres.MockTransactionRepository)
+	mockPointsService := new(service.MockPointsService)
+	mockEventRepo := new(postgres.MockEventLogRepository)
+	service := NewTransactionService(mockTransactionRepo, mockPointsService, mockEventRepo)
+
+	branchID := uuid.New()
+	req := &domain.CreateTransactionRequest{
+		MerchantID:        uuid.New(),
+		CustomerID:        uuid.New(),
+		TransactionType:   "purchase",
+		TransactionAmount: 100,
+		BranchID:          &branchID,
+	}
+
+	mockTransactionRepo.On("Create", mock.Anything, mock.MatchedBy(func(tx *domain.Transaction) bool {
+		return tx.MerchantID == req.MerchantID &&
+			tx.CustomerID == req.CustomerID &&
+			tx.TransactionType == req.TransactionType &&
+			tx.TransactionAmount == req.TransactionAmount &&
+			tx.BranchID == req.BranchID
+	})).Return(nil)
+
+	mockPointsService.On("EarnPoints", mock.Anything, req.CustomerID, req.MerchantID, 100, mock.AnythingOfType("*uuid.UUID")).Return(nil)
+
+	mockEventRepo.On("Create", mock.MatchedBy(func(event *domain.EventLog) bool {
+		return event.EventType == "transaction_created" &&
+			event.UserID == req.CustomerID.String() &&
+			event.Details["merchant_id"] == req.MerchantID &&
+			event.Details["transaction_type"] == req.TransactionType &&
+			event.Details["transaction_amount"] == req.TransactionAmount &&
+			event.Details["points_earned"] == 100 &&
+			event.Details["branch_id"] == req.BranchID
+	})).Return(nil)
+
+	tx, err := service.Create(context.Background(), req)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, tx)
+	assert.Equal(t, req.MerchantID, tx.MerchantID)
+	assert.Equal(t, req.CustomerID, tx.CustomerID)
+	assert.Equal(t, req.TransactionType, tx.TransactionType)
+	assert.Equal(t, req.TransactionAmount, tx.TransactionAmount)
+	assert.Equal(t, req.BranchID, tx.BranchID)
+
+	mockTransactionRepo.AssertExpectations(t)
+	mockPointsService.AssertExpectations(t)
+	mockEventRepo.AssertExpectations(t)
 }
 
-func (m *MockTransactionRepository) Create(tx *domain.Transaction) error {
-	args := m.Called(tx)
-	return args.Error(0)
+func TestTransactionService_Create_RepositoryError(t *testing.T) {
+	mockTransactionRepo := new(postgres.MockTransactionRepository)
+	mockPointsService := new(service.MockPointsService)
+	mockEventRepo := new(postgres.MockEventLogRepository)
+	service := NewTransactionService(mockTransactionRepo, mockPointsService, mockEventRepo)
+
+	branchID := uuid.New()
+	req := &domain.CreateTransactionRequest{
+		MerchantID:        uuid.New(),
+		CustomerID:        uuid.New(),
+		TransactionType:   "purchase",
+		TransactionAmount: 100,
+		BranchID:          &branchID,
+	}
+
+	mockTransactionRepo.On("Create", mock.Anything, mock.Anything).Return(errors.New("database error"))
+
+	tx, err := service.Create(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.Nil(t, tx)
+	assert.Equal(t, "database error", err.Error())
+
+	mockTransactionRepo.AssertExpectations(t)
+	mockPointsService.AssertNotCalled(t, "EarnPoints")
+	mockEventRepo.AssertNotCalled(t, "Create")
 }
 
-func (m *MockTransactionRepository) GetByID(id string) (*domain.Transaction, error) {
-	args := m.Called(id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
+func TestTransactionService_GetByID_Success(t *testing.T) {
+	mockTransactionRepo := new(postgres.MockTransactionRepository)
+	mockPointsService := new(service.MockPointsService)
+	mockEventRepo := new(postgres.MockEventLogRepository)
+	service := NewTransactionService(mockTransactionRepo, mockPointsService, mockEventRepo)
+
+	txID := uuid.New()
+	expectedTx := &domain.Transaction{
+		TransactionID: txID,
+		MerchantID:    uuid.New(),
+		CustomerID:    uuid.New(),
 	}
-	return args.Get(0).(*domain.Transaction), args.Error(1)
+
+	mockTransactionRepo.On("GetByID", mock.Anything, txID).Return(expectedTx, nil)
+
+	tx, err := service.GetByID(context.Background(), txID)
+
+	assert.NoError(t, err)
+	assert.Equal(t, expectedTx, tx)
+
+	mockTransactionRepo.AssertExpectations(t)
 }
 
-func (m *MockTransactionRepository) GetByUserID(userID string) ([]domain.Transaction, error) {
-	args := m.Called(userID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]domain.Transaction), args.Error(1)
+func TestTransactionService_GetByID_NotFound(t *testing.T) {
+	mockTransactionRepo := new(postgres.MockTransactionRepository)
+	mockPointsService := new(service.MockPointsService)
+	mockEventRepo := new(postgres.MockEventLogRepository)
+	service := NewTransactionService(mockTransactionRepo, mockPointsService, mockEventRepo)
+
+	txID := uuid.New()
+	mockTransactionRepo.On("GetByID", mock.Anything, txID).Return(nil, errors.New("not found"))
+
+	tx, err := service.GetByID(context.Background(), txID)
+
+	assert.Error(t, err)
+	assert.Nil(t, tx)
+	assert.Equal(t, "not found", err.Error())
+
+	mockTransactionRepo.AssertExpectations(t)
 }
 
-func (m *MockTransactionRepository) Update(tx *domain.Transaction) error {
-	args := m.Called(tx)
-	return args.Error(0)
+func TestTransactionService_GetByCustomerID_Success(t *testing.T) {
+	mockTransactionRepo := new(postgres.MockTransactionRepository)
+	mockPointsService := new(service.MockPointsService)
+	mockEventRepo := new(postgres.MockEventLogRepository)
+	service := NewTransactionService(mockTransactionRepo, mockPointsService, mockEventRepo)
+
+	customerID := uuid.New()
+	expectedTxs := []*domain.Transaction{
+		{TransactionID: uuid.New(), CustomerID: customerID},
+		{TransactionID: uuid.New(), CustomerID: customerID},
+	}
+
+	mockTransactionRepo.On("GetByCustomerID", mock.Anything, customerID).Return(expectedTxs, nil)
+
+	txs, err := service.GetByCustomerID(context.Background(), customerID)
+
+	assert.NoError(t, err)
+	assert.Equal(t, expectedTxs, txs)
+
+	mockTransactionRepo.AssertExpectations(t)
 }
 
-func TestTransactionService_Create(t *testing.T) {
-	tests := []struct {
-		name           string
-		tx             *domain.Transaction
-		setupMocks     func(*MockTransactionRepository, *PointsService, *postgres.MockEventLogRepository)
-		expectedError  error
-		transactionErr error
-		pointsErr      error
-		eventErr       error
-	}{
-		{
-			name: "successful earn transaction",
-			tx: &domain.Transaction{
-				ID:              "tx1",
-				UserID:          "user1",
-				TransactionType: "earn",
-				Points:          100,
-				Description:     "Test earn",
-				Status:          "completed",
-			},
-			setupMocks: func(tr *MockTransactionRepository, ps *PointsService, er *postgres.MockEventLogRepository) {
-				mockPointsRepo := ps.pointsRepo.(*postgres.MockPointsRepository)
-				mockPointsRepo.On("GetByUserID", "user1").Return(&domain.PointsLedger{CustomerID: uuid.Nil, PointsBalance: 200}, nil)
-				mockPointsRepo.On("Update", mock.AnythingOfType("*domain.PointsBalance")).Return(nil)
-				tr.On("Create", mock.AnythingOfType("*domain.Transaction")).Return(nil)
-				er.On("Create", mock.AnythingOfType("*domain.EventLog")).Return(nil)
-			},
-			expectedError: nil,
-		},
-		{
-			name: "successful redeem transaction",
-			tx: &domain.Transaction{
-				ID:              "tx2",
-				UserID:          "user1",
-				TransactionType: "redeem",
-				Points:          50,
-				Description:     "Test redeem",
-				Status:          "completed",
-			},
-			setupMocks: func(tr *MockTransactionRepository, ps *PointsService, er *postgres.MockEventLogRepository) {
-				mockPointsRepo := ps.pointsRepo.(*postgres.MockPointsRepository)
-				mockPointsRepo.On("GetByUserID", "user1").Return(&domain.PointsLedger{CustomerID: uuid.Nil, PointsBalance: 200}, nil)
-				mockPointsRepo.On("Update", mock.AnythingOfType("*domain.PointsLedger")).Return(nil)
-				tr.On("Create", mock.AnythingOfType("*domain.Transaction")).Return(nil)
-				er.On("Create", mock.AnythingOfType("*domain.EventLog")).Return(nil)
-			},
-			expectedError: nil,
-		},
-		{
-			name: "transaction creation fails",
-			tx: &domain.Transaction{
-				ID:              "tx3",
-				UserID:          "user1",
-				TransactionType: "earn",
-				Points:          100,
-			},
-			setupMocks: func(tr *MockTransactionRepository, ps *PointsService, er *postgres.MockEventLogRepository) {
-				tr.On("Create", mock.AnythingOfType("*domain.Transaction")).Return(errors.New("db error"))
-			},
-			expectedError: errors.New("db error"),
-		},
+func TestTransactionService_GetByMerchantID_Success(t *testing.T) {
+	mockTransactionRepo := new(postgres.MockTransactionRepository)
+	mockPointsService := new(service.MockPointsService)
+	mockEventRepo := new(postgres.MockEventLogRepository)
+	service := NewTransactionService(mockTransactionRepo, mockPointsService, mockEventRepo)
+
+	merchantID := uuid.New()
+	expectedTxs := []*domain.Transaction{
+		{TransactionID: uuid.New(), MerchantID: merchantID},
+		{TransactionID: uuid.New(), MerchantID: merchantID},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Setup mocks
-			mockTxRepo := new(MockTransactionRepository)
-			mockEventRepo := new(postgres.MockEventLogRepository)
-			mockPointsRepo := new(postgres.MockPointsRepository)
-			pointsService := NewPointsService(mockPointsRepo, mockEventRepo)
+	mockTransactionRepo.On("GetByMerchantID", mock.Anything, merchantID).Return(expectedTxs, nil)
 
-			// Setup mock expectations
-			tt.setupMocks(mockTxRepo, pointsService, mockEventRepo)
+	txs, err := service.GetByMerchantID(context.Background(), merchantID)
 
-			// Create service
-			service := NewTransactionService(mockTxRepo, pointsService, mockEventRepo)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedTxs, txs)
 
-			// Execute test
-			err := service.Create(tt.tx)
-
-			// Assert results
-			assert.Equal(t, tt.expectedError, err)
-			mockTxRepo.AssertExpectations(t)
-			mockEventRepo.AssertExpectations(t)
-		})
-	}
+	mockTransactionRepo.AssertExpectations(t)
 }
 
-func TestTransactionService_GetByID(t *testing.T) {
-	tests := []struct {
-		name          string
-		id            string
-		expectedTx    *domain.Transaction
-		expectedError error
-	}{
-		{
-			name: "successful retrieval",
-			id:   "tx1",
-			expectedTx: &domain.Transaction{
-				ID:              "tx1",
-				UserID:          "user1",
-				TransactionType: "earn",
-				Points:          100,
-			},
-			expectedError: nil,
-		},
-		{
-			name:          "transaction not found",
-			id:            "nonexistent",
-			expectedTx:    nil,
-			expectedError: errors.New("not found"),
-		},
-	}
+func TestTransactionService_UpdateStatus_Success(t *testing.T) {
+	mockTransactionRepo := new(postgres.MockTransactionRepository)
+	mockPointsService := new(service.MockPointsService)
+	mockEventRepo := new(postgres.MockEventLogRepository)
+	service := NewTransactionService(mockTransactionRepo, mockPointsService, mockEventRepo)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Setup mock
-			mockTxRepo := new(MockTransactionRepository)
-			mockTxRepo.On("GetByID", tt.id).Return(tt.expectedTx, tt.expectedError)
+	txID := uuid.New()
+	existingTx := &domain.Transaction{TransactionID: txID, Status: "pending"}
+	newStatus := "completed"
 
-			// Create service
-			service := NewTransactionService(mockTxRepo, nil, nil)
+	mockTransactionRepo.On("GetByID", mock.Anything, txID).Return(existingTx, nil)
+	mockTransactionRepo.On("UpdateStatus", mock.Anything, txID, newStatus).Return(nil)
 
-			// Execute test
-			tx, err := service.GetByID(tt.id)
+	err := service.UpdateStatus(context.Background(), txID, newStatus)
 
-			// Assert results
-			assert.Equal(t, tt.expectedTx, tx)
-			assert.Equal(t, tt.expectedError, err)
-			mockTxRepo.AssertExpectations(t)
-		})
-	}
+	assert.NoError(t, err)
+	mockTransactionRepo.AssertExpectations(t)
 }
 
-func TestTransactionService_GetByUserID(t *testing.T) {
-	tests := []struct {
-		name          string
-		userID        string
-		expectedTxs   []domain.Transaction
-		expectedError error
-	}{
-		{
-			name:   "successful retrieval",
-			userID: "user1",
-			expectedTxs: []domain.Transaction{
-				{
-					ID:              "tx1",
-					UserID:          "user1",
-					TransactionType: "earn",
-					Points:          100,
-				},
-				{
-					ID:              "tx2",
-					UserID:          "user1",
-					TransactionType: "redeem",
-					Points:          50,
-				},
-			},
-			expectedError: nil,
-		},
-		{
-			name:          "no transactions found",
-			userID:        "user2",
-			expectedTxs:   []domain.Transaction{},
-			expectedError: nil,
-		},
-	}
+func TestTransactionService_UpdateStatus_NotFound(t *testing.T) {
+	mockTransactionRepo := new(postgres.MockTransactionRepository)
+	mockPointsService := new(service.MockPointsService)
+	mockEventRepo := new(postgres.MockEventLogRepository)
+	service := NewTransactionService(mockTransactionRepo, mockPointsService, mockEventRepo)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Setup mock
-			mockTxRepo := new(MockTransactionRepository)
-			mockTxRepo.On("GetByUserID", tt.userID).Return(tt.expectedTxs, tt.expectedError)
+	txID := uuid.New()
+	mockTransactionRepo.On("GetByID", mock.Anything, txID).Return(nil, errors.New("not found"))
 
-			// Create service
-			service := NewTransactionService(mockTxRepo, nil, nil)
+	err := service.UpdateStatus(context.Background(), txID, "completed")
 
-			// Execute test
-			txs, err := service.GetByUserID(tt.userID)
-
-			// Assert results
-			assert.Equal(t, tt.expectedTxs, txs)
-			assert.Equal(t, tt.expectedError, err)
-			mockTxRepo.AssertExpectations(t)
-		})
-	}
-}
-
-func TestTransactionService_UpdateStatus(t *testing.T) {
-	tests := []struct {
-		name          string
-		id            string
-		newStatus     string
-		setupMocks    func(*MockTransactionRepository)
-		expectedError error
-	}{
-		{
-			name:      "successful status update",
-			id:        "tx1",
-			newStatus: "completed",
-			setupMocks: func(tr *MockTransactionRepository) {
-				tr.On("GetByID", "tx1").Return(&domain.Transaction{
-					ID:     "tx1",
-					Status: "pending",
-				}, nil)
-				tr.On("Update", mock.AnythingOfType("*domain.Transaction")).Return(nil)
-			},
-			expectedError: nil,
-		},
-		{
-			name:      "transaction not found",
-			id:        "nonexistent",
-			newStatus: "completed",
-			setupMocks: func(tr *MockTransactionRepository) {
-				tr.On("GetByID", "nonexistent").Return(nil, errors.New("not found"))
-			},
-			expectedError: errors.New("not found"),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Setup mock
-			mockTxRepo := new(MockTransactionRepository)
-			tt.setupMocks(mockTxRepo)
-
-			// Create service
-			service := NewTransactionService(mockTxRepo, nil, nil)
-
-			// Execute test
-			err := service.UpdateStatus(tt.id, tt.newStatus)
-
-			// Assert results
-			assert.Equal(t, tt.expectedError, err)
-			mockTxRepo.AssertExpectations(t)
-		})
-	}
+	assert.Error(t, err)
+	assert.Equal(t, "not found", err.Error())
+	mockTransactionRepo.AssertExpectations(t)
 }
