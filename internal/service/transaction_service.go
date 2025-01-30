@@ -33,9 +33,9 @@ func (s *TransactionService) Create(tx *domain.Transaction) error {
 		points = -points
 	}
 
-	if err := s.pointsService.UpdateBalance(tx.UserID, points); err != nil {
-		return err
-	}
+	// if err := s.pointsService.UpdateBalance(tx.UserID, points); err != nil {
+	// 	return err
+	// }
 
 	// Log the transaction event
 	event := &domain.EventLog{

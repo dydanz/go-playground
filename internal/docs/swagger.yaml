@@ -230,6 +230,44 @@ definitions:
     - email
     - otp
     type: object
+  handler.CreateProgramRequest:
+    properties:
+      merchant_id:
+        type: string
+      point_currency_name:
+        type: string
+      program_name:
+        type: string
+    required:
+    - merchant_id
+    - point_currency_name
+    - program_name
+    type: object
+  handler.UpdateProgramRequest:
+    properties:
+      point_currency_name:
+        type: string
+      program_name:
+        type: string
+    required:
+    - point_currency_name
+    - program_name
+    type: object
+  postgres.Program:
+    properties:
+      createdAt:
+        type: string
+      merchantID:
+        type: string
+      pointCurrencyName:
+        type: string
+      programID:
+        type: string
+      programName:
+        type: string
+      updatedAt:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -650,6 +688,249 @@ paths:
       summary: Update points balance
       tags:
       - points
+  /programs:
+    post:
+      consumes:
+      - application/json
+      description: Create a new loyalty program for a merchant
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Program details
+        in: body
+        name: program
+        required: true
+        schema:
+          $ref: '#/definitions/handler.CreateProgramRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/postgres.Program'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new loyalty program
+      tags:
+      - programs
+  /programs/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a specific loyalty program
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Program ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a loyalty program
+      tags:
+      - programs
+    get:
+      consumes:
+      - application/json
+      description: Get details of a specific loyalty program
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Program ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/postgres.Program'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a loyalty program by ID
+      tags:
+      - programs
+    put:
+      consumes:
+      - application/json
+      description: Update details of a specific loyalty program
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Program ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Program details
+        in: body
+        name: program
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UpdateProgramRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/postgres.Program'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a loyalty program
+      tags:
+      - programs
+  /programs/merchant/{merchant_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get all loyalty programs for a specific merchant
+      parameters:
+      - description: Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Merchant ID
+        in: path
+        name: merchant_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/postgres.Program'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all programs for a merchant
+      tags:
+      - programs
   /redemptions:
     post:
       consumes:

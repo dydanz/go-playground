@@ -16,13 +16,14 @@ func NewRedemptionRepository(db *sql.DB) *RedemptionRepository {
 func (r *RedemptionRepository) Create(redemption *domain.Redemption) error {
 	query := `
 		INSERT INTO redemptions (
-			user_id, reward_id, status, redeemed_at
-		) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+			user_id, program_id, reward_id, status, redeemed_at
+		) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
 		RETURNING id, redeemed_at, created_at, updated_at
 	`
 	return r.db.QueryRow(
 		query,
 		redemption.UserID,
+		redemption.ProgramID,
 		redemption.RewardID,
 		redemption.Status,
 	).Scan(
@@ -36,7 +37,7 @@ func (r *RedemptionRepository) Create(redemption *domain.Redemption) error {
 func (r *RedemptionRepository) GetByID(id string) (*domain.Redemption, error) {
 	redemption := &domain.Redemption{}
 	query := `
-		SELECT id, user_id, reward_id, status, redeemed_at, 
+		SELECT id, user_id, program_id, reward_id, status, redeemed_at, 
 			   created_at, updated_at
 		FROM redemptions
 		WHERE id = $1
@@ -44,6 +45,7 @@ func (r *RedemptionRepository) GetByID(id string) (*domain.Redemption, error) {
 	err := r.db.QueryRow(query, id).Scan(
 		&redemption.ID,
 		&redemption.UserID,
+		&redemption.ProgramID,
 		&redemption.RewardID,
 		&redemption.Status,
 		&redemption.RedeemedAt,
@@ -58,7 +60,7 @@ func (r *RedemptionRepository) GetByID(id string) (*domain.Redemption, error) {
 
 func (r *RedemptionRepository) GetByUserID(userID string) ([]domain.Redemption, error) {
 	query := `
-		SELECT id, user_id, reward_id, status, redeemed_at, 
+		SELECT id, user_id, program_id, reward_id, status, redeemed_at, 
 			   created_at, updated_at
 		FROM redemptions
 		WHERE user_id = $1
@@ -76,6 +78,7 @@ func (r *RedemptionRepository) GetByUserID(userID string) ([]domain.Redemption, 
 		err := rows.Scan(
 			&redemption.ID,
 			&redemption.UserID,
+			&redemption.ProgramID,
 			&redemption.RewardID,
 			&redemption.Status,
 			&redemption.RedeemedAt,

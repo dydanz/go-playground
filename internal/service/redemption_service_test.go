@@ -1,15 +1,16 @@
 package service
 
 import (
+	"context"
 	"errors"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-
 	"go-playground/internal/domain"
 	"go-playground/internal/mocks/repository/postgres"
 	"go-playground/internal/mocks/service"
+	"testing"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestRedemptionService_Create_Success(t *testing.T) {
@@ -25,35 +26,37 @@ func TestRedemptionService_Create_Success(t *testing.T) {
 		mockEventRepo,
 	)
 
+	userID := uuid.New().String()
+	programID := uuid.New().String()
+	rewardID := "reward123"
+
 	reward := &domain.Reward{
-		ID:             "reward123",
+		ID:             rewardID,
 		PointsRequired: 100,
 		IsActive:       true,
 	}
 
-	balance := &domain.PointsBalance{
-		UserID:      "user123",
-		TotalPoints: 150,
-	}
-
 	redemption := &domain.Redemption{
-		UserID:   "user123",
-		RewardID: "reward123",
-		Status:   "pending",
+		UserID:    userID,
+		RewardID:  rewardID,
+		ProgramID: programID,
+		Status:    "pending",
 	}
 
-	mockRewardsRepo.On("GetByID", "reward123").Return(reward, nil)
-	mockPointsService.On("GetBalance", "user123").Return(balance, nil)
+	mockRewardsRepo.On("GetByID", rewardID).Return(reward, nil)
+	mockPointsService.On("GetBalance", mock.Anything, mock.AnythingOfType("uuid.UUID"), mock.AnythingOfType("uuid.UUID")).Return(150, nil)
 	mockRedemptionRepo.On("Create", redemption).Return(nil)
-	mockPointsService.On("UpdateBalance", "user123", -100).Return(nil)
+	mockPointsService.On("RedeemPoints", mock.Anything, mock.AnythingOfType("uuid.UUID"), mock.AnythingOfType("uuid.UUID"), 100, mock.AnythingOfType("*uuid.UUID")).Return(nil)
 	mockEventRepo.On("Create", mock.MatchedBy(func(event *domain.EventLog) bool {
+		pointsUsed, ok := event.Details["points_used"].(int)
 		return event.EventType == "reward_redeemed" &&
-			event.UserID == "user123" &&
-			event.Details["reward_id"] == "reward123" &&
-			event.Details["points_used"] == 100
+			event.UserID == userID &&
+			event.Details["reward_id"] == rewardID &&
+			ok && pointsUsed == 100 &&
+			event.Details["program_id"] == programID
 	})).Return(nil)
 
-	err := service.Create(redemption)
+	err := service.Create(context.Background(), redemption)
 
 	assert.NoError(t, err)
 	mockRewardsRepo.AssertExpectations(t)
@@ -75,21 +78,26 @@ func TestRedemptionService_Create_InactiveReward(t *testing.T) {
 		mockEventRepo,
 	)
 
+	userID := uuid.New().String()
+	programID := uuid.New().String()
+	rewardID := "reward123"
+
 	reward := &domain.Reward{
-		ID:             "reward123",
+		ID:             rewardID,
 		PointsRequired: 100,
 		IsActive:       false,
 	}
 
 	redemption := &domain.Redemption{
-		UserID:   "user123",
-		RewardID: "reward123",
-		Status:   "pending",
+		UserID:    userID,
+		RewardID:  rewardID,
+		ProgramID: programID,
+		Status:    "pending",
 	}
 
-	mockRewardsRepo.On("GetByID", "reward123").Return(reward, nil)
+	mockRewardsRepo.On("GetByID", rewardID).Return(reward, nil)
 
-	err := service.Create(redemption)
+	err := service.Create(context.Background(), redemption)
 
 	assert.Error(t, err)
 	assert.Equal(t, "reward is not available", err.Error())
@@ -109,27 +117,27 @@ func TestRedemptionService_Create_InsufficientPoints(t *testing.T) {
 		mockEventRepo,
 	)
 
+	userID := uuid.New().String()
+	programID := uuid.New().String()
+	rewardID := "reward123"
+
 	reward := &domain.Reward{
-		ID:             "reward123",
+		ID:             rewardID,
 		PointsRequired: 100,
 		IsActive:       true,
 	}
 
-	balance := &domain.PointsBalance{
-		UserID:      "user123",
-		TotalPoints: 50,
-	}
-
 	redemption := &domain.Redemption{
-		UserID:   "user123",
-		RewardID: "reward123",
-		Status:   "pending",
+		UserID:    userID,
+		RewardID:  rewardID,
+		ProgramID: programID,
+		Status:    "pending",
 	}
 
-	mockRewardsRepo.On("GetByID", "reward123").Return(reward, nil)
-	mockPointsService.On("GetBalance", "user123").Return(balance, nil)
+	mockRewardsRepo.On("GetByID", rewardID).Return(reward, nil)
+	mockPointsService.On("GetBalance", mock.Anything, mock.AnythingOfType("uuid.UUID"), mock.AnythingOfType("uuid.UUID")).Return(50, nil)
 
-	err := service.Create(redemption)
+	err := service.Create(context.Background(), redemption)
 
 	assert.Error(t, err)
 	assert.Equal(t, "insufficient points", err.Error())
@@ -152,7 +160,7 @@ func TestRedemptionService_GetByID_Success(t *testing.T) {
 
 	expectedRedemption := &domain.Redemption{
 		ID:       "redemption123",
-		UserID:   "user123",
+		UserID:   uuid.New().String(),
 		RewardID: "reward123",
 		Status:   "completed",
 	}
@@ -179,24 +187,25 @@ func TestRedemptionService_GetByUserID_Success(t *testing.T) {
 		mockEventRepo,
 	)
 
+	userID := uuid.New().String()
 	expectedRedemptions := []domain.Redemption{
 		{
 			ID:       "redemption123",
-			UserID:   "user123",
+			UserID:   userID,
 			RewardID: "reward123",
 			Status:   "completed",
 		},
 		{
 			ID:       "redemption124",
-			UserID:   "user123",
+			UserID:   userID,
 			RewardID: "reward124",
 			Status:   "pending",
 		},
 	}
 
-	mockRedemptionRepo.On("GetByUserID", "user123").Return(expectedRedemptions, nil)
+	mockRedemptionRepo.On("GetByUserID", userID).Return(expectedRedemptions, nil)
 
-	redemptions, err := service.GetByUserID("user123")
+	redemptions, err := service.GetByUserID(userID)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedRedemptions, redemptions)
@@ -216,11 +225,15 @@ func TestRedemptionService_UpdateStatus_Success(t *testing.T) {
 		mockEventRepo,
 	)
 
+	userID := uuid.New().String()
+	programID := uuid.New().String()
+
 	redemption := &domain.Redemption{
-		ID:       "redemption123",
-		UserID:   "user123",
-		RewardID: "reward123",
-		Status:   "pending",
+		ID:        "redemption123",
+		UserID:    userID,
+		RewardID:  "reward123",
+		ProgramID: programID,
+		Status:    "pending",
 	}
 
 	reward := &domain.Reward{
@@ -230,12 +243,12 @@ func TestRedemptionService_UpdateStatus_Success(t *testing.T) {
 
 	mockRedemptionRepo.On("GetByID", "redemption123").Return(redemption, nil)
 	mockRewardsRepo.On("GetByID", "reward123").Return(reward, nil)
-	mockPointsService.On("UpdateBalance", "user123", 100).Return(nil)
+	mockPointsService.On("EarnPoints", mock.Anything, mock.AnythingOfType("uuid.UUID"), mock.AnythingOfType("uuid.UUID"), 100, mock.AnythingOfType("*uuid.UUID")).Return(nil)
 	mockRedemptionRepo.On("Update", mock.MatchedBy(func(r *domain.Redemption) bool {
 		return r.ID == "redemption123" && r.Status == "canceled"
 	})).Return(nil)
 
-	err := service.UpdateStatus("redemption123", "canceled")
+	err := service.UpdateStatus(context.Background(), "redemption123", "canceled")
 
 	assert.NoError(t, err)
 	mockRedemptionRepo.AssertExpectations(t)
@@ -258,7 +271,7 @@ func TestRedemptionService_UpdateStatus_NotFound(t *testing.T) {
 
 	mockRedemptionRepo.On("GetByID", "nonexistent").Return(nil, errors.New("not found"))
 
-	err := service.UpdateStatus("nonexistent", "canceled")
+	err := service.UpdateStatus(context.Background(), "nonexistent", "canceled")
 
 	assert.Error(t, err)
 	assert.Equal(t, "not found", err.Error())

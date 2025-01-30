@@ -7,6 +7,7 @@ import (
 
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -64,7 +65,7 @@ func TestTransactionService_Create(t *testing.T) {
 			},
 			setupMocks: func(tr *MockTransactionRepository, ps *PointsService, er *postgres.MockEventLogRepository) {
 				mockPointsRepo := ps.pointsRepo.(*postgres.MockPointsRepository)
-				mockPointsRepo.On("GetByUserID", "user1").Return(&domain.PointsBalance{UserID: "user1", TotalPoints: 200}, nil)
+				mockPointsRepo.On("GetByUserID", "user1").Return(&domain.PointsLedger{CustomerID: uuid.Nil, PointsBalance: 200}, nil)
 				mockPointsRepo.On("Update", mock.AnythingOfType("*domain.PointsBalance")).Return(nil)
 				tr.On("Create", mock.AnythingOfType("*domain.Transaction")).Return(nil)
 				er.On("Create", mock.AnythingOfType("*domain.EventLog")).Return(nil)
@@ -83,8 +84,8 @@ func TestTransactionService_Create(t *testing.T) {
 			},
 			setupMocks: func(tr *MockTransactionRepository, ps *PointsService, er *postgres.MockEventLogRepository) {
 				mockPointsRepo := ps.pointsRepo.(*postgres.MockPointsRepository)
-				mockPointsRepo.On("GetByUserID", "user1").Return(&domain.PointsBalance{UserID: "user1", TotalPoints: 200}, nil)
-				mockPointsRepo.On("Update", mock.AnythingOfType("*domain.PointsBalance")).Return(nil)
+				mockPointsRepo.On("GetByUserID", "user1").Return(&domain.PointsLedger{CustomerID: uuid.Nil, PointsBalance: 200}, nil)
+				mockPointsRepo.On("Update", mock.AnythingOfType("*domain.PointsLedger")).Return(nil)
 				tr.On("Create", mock.AnythingOfType("*domain.Transaction")).Return(nil)
 				er.On("Create", mock.AnythingOfType("*domain.EventLog")).Return(nil)
 			},

@@ -3,6 +3,8 @@ package domain
 import (
 	"context"
 	"database/sql"
+
+	"github.com/google/uuid"
 )
 
 type UserRepository interface {
@@ -50,9 +52,10 @@ type AuthService interface {
 
 // PointsRepository handles points balance operations
 type PointsRepository interface {
-	Create(balance *PointsBalance) error
-	GetByUserID(userID string) (*PointsBalance, error)
-	Update(balance *PointsBalance) error
+	Create(ctx context.Context, ledger *PointsLedger) error
+	GetByCustomerAndProgram(ctx context.Context, customerID, programID uuid.UUID) ([]*PointsLedger, error)
+	GetCurrentBalance(ctx context.Context, customerID, programID uuid.UUID) (int, error)
+	GetByTransactionID(ctx context.Context, transactionID uuid.UUID) (*PointsLedger, error)
 }
 
 // TransactionRepository handles transaction operations
@@ -78,4 +81,11 @@ type RedemptionRepository interface {
 	GetByID(id string) (*Redemption, error)
 	GetByUserID(userID string) ([]Redemption, error)
 	Update(redemption *Redemption) error
+}
+
+type PointsServiceInterface interface {
+	GetLedger(ctx context.Context, customerID, programID uuid.UUID) ([]*PointsLedger, error)
+	GetBalance(ctx context.Context, customerID, programID uuid.UUID) (int, error)
+	EarnPoints(ctx context.Context, customerID, programID uuid.UUID, points int, transactionID *uuid.UUID) error
+	RedeemPoints(ctx context.Context, customerID, programID uuid.UUID, points int, transactionID *uuid.UUID) error
 }

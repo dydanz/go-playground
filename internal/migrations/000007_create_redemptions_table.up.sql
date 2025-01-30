@@ -4,6 +4,7 @@ CREATE TYPE redemption_status AS ENUM ('completed', 'pending', 'failed');
 CREATE TABLE IF NOT EXISTS redemptions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id),
+    program_id UUID NOT NULL REFERENCES programs(program_id) ON DELETE RESTRICT,
     reward_id UUID NOT NULL REFERENCES rewards(id) ON DELETE RESTRICT,
     points_used INTEGER NOT NULL CHECK (points_used > 0),
     redemption_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

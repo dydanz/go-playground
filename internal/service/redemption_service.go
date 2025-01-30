@@ -1,26 +1,24 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"go-playground/internal/domain"
-)
 
-type PointsServiceInterface interface {
-	GetBalance(userID string) (*domain.PointsBalance, error)
-	UpdateBalance(userID string, points int) error
-}
+	"github.com/google/uuid"
+)
 
 type RedemptionService struct {
 	redemptionRepo domain.RedemptionRepository
 	rewardsRepo    domain.RewardsRepository
-	pointsService  PointsServiceInterface
+	pointsService  domain.PointsServiceInterface
 	eventRepo      domain.EventLogRepository
 }
 
 func NewRedemptionService(
 	redemptionRepo domain.RedemptionRepository,
 	rewardsRepo domain.RewardsRepository,
-	pointsService PointsServiceInterface,
+	pointsService domain.PointsServiceInterface,
 	eventRepo domain.EventLogRepository,
 ) *RedemptionService {
 	return &RedemptionService{
@@ -31,7 +29,7 @@ func NewRedemptionService(
 	}
 }
 
-func (s *RedemptionService) Create(redemption *domain.Redemption) error {
+func (s *RedemptionService) Create(ctx context.Context, redemption *domain.Redemption) error {
 	// Check if reward exists and is active
 	reward, err := s.rewardsRepo.GetByID(redemption.RewardID)
 	if err != nil {
@@ -41,12 +39,27 @@ func (s *RedemptionService) Create(redemption *domain.Redemption) error {
 		return errors.New("reward is not available")
 	}
 
+	// Parse user ID and program ID to UUID
+	customerID, err := uuid.Parse(redemption.UserID)
+	if err != nil {
+		return errors.New("invalid user ID format")
+	}
+
+	if redemption.ProgramID == "" {
+		return errors.New("program ID is required")
+	}
+
+	programID, err := uuid.Parse(redemption.ProgramID)
+	if err != nil {
+		return errors.New("invalid program ID format")
+	}
+
 	// Check if user has enough points
-	balance, err := s.pointsService.GetBalance(redemption.UserID)
+	balance, err := s.pointsService.GetBalance(ctx, customerID, programID)
 	if err != nil {
 		return err
 	}
-	if balance.TotalPoints < reward.PointsRequired {
+	if balance < reward.PointsRequired {
 		return errors.New("insufficient points")
 	}
 
@@ -56,9 +69,13 @@ func (s *RedemptionService) Create(redemption *domain.Redemption) error {
 	}
 
 	// Deduct points
-	if err := s.pointsService.UpdateBalance(redemption.UserID, -reward.PointsRequired); err != nil {
+	redemptionID := uuid.New()
+	if err := s.pointsService.RedeemPoints(ctx, customerID, programID, reward.PointsRequired, &redemptionID); err != nil {
 		return err
 	}
+
+	// Set the redemption ID
+	redemption.ID = redemptionID.String()
 
 	// Log the redemption event
 	event := &domain.EventLog{
@@ -69,6 +86,7 @@ func (s *RedemptionService) Create(redemption *domain.Redemption) error {
 			"reward_id":     redemption.RewardID,
 			"points_used":   reward.PointsRequired,
 			"redemption_id": redemption.ID,
+			"program_id":    redemption.ProgramID,
 		},
 	}
 	return s.eventRepo.Create(event)
@@ -82,7 +100,7 @@ func (s *RedemptionService) GetByUserID(userID string) ([]domain.Redemption, err
 	return s.redemptionRepo.GetByUserID(userID)
 }
 
-func (s *RedemptionService) UpdateStatus(id string, status string) error {
+func (s *RedemptionService) UpdateStatus(ctx context.Context, id string, status string) error {
 	redemption, err := s.redemptionRepo.GetByID(id)
 	if err != nil {
 		return err
@@ -97,7 +115,18 @@ func (s *RedemptionService) UpdateStatus(id string, status string) error {
 		if err != nil {
 			return err
 		}
-		if err := s.pointsService.UpdateBalance(redemption.UserID, reward.PointsRequired); err != nil {
+		customerID, err := uuid.Parse(redemption.UserID)
+		if err != nil {
+			return errors.New("invalid user ID format")
+		}
+
+		programID, err := uuid.Parse(redemption.ProgramID)
+		if err != nil {
+			return errors.New("invalid program ID format")
+		}
+
+		refundID := uuid.New()
+		if err := s.pointsService.EarnPoints(ctx, customerID, programID, reward.PointsRequired, &refundID); err != nil {
 			return err
 		}
 	}
