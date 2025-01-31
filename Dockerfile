@@ -24,7 +24,7 @@ COPY . .
 RUN go build -o loyalty_engine ./cmd/api
 
 # Final stage
-FROM alpine:latest
+FROM alpine:3.21
 RUN apk add --no-cache libc6-compat
 
 # Set the working directory

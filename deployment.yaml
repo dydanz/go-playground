@@ -12,6 +12,10 @@ spec:
       labels:
         app: loyalty-engine-app
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
       containers:
       - name: loyalty-engine-app
         image: gcr.io/go-loyalty/loyalty-engine-app
