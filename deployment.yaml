@@ -18,6 +18,11 @@ spec:
         fsGroup: 1000
       containers:
       - name: loyalty-engine-app
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          readOnlyRootFilesystem: true
         image: gcr.io/go-loyalty/loyalty-engine-app
         ports:
         - containerPort: 8080
