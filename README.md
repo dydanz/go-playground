@@ -148,24 +148,72 @@ go-playground/
 │   └── api/
 │       └── main.go
 ├── internal/
+│   ├── bootstrap/ # Initializes the application
+│   │   ├── database.go
+│   │   ├── repository.go
+│   │   ├── router.go
+│   │   └── service.go
 │   ├── config/
 │   │   └── config.go
+│   ├── docs/
+│   │   ├── docs.go
+│   │   ├── swagger.json
+│   │   └── swagger.yaml
 │   ├── domain/
-│   │   └── user.go
+│   │   ├── auth.go
+│   │   ├── event_log.go
+│   │   ├── event_log_repository.go
+│   │   ├── interfaces.go
+│   │   ├──  ... (more DTO/interface files)
+│   ├── handler/
+│   │   ├── auth_handler.go
+│   │   ├── merchant_handler.go
+│   │   ├── ping.go
+│   │   ├──  ... (more router handler files)
+│   ├── middleware/
+│   │   ├── auth.go
+│   │   ├── csrf.go
+│   │   └── session.go
+│   ├── migrations/
+│   │   ├── 000001_create_users_table.up.sql
+│   │   ├── 000002_add_auth_tables.up.sql
+│   │   ├── 000003_add_auth_token_unique_constraint.up.sql
+│   │   └── ... (more migration files)
+│   ├── mocks/
+│   │   ├── repository/
+│   │   └── service/
 │   ├── repository/
 │   │   ├── postgres/
-│   │   │   └── user_repository.go
 │   │   └── redis/
-│   │       └── cache_repository.go
-│   ├── handler/
-│   │   └── user_handler.go
-│   └── service/
-│       └── user_service.go
+│   ├── service/
+│   │   ├── auth_service.go
+│   │   ├── merchant_service.go
+│   │   ├── points_service.go
+│   │   ├── redemption_service.go
+│   │   ├── ... (more service files)
+│   ├── static/ # Static files for simple web pages, fool proof you can add reactjs etc within go/gin project.
+│   │   ├── css/
+│   │   ├── js/
+│   │   ├── dashboard.html
+│   │   ├── login.html
+│   │   └── register.html
+│   └── util/
+│       └── entitlement.go
 ├── pkg/
-│   └── database/
-│       ├── postgres.go
-│       └── redis.go
+│   ├── channel/
+│   │   └── pubsub_channel.go
+│   ├── database/
+│   │   ├── migration.go
+│   │   ├── postgres.go
+│   │   └── redis.go
+│   └── kafka/
+│       └── kafka.go
+├── locust-test/ # Locust load testing files, run separately under python-venv
+│   ├── common/
+│   ├── locustfile.py
+│   └── requirements.txt
 ├── docker-compose.yml
+├── Dockerfile
 ├── .env
 └── go.mod
 ```

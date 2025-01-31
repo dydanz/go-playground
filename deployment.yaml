@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loyalty-engine-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loyalty-engine-app
+  template:
+    metadata:
+      labels:
+        app: loyalty-engine-app
+    spec:
+      containers:
+      - name: loyalty-engine-app
+        image: gcr.io/go-loyalty/loyalty-engine-app
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"

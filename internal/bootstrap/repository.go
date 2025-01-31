@@ -22,6 +22,7 @@ type Repositories struct {
 	MerchantRepo    *postgres.MerchantRepository
 	ProgramRepo     *postgres.ProgramsRepository
 	SessionRepo     redis.SessionRepository
+	ProgramRuleRepo *postgres.ProgramRuleRepository
 }
 
 // InitializeRepositories initializes all repositories
@@ -38,5 +39,6 @@ func InitializeRepositories(db *sql.DB, dbConn *config.DbConnection, rdb *redisl
 		MerchantRepo:    postgres.NewMerchantRepository(db),
 		ProgramRepo:     postgres.NewProgramsRepository(db),
 		SessionRepo:     redis.NewSessionRepository(rdb),
+		ProgramRuleRepo: postgres.NewProgramRuleRepository(*dbConn),
 	}
 }

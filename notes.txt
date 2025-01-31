@@ -181,3 +181,170 @@ To support the above functionality, you need the following services:
 5. The customer receives a notification (e.g., SMS or email) about the points earned.
 
 ---
+
+########################################################################################################################################
+Below are **two user stories** that illustrate how the loyalty platform would be used by a **bank** and an **e-commerce company**. 
+These stories highlight the flexibility and adaptability of the system to different merchant types.
+########################################################################################################################################
+
+---
+
+Creating a **decision table** for a store's **historical discount sale** involves defining rules that determine how loyalty points are awarded based on past purchase behavior, such as discounts applied, purchase frequency, or total spending. Below is a step-by-step guide to designing and implementing such a decision table.
+
+---
+
+### **1. Define the Objective**
+The goal is to reward customers based on their historical discount purchases at the store. For example:
+- Customers who frequently purchase discounted items.
+- Customers who spend a significant amount during discount sales.
+- Customers who buy specific discounted product categories.
+
+---
+
+### **2. Identify Key Parameters**
+To create the decision table, identify the parameters that will influence point calculations:
+- **Transaction Amount**: Total spending during discount sales.
+- **Discount Percentage**: The discount applied to the purchase.
+- **Purchase Frequency**: Number of transactions during discount periods.
+- **Item Category**: Specific product categories purchased at a discount.
+- **Membership Tier**: Customer's loyalty tier (e.g., Silver, Gold, Platinum).
+
+---
+
+### **3. Define Rules**
+Based on the parameters, define rules for awarding points. Here are some examples:
+
+#### **Rule 1: Reward based on total spending during discount sales**
+- Condition: `transaction_amount > 100` (spent more than $100 during discount sales).
+- Action: Award `10 points per $10 spent`.
+
+#### **Rule 2: Reward based on discount percentage**
+- Condition: `discount_percentage >= 20%` (purchased items with at least 20% discount).
+- Action: Award `5x points` on the transaction amount.
+
+#### **Rule 3: Reward frequent shoppers during discount sales**
+- Condition: `purchase_frequency >= 5` (made 5 or more purchases during discount periods).
+- Action: Award `500 bonus points`.
+
+#### **Rule 4: Reward specific product categories**
+- Condition: `item_category = "Electronics"` (purchased electronics at a discount).
+- Action: Award `20x points` on the transaction amount.
+
+#### **Rule 5: Reward based on membership tier**
+- Condition: `membership_tier = "Gold"` (Gold-tier customers).
+- Action: Award `2x points` on all discount purchases.
+
+---
+
+### **4. Create the Decision Table**
+The decision table maps conditions to actions. Below is an example:
+
+| **Rule ID** | **Condition**                                                                 | **Action**                                      |
+|-------------|-------------------------------------------------------------------------------|------------------------------------------------|
+| 1           | `transaction_amount > 100`                                                   | Award `10 points per $10 spent`.               |
+| 2           | `discount_percentage >= 20%`                                                 | Award `5x points` on transaction amount.       |
+| 3           | `purchase_frequency >= 5`                                                    | Award `500 bonus points`.                      |
+| 4           | `item_category = "Electronics"`                                              | Award `20x points` on transaction amount.      |
+| 5           | `membership_tier = "Gold"`                                                   | Award `2x points` on all discount purchases.   |
+
+---
+
+### **5. Example Input Data**
+Here’s how the store would send transaction data to the loyalty platform for evaluation against the decision table:
+
+#### **Example 1: High Spending During Discount Sale**
+```json
+{
+  "merchant_id": "store_123",
+  "customer_id": "cust_456",
+  "transaction_amount": 150, // $150 spent
+  "discount_percentage": 15, // 15% discount
+  "item_category": "General", // General purchase
+  "purchase_frequency": 3, // 3 purchases during discount period
+  "membership_tier": "Silver", // Silver-tier customer
+  "transaction_date": "2023-10-15T12:34:56Z"
+}
+```
+
+**Processing:**
+- Rule 1: `transaction_amount > 100` → Award `10 points per $10 spent` → `150 / 10 * 10 = 150 points`.
+- Total Points Awarded: **150 points**.
+
+---
+
+#### **Example 2: Frequent Shopper with High Discount**
+```json
+{
+  "merchant_id": "store_123",
+  "customer_id": "cust_789",
+  "transaction_amount": 200, // $200 spent
+  "discount_percentage": 25, // 25% discount
+  "item_category": "Electronics", // Electronics purchase
+  "purchase_frequency": 6, // 6 purchases during discount period
+  "membership_tier": "Gold", // Gold-tier customer
+  "transaction_date": "2023-10-16T18:00:00Z"
+}
+```
+
+**Processing:**
+- Rule 1: `transaction_amount > 100` → Award `10 points per $10 spent` → `200 / 10 * 10 = 200 points`.
+- Rule 2: `discount_percentage >= 20%` → Award `5x points` → `5 * 200 = 1000 points`.
+- Rule 3: `purchase_frequency >= 5` → Award `500 bonus points`.
+- Rule 4: `item_category = "Electronics"` → Award `20x points` → `20 * 200 = 4000 points`.
+- Rule 5: `membership_tier = "Gold"` → Award `2x points` → `2 * (200 + 1000 + 500 + 4000) = 11,400 points`.
+- Total Points Awarded: **11,400 points**.
+
+---
+
+### **6. Database Schema for Decision Table**
+To store the decision table in the database, you can use the following schema:
+
+#### **Decision Table**
+| **Column Name**      | **Data Type** | **Description**                                                                 |
+|-----------------------|---------------|---------------------------------------------------------------------------------|
+| `decision_table_id`   | UUID          | Unique ID for the decision table.                                              |
+| `merchant_id`         | UUID          | Foreign key to the merchant.                                                   |
+| `rule_name`           | String        | Name of the rule (e.g., "High Spending Reward").                               |
+| `condition_type`      | String        | Type of condition (e.g., `transaction_amount`, `discount_percentage`).         |
+| `condition_operator`  | String        | Operator for the condition (e.g., `>`, `>=`, `==`).                            |
+| `condition_value`     | String        | Value for the condition (e.g., `100`, `20%`, `Electronics`).                   |
+| `action_type`         | String        | Type of action (e.g., `award_points`, `bonus_points`).                         |
+| `action_value`        | String        | Value for the action (e.g., `10 points per $10`, `5x points`).                 |
+| `created_at`          | Timestamp     | Timestamp when the rule was created.                                           |
+| `updated_at`          | Timestamp     | Timestamp when the rule was last updated.                                      |
+
+---
+
+### **7. Implementation Steps**
+1. **Merchant Configuration:**
+   - Allow the store to define and update decision rules via a dashboard or API.
+   - Store the rules in the `Decision Table` database.
+
+2. **Transaction Processing:**
+   - Evaluate each transaction against the decision table.
+   - Apply all matching rules to calculate points.
+
+3. **Reporting:**
+   - Provide the store with insights into how customers are earning points during discount sales.
+
+---
+
+### **8. Example API Payload for Decision Table Creation**
+Here’s how the store might create a new rule via an API:
+
+```json
+{
+  "merchant_id": "store_123",
+  "rule_name": "High Spending Reward",
+  "condition_type": "transaction_amount",
+  "condition_operator": ">",
+  "condition_value": "100",
+  "action_type": "award_points",
+  "action_value": "10 points per $10"
+}
+```
+
+---
+
+By following this approach, you can create a flexible and adaptive decision table that rewards customers based on 
+their historical discount purchases at the store. This system can be easily extended to include additional rules or parameters as needed.

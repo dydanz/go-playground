@@ -1,6 +1,11 @@
 -- Add status to users table with enum
-CREATE TYPE user_status AS ENUM ('pending', 'active', 'locked', 'banned');
-ALTER TABLE users ADD COLUMN status user_status NOT NULL DEFAULT 'pending';
+DO $$ BEGIN
+    CREATE TYPE user_status AS ENUM ('pending', 'active', 'locked', 'banned');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+ALTER TABLE IF EXISTS users ADD COLUMN status user_status NOT NULL DEFAULT 'pending';
 
 -- Create registration verifications table
 CREATE TABLE registration_verifications (
