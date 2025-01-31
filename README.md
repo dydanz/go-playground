@@ -14,18 +14,20 @@ For questions or professional inquiries: [Linkedin](https://www.linkedin.com/in/
 Tech stack:
 - Go 1.21+ with Gin framework
 - PostgreSQL & Redis
-- Docker & Docker Compose
+- Docker & Docker Compose, comply with GKE.
 - Generated using Cursor 0.8 + Claude 3 Sonnet in VSCode
 
 ## Features
 
 - RESTful API endpoints for user management (CRUD operations)
-- PostgreSQL database with Replication for CQRS Approach
---- future plan, table archival will be implemented to introduce advance hot-cold data separation.
+- PostgreSQL database with Replication for CQRS Approach, Redis for caching Session Management.
+--- future plans, table archival will be implemented to introduce advanced hot-cold data separation.
 - Password hashing using bcrypt
 --- not sure SSO will be implemented, but it's a good idea to implement it.
-- Redis caching
-- Docker support for local development
+- Swagger, is easier to check and verify your work.
+- Locust for Load Testing (Python knowledge required to implement the test scenario.
+- Integrated with static file config to start and build your JS-based web-app. Hello World page provided!
+- Docker support for local development and deployment to GKE
 - Environment-based configuration
 
 ## Prerequisites
@@ -34,6 +36,7 @@ Before you begin, ensure you have installed:
 - Go 1.16 or later
 - Docker and Docker Compose
 - Git
+- A good PC/laptop is needed because Docker will be hungry!
 
 ## Getting Started
 
@@ -70,7 +73,7 @@ go mod tidy
 
 ### 5. Initialize Database
 
-Connect to PostgreSQL and create the users table:
+Connect to PostgreSQL and create the user's table:
 
 ```bash
 docker exec -it $(docker ps -qf "name=postgres") psql -U postgres -d go_cursor
