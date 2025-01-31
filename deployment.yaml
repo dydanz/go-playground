@@ -15,7 +15,10 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
+        runAsGroup: 1000
         fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: loyalty-engine-app
         securityContext:
@@ -23,6 +26,9 @@ spec:
           capabilities:
             drop: ["ALL"]
           readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
         image: gcr.io/go-loyalty/loyalty-engine-app
         ports:
         - containerPort: 8080
