@@ -9,7 +9,6 @@
 *.out
 
 # Environment files
-.env
 .env.local
 .venv/
 
@@ -163,7 +162,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
 .venv
 env/
 venv/

@@ -40,3 +40,12 @@ type UpdateProgramRuleRequest struct {
 	EffectiveFrom  *time.Time `json:"effective_from,omitempty"`
 	EffectiveTo    *time.Time `json:"effective_to,omitempty"`
 }
+
+type CreateProgramResponse struct {
+	ProgramID         uuid.UUID `json:"program_id"`
+	MerchantID        uuid.UUID `json:"merchant_id"`
+	ProgramName       string    `json:"program_name"`
+	PointCurrencyName string    `json:"point_currency_name"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}

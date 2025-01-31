@@ -1,8 +1,15 @@
-# Use the official Go image as a base
-FROM golang:1.22
+# Build stage
+FROM golang:1.22 AS builder
 
 # Set the working directory inside the container
 WORKDIR /app
+ENV DB_HOST=host.docker.internal
+ENV DB_PORT=5432
+ENV DB_USER=postgres
+ENV DB_PASSWORD=postgres
+ENV DB_NAME=go_cursor
+ENV REDIS_HOST=host.docker.internal
+ENV REDIS_PORT=6379
 
 # Copy the go.mod and go.sum files
 COPY go.mod go.sum ./
@@ -14,7 +21,23 @@ RUN go mod download
 COPY . .
 
 # Build the Go application
-RUN go build -o main ./cmd/api
+RUN go build -o loyalty_engine ./cmd/api
 
-# Command to run the executable
-CMD ["./main"] 
+# Final stage
+FROM alpine:3.21
+RUN apk add --no-cache libc6-compat
+
+# Set the working directory
+WORKDIR /app
+
+# Copy migrations folder and binary
+COPY --from=builder /app/internal/migrations ./internal/migrations
+COPY --from=builder /app/internal/docs ./internal/docs
+COPY --from=builder /app/loyalty_engine .
+COPY --from=builder /app/.env .
+
+# Expose the port your app runs on
+EXPOSE 8080
+
+# Run the application
+CMD ["./loyalty_engine"]

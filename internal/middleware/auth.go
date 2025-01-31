@@ -35,7 +35,6 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 	return func(c *gin.Context) {
 		// First try to get token from cookie
 		tokenCookie, err := c.Cookie(sessionCookieName)
-		log.Printf("Validating authHeader header: %s\n", tokenCookie)
 		if err != nil {
 			// Fallback to Authorization header
 			authHeader := c.GetHeader("Authorization")

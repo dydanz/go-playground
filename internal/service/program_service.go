@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"errors"
-
+	"go-playground/internal/domain"
 	"go-playground/internal/repository/postgres"
 
 	"github.com/google/uuid"
@@ -24,7 +24,7 @@ func NewProgramService(programsRepo *postgres.ProgramsRepository) *ProgramServic
 	}
 }
 
-func (s *ProgramService) CreateProgram(ctx context.Context, merchantID uuid.UUID, programName, pointCurrencyName string) (*postgres.Program, error) {
+func (s *ProgramService) CreateProgram(ctx context.Context, merchantID uuid.UUID, programName, pointCurrencyName string) (*domain.CreateProgramResponse, error) {
 	if programName == "" || pointCurrencyName == "" {
 		return nil, ErrInvalidProgram
 	}
@@ -40,7 +40,16 @@ func (s *ProgramService) CreateProgram(ctx context.Context, merchantID uuid.UUID
 		return nil, err
 	}
 
-	return program, nil
+	response := &domain.CreateProgramResponse{
+		ProgramID:         program.ProgramID,
+		MerchantID:        program.MerchantID,
+		ProgramName:       program.ProgramName,
+		PointCurrencyName: program.PointCurrencyName,
+		CreatedAt:         program.CreatedAt,
+		UpdatedAt:         program.UpdatedAt,
+	}
+
+	return response, nil
 }
 
 func (s *ProgramService) GetProgram(ctx context.Context, programID uuid.UUID) (*postgres.Program, error) {
