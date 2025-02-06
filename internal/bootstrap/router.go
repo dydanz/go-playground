@@ -5,6 +5,7 @@ import (
 	"go-playground/internal/middleware"
 	"go-playground/internal/repository/postgres"
 	"go-playground/internal/repository/redis"
+	"go-playground/internal/util"
 	"net/http"
 
 	"database/sql"
@@ -41,7 +42,7 @@ func InitializeHandlers(services *Services, db *sql.DB, dbReplication *sql.DB, r
 		RewardsHandler:          handler.NewRewardsHandler(services.RewardsService),
 		RedemptionHandler:       handler.NewRedemptionHandler(services.RedemptionService),
 		PingHandler:             handler.NewPingHandler(db, dbReplication, rdb),
-		InternalLoadTestHandler: handler.NewTestHandler(services.AuthService),
+		InternalLoadTestHandler: handler.NewInternalLoadTestHandler(services.AuthService),
 		MerchantHandler:         handler.NewMerchantHandler(services.MerchantService),
 		ProgramHandler:          handler.NewProgramHandler(services.ProgramService),
 		ProgramRuleHandler:      handler.NewProgramRuleHandler(services.ProgramRuleService),
@@ -51,6 +52,9 @@ func InitializeHandlers(services *Services, db *sql.DB, dbReplication *sql.DB, r
 // SetupRouter sets up the Gin router with all routes and middleware
 func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo redis.SessionRepository) *gin.Engine {
 	r := gin.Default()
+
+	// Add latency middleware globally
+	r.Use(util.GinHandlerLatencyDecorator())
 
 	// CORS middleware
 	config := cors.DefaultConfig()

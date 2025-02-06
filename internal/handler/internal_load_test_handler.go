@@ -11,7 +11,7 @@ type InternalLoadTestHandler struct {
 	authService domain.AuthService
 }
 
-func NewTestHandler(authService domain.AuthService) *InternalLoadTestHandler {
+func NewInternalLoadTestHandler(authService domain.AuthService) *InternalLoadTestHandler {
 	return &InternalLoadTestHandler{authService: authService}
 }
 
