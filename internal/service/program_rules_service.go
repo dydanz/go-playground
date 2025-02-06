@@ -2,29 +2,21 @@ package service
 
 import (
 	"context"
-	"errors"
 	"go-playground/internal/domain"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-type ProgramRuleService struct {
+type ProgramRulesService struct {
 	programRuleRepo domain.ProgramRuleRepository
-	eventRepo       domain.EventLogRepository
 }
 
-func NewProgramRuleService(
-	programRuleRepo domain.ProgramRuleRepository,
-	eventRepo domain.EventLogRepository,
-) *ProgramRuleService {
-	return &ProgramRuleService{
-		programRuleRepo: programRuleRepo,
-		eventRepo:       eventRepo,
-	}
+func NewProgramRulesService(repo domain.ProgramRuleRepository) *ProgramRulesService {
+	return &ProgramRulesService{programRuleRepo: repo}
 }
 
-func (s *ProgramRuleService) Create(ctx context.Context, req *domain.CreateProgramRuleRequest) (*domain.ProgramRule, error) {
+func (s *ProgramRulesService) Create(req *domain.CreateProgramRuleRequest) (*domain.ProgramRule, error) {
 	rule := &domain.ProgramRule{
 		ID:             uuid.New(),
 		ProgramID:      req.ProgramID,
@@ -37,48 +29,38 @@ func (s *ProgramRuleService) Create(ctx context.Context, req *domain.CreateProgr
 		EffectiveTo:    req.EffectiveTo,
 	}
 
-	if err := s.programRuleRepo.Create(ctx, rule); err != nil {
-		return nil, err
-	}
-
-	// Log event
-	ruleIDStr := rule.ID.String()
-	event := &domain.EventLog{
-		EventType:   "program_rule_created",
-		ReferenceID: &ruleIDStr,
-		Details: map[string]interface{}{
-			"program_id":      rule.ProgramID,
-			"rule_name":       rule.RuleName,
-			"condition_type":  rule.ConditionType,
-			"condition_value": rule.ConditionValue,
-			"multiplier":      rule.Multiplier,
-			"points_awarded":  rule.PointsAwarded,
-			"effective_from":  rule.EffectiveFrom,
-			"effective_to":    rule.EffectiveTo,
-		},
-	}
-	if err := s.eventRepo.Create(event); err != nil {
+	if err := s.programRuleRepo.Create(context.Background(), rule); err != nil {
 		return nil, err
 	}
 
 	return rule, nil
 }
 
-func (s *ProgramRuleService) GetByID(ctx context.Context, id uuid.UUID) (*domain.ProgramRule, error) {
-	return s.programRuleRepo.GetByID(ctx, id)
-}
-
-func (s *ProgramRuleService) GetByProgramID(ctx context.Context, programID uuid.UUID) ([]*domain.ProgramRule, error) {
-	return s.programRuleRepo.GetByProgramID(ctx, programID)
-}
-
-func (s *ProgramRuleService) Update(ctx context.Context, id uuid.UUID, req *domain.UpdateProgramRuleRequest) (*domain.ProgramRule, error) {
-	rule, err := s.programRuleRepo.GetByID(ctx, id)
+func (s *ProgramRulesService) GetByID(id string) (*domain.ProgramRule, error) {
+	ruleID, err := uuid.Parse(id)
 	if err != nil {
 		return nil, err
 	}
-	if rule == nil {
-		return nil, errors.New("resources not found")
+	return s.programRuleRepo.GetByID(context.Background(), ruleID)
+}
+
+func (s *ProgramRulesService) GetByProgramID(programID string) ([]*domain.ProgramRule, error) {
+	pID, err := uuid.Parse(programID)
+	if err != nil {
+		return nil, err
+	}
+	return s.programRuleRepo.GetByProgramID(context.Background(), pID)
+}
+
+func (s *ProgramRulesService) Update(id string, req *domain.UpdateProgramRuleRequest) (*domain.ProgramRule, error) {
+	ruleID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+
+	rule, err := s.programRuleRepo.GetByID(context.Background(), ruleID)
+	if err != nil {
+		return nil, err
 	}
 
 	if req.RuleName != "" {
@@ -103,59 +85,25 @@ func (s *ProgramRuleService) Update(ctx context.Context, id uuid.UUID, req *doma
 		rule.EffectiveTo = req.EffectiveTo
 	}
 
-	if err := s.programRuleRepo.Update(ctx, rule); err != nil {
-		return nil, err
-	}
-
-	// Log event
-	ruleIDStr := rule.ID.String()
-	event := &domain.EventLog{
-		EventType:   "program_rule_updated",
-		ReferenceID: &ruleIDStr,
-		Details: map[string]interface{}{
-			"program_id":      rule.ProgramID,
-			"rule_name":       rule.RuleName,
-			"condition_type":  rule.ConditionType,
-			"condition_value": rule.ConditionValue,
-			"multiplier":      rule.Multiplier,
-			"points_awarded":  rule.PointsAwarded,
-			"effective_from":  rule.EffectiveFrom,
-			"effective_to":    rule.EffectiveTo,
-		},
-	}
-	if err := s.eventRepo.Create(event); err != nil {
+	if err := s.programRuleRepo.Update(context.Background(), rule); err != nil {
 		return nil, err
 	}
 
 	return rule, nil
 }
 
-func (s *ProgramRuleService) Delete(ctx context.Context, id uuid.UUID) error {
-	rule, err := s.programRuleRepo.GetByID(ctx, id)
+func (s *ProgramRulesService) Delete(id string) error {
+	ruleID, err := uuid.Parse(id)
 	if err != nil {
 		return err
 	}
-	if rule == nil {
-		return errors.New("resources not found")
-	}
-
-	if err := s.programRuleRepo.Delete(ctx, id); err != nil {
-		return err
-	}
-
-	// Log event
-	ruleIDStr := rule.ID.String()
-	event := &domain.EventLog{
-		EventType:   "program_rule_deleted",
-		ReferenceID: &ruleIDStr,
-		Details: map[string]interface{}{
-			"program_id": rule.ProgramID,
-			"rule_name":  rule.RuleName,
-		},
-	}
-	return s.eventRepo.Create(event)
+	return s.programRuleRepo.Delete(context.Background(), ruleID)
 }
 
-func (s *ProgramRuleService) GetActiveRules(ctx context.Context, programID uuid.UUID) ([]*domain.ProgramRule, error) {
-	return s.programRuleRepo.GetActiveRules(ctx, programID, time.Now())
+func (s *ProgramRulesService) GetActiveRules(programID string) ([]*domain.ProgramRule, error) {
+	pID, err := uuid.Parse(programID)
+	if err != nil {
+		return nil, err
+	}
+	return s.programRuleRepo.GetActiveRules(context.Background(), pID, time.Now())
 }

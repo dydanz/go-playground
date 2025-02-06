@@ -2,17 +2,17 @@ package handler
 
 import (
 	"go-playground/internal/domain"
-	"go-playground/internal/service"
+	"go-playground/internal/util"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 type RewardsHandler struct {
-	rewardsService *service.RewardsService
+	rewardsService domain.RewardsService
 }
 
-func NewRewardsHandler(rewardsService *service.RewardsService) *RewardsHandler {
+func NewRewardsHandler(rewardsService domain.RewardsService) *RewardsHandler {
 	return &RewardsHandler{rewardsService: rewardsService}
 }
 
@@ -28,14 +28,15 @@ func NewRewardsHandler(rewardsService *service.RewardsService) *RewardsHandler {
 // @Failure 400 {object} map[string]string
 // @Router /rewards [post]
 func (h *RewardsHandler) Create(c *gin.Context) {
-	var reward domain.Reward
-	if err := c.ShouldBindJSON(&reward); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var req domain.CreateRewardRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
-	if err := h.rewardsService.Create(&reward); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	reward, err := h.rewardsService.Create(&req)
+	if err != nil {
+		util.HandleError(c, err)
 		return
 	}
 
@@ -55,11 +56,20 @@ func (h *RewardsHandler) Create(c *gin.Context) {
 // @Router /rewards/{id} [get]
 func (h *RewardsHandler) GetByID(c *gin.Context) {
 	id := c.Param("id")
-	reward, err := h.rewardsService.GetByID(id)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid reward ID",
+		})
 		return
 	}
+
+	reward, err := h.rewardsService.GetByID(id)
+	if err != nil {
+		util.HandleError(c, err)
+		return
+	}
+
 	c.JSON(http.StatusOK, reward)
 }
 
@@ -74,12 +84,13 @@ func (h *RewardsHandler) GetByID(c *gin.Context) {
 // @Success 200 {array} domain.Reward
 // @Router /rewards [get]
 func (h *RewardsHandler) GetAll(c *gin.Context) {
-	activeOnly := c.DefaultQuery("active", "false") == "true"
-	rewards, err := h.rewardsService.GetAll(activeOnly)
+	activeOnly := c.DefaultQuery("active_only", "false")
+	rewards, err := h.rewardsService.GetAll(activeOnly == "true")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
+
 	c.JSON(http.StatusOK, rewards)
 }
 
@@ -97,17 +108,26 @@ func (h *RewardsHandler) GetAll(c *gin.Context) {
 // @Router /rewards/{id} [put]
 func (h *RewardsHandler) Update(c *gin.Context) {
 	id := c.Param("id")
-	var reward domain.Reward
-	if err := c.ShouldBindJSON(&reward); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid reward ID",
+		})
 		return
 	}
-	reward.ID = id
 
-	if err := h.rewardsService.Update(&reward); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	var req domain.UpdateRewardRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
+
+	reward, err := h.rewardsService.Update(id, &req)
+	if err != nil {
+		util.HandleError(c, err)
+		return
+	}
+
 	c.JSON(http.StatusOK, reward)
 }
 
@@ -124,9 +144,18 @@ func (h *RewardsHandler) Update(c *gin.Context) {
 // @Router /rewards/{id} [delete]
 func (h *RewardsHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
-	if err := h.rewardsService.Delete(id); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid reward ID",
+		})
 		return
 	}
+
+	if err := h.rewardsService.Delete(id); err != nil {
+		util.HandleError(c, err)
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Reward deleted successfully"})
 }

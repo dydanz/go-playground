@@ -49,3 +49,23 @@ type CreateProgramResponse struct {
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
 }
+
+type Program struct {
+	ID                string    `json:"id"`
+	MerchantID        string    `json:"merchant_id"`
+	ProgramName       string    `json:"program_name"`
+	PointCurrencyName string    `json:"point_currency_name"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+type CreateProgramRequest struct {
+	MerchantID        string `json:"merchant_id" binding:"required"`
+	ProgramName       string `json:"program_name" binding:"required"`
+	PointCurrencyName string `json:"point_currency_name" binding:"required"`
+}
+
+type UpdateProgramRequest struct {
+	ProgramName       string `json:"program_name,omitempty"`
+	PointCurrencyName string `json:"point_currency_name,omitempty"`
+}

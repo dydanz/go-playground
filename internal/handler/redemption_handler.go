@@ -3,6 +3,7 @@ package handler
 import (
 	"go-playground/internal/domain"
 	"go-playground/internal/service"
+	"go-playground/internal/util"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -28,14 +29,21 @@ func NewRedemptionHandler(redemptionService *service.RedemptionService) *Redempt
 // @Failure 400 {object} map[string]string
 // @Router /redemptions [post]
 func (h *RedemptionHandler) Create(c *gin.Context) {
-	var redemption domain.Redemption
-	if err := c.ShouldBindJSON(&redemption); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var req domain.CreateRedemptionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
-	if err := h.redemptionService.Create(c, &redemption); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	redemption := &domain.Redemption{
+		UserID:    req.UserID,
+		RewardID:  req.RewardID,
+		ProgramID: req.ProgramID,
+		Status:    "pending",
+	}
+
+	if err := h.redemptionService.Create(c.Request.Context(), redemption); err != nil {
+		util.HandleError(c, err)
 		return
 	}
 
@@ -55,11 +63,20 @@ func (h *RedemptionHandler) Create(c *gin.Context) {
 // @Router /redemptions/{id} [get]
 func (h *RedemptionHandler) GetByID(c *gin.Context) {
 	id := c.Param("id")
-	redemption, err := h.redemptionService.GetByID(id)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid redemption ID",
+		})
 		return
 	}
+
+	redemption, err := h.redemptionService.GetByID(id)
+	if err != nil {
+		util.HandleError(c, err)
+		return
+	}
+
 	c.JSON(http.StatusOK, redemption)
 }
 
@@ -76,11 +93,20 @@ func (h *RedemptionHandler) GetByID(c *gin.Context) {
 // @Router /redemptions/user/{user_id} [get]
 func (h *RedemptionHandler) GetByUserID(c *gin.Context) {
 	userID := c.Param("user_id")
-	redemptions, err := h.redemptionService.GetByUserID(userID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	if userID == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "user_id",
+			Message: "invalid user ID",
+		})
 		return
 	}
+
+	redemptions, err := h.redemptionService.GetByUserID(userID)
+	if err != nil {
+		util.HandleError(c, err)
+		return
+	}
+
 	c.JSON(http.StatusOK, redemptions)
 }
 
@@ -98,16 +124,24 @@ func (h *RedemptionHandler) GetByUserID(c *gin.Context) {
 // @Router /redemptions/{id}/status [put]
 func (h *RedemptionHandler) UpdateStatus(c *gin.Context) {
 	id := c.Param("id")
-	var status string
-	if err := c.ShouldBindJSON(&status); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid redemption ID",
+		})
 		return
 	}
 
-	if err := h.redemptionService.UpdateStatus(c, id, status); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	var req domain.UpdateRedemptionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Status updated successfully"})
+	if err := h.redemptionService.UpdateStatus(c.Request.Context(), id, req.Status); err != nil {
+		util.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "status updated successfully"})
 }

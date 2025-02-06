@@ -1,21 +1,11 @@
 package postgres
 
 import (
-	"context"
 	"database/sql"
-	"time"
+	"go-playground/internal/domain"
 
 	"github.com/google/uuid"
 )
-
-type Program struct {
-	ProgramID         uuid.UUID
-	MerchantID        uuid.UUID
-	ProgramName       string
-	PointCurrencyName string
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-}
 
 type ProgramsRepository struct {
 	db *sql.DB
@@ -25,32 +15,47 @@ func NewProgramsRepository(db *sql.DB) *ProgramsRepository {
 	return &ProgramsRepository{db: db}
 }
 
-func (r *ProgramsRepository) Create(ctx context.Context, program *Program) error {
+func (r *ProgramsRepository) Create(program *domain.Program) error {
+	programID, err := uuid.Parse(program.ID)
+	if err != nil {
+		return err
+	}
+
+	merchantID, err := uuid.Parse(program.MerchantID)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		INSERT INTO programs (program_id, merchant_id, program_name, point_currency_name)
 		VALUES ($1, $2, $3, $4)
 		RETURNING created_at, updated_at`
 
-	return r.db.QueryRowContext(
-		ctx,
+	return r.db.QueryRow(
 		query,
-		program.ProgramID,
-		program.MerchantID,
+		programID,
+		merchantID,
 		program.ProgramName,
 		program.PointCurrencyName,
 	).Scan(&program.CreatedAt, &program.UpdatedAt)
 }
 
-func (r *ProgramsRepository) GetByID(ctx context.Context, programID uuid.UUID) (*Program, error) {
+func (r *ProgramsRepository) GetByID(id string) (*domain.Program, error) {
+	programID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT program_id, merchant_id, program_name, point_currency_name, created_at, updated_at
 		FROM programs
 		WHERE program_id = $1`
 
-	program := &Program{}
-	err := r.db.QueryRowContext(ctx, query, programID).Scan(
-		&program.ProgramID,
-		&program.MerchantID,
+	var program domain.Program
+	var pID, mID uuid.UUID
+	err = r.db.QueryRow(query, programID).Scan(
+		&pID,
+		&mID,
 		&program.ProgramName,
 		&program.PointCurrencyName,
 		&program.CreatedAt,
@@ -62,27 +67,29 @@ func (r *ProgramsRepository) GetByID(ctx context.Context, programID uuid.UUID) (
 		}
 		return nil, err
 	}
-	return program, nil
+	program.ID = pID.String()
+	program.MerchantID = mID.String()
+	return &program, nil
 }
 
-func (r *ProgramsRepository) GetByMerchantID(ctx context.Context, merchantID uuid.UUID) ([]*Program, error) {
+func (r *ProgramsRepository) GetAll() ([]*domain.Program, error) {
 	query := `
 		SELECT program_id, merchant_id, program_name, point_currency_name, created_at, updated_at
-		FROM programs
-		WHERE merchant_id = $1`
+		FROM programs`
 
-	rows, err := r.db.QueryContext(ctx, query, merchantID)
+	rows, err := r.db.Query(query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var programs []*Program
+	var programs []*domain.Program
 	for rows.Next() {
-		program := &Program{}
+		var program domain.Program
+		var pID, mID uuid.UUID
 		err := rows.Scan(
-			&program.ProgramID,
-			&program.MerchantID,
+			&pID,
+			&mID,
 			&program.ProgramName,
 			&program.PointCurrencyName,
 			&program.CreatedAt,
@@ -91,30 +98,41 @@ func (r *ProgramsRepository) GetByMerchantID(ctx context.Context, merchantID uui
 		if err != nil {
 			return nil, err
 		}
-		programs = append(programs, program)
+		program.ID = pID.String()
+		program.MerchantID = mID.String()
+		programs = append(programs, &program)
 	}
 	return programs, nil
 }
 
-func (r *ProgramsRepository) Update(ctx context.Context, program *Program) error {
+func (r *ProgramsRepository) Update(program *domain.Program) error {
+	programID, err := uuid.Parse(program.ID)
+	if err != nil {
+		return err
+	}
+
 	query := `
 		UPDATE programs
 		SET program_name = $1, point_currency_name = $2
 		WHERE program_id = $3
 		RETURNING updated_at`
 
-	return r.db.QueryRowContext(
-		ctx,
+	return r.db.QueryRow(
 		query,
 		program.ProgramName,
 		program.PointCurrencyName,
-		program.ProgramID,
+		programID,
 	).Scan(&program.UpdatedAt)
 }
 
-func (r *ProgramsRepository) Delete(ctx context.Context, programID uuid.UUID) error {
+func (r *ProgramsRepository) Delete(id string) error {
+	programID, err := uuid.Parse(id)
+	if err != nil {
+		return err
+	}
+
 	query := `DELETE FROM programs WHERE program_id = $1`
-	result, err := r.db.ExecContext(ctx, query, programID)
+	result, err := r.db.Exec(query, programID)
 	if err != nil {
 		return err
 	}
@@ -127,4 +145,43 @@ func (r *ProgramsRepository) Delete(ctx context.Context, programID uuid.UUID) er
 		return sql.ErrNoRows
 	}
 	return nil
+}
+
+func (r *ProgramsRepository) GetByMerchantID(merchantID string) ([]*domain.Program, error) {
+	mID, err := uuid.Parse(merchantID)
+	if err != nil {
+		return nil, err
+	}
+
+	query := `
+		SELECT program_id, merchant_id, program_name, point_currency_name, created_at, updated_at
+		FROM programs
+		WHERE merchant_id = $1`
+
+	rows, err := r.db.Query(query, mID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var programs []*domain.Program
+	for rows.Next() {
+		var program domain.Program
+		var pID, mID uuid.UUID
+		err := rows.Scan(
+			&pID,
+			&mID,
+			&program.ProgramName,
+			&program.PointCurrencyName,
+			&program.CreatedAt,
+			&program.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		program.ID = pID.String()
+		program.MerchantID = mID.String()
+		programs = append(programs, &program)
+	}
+	return programs, nil
 }

@@ -2,18 +2,17 @@ package handler
 
 import (
 	"go-playground/internal/domain"
-	"go-playground/internal/service"
+	"go-playground/internal/util"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type TransactionHandler struct {
-	transactionService *service.TransactionService
+	transactionService domain.TransactionService
 }
 
-func NewTransactionHandler(transactionService *service.TransactionService) *TransactionHandler {
+func NewTransactionHandler(transactionService domain.TransactionService) *TransactionHandler {
 	return &TransactionHandler{transactionService: transactionService}
 }
 
@@ -32,17 +31,17 @@ func NewTransactionHandler(transactionService *service.TransactionService) *Tran
 func (h *TransactionHandler) Create(c *gin.Context) {
 	var req domain.CreateTransactionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
-	tx, err := h.transactionService.Create(c.Request.Context(), &req)
+	transaction, err := h.transactionService.Create(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, tx)
+	c.JSON(http.StatusCreated, transaction)
 }
 
 // GetTransaction godoc
@@ -59,23 +58,22 @@ func (h *TransactionHandler) Create(c *gin.Context) {
 // @Failure 404 {object} map[string]string
 // @Router /transactions/{id} [get]
 func (h *TransactionHandler) GetByID(c *gin.Context) {
-	transactionID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid transaction ID"})
+	id := c.Param("id")
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid transaction ID",
+		})
 		return
 	}
 
-	tx, err := h.transactionService.GetByID(c.Request.Context(), transactionID)
+	transaction, err := h.transactionService.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	if tx == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "transaction not found"})
+		util.HandleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, tx)
+	c.JSON(http.StatusOK, transaction)
 }
 
 // GetCustomerTransactions godoc
@@ -92,15 +90,18 @@ func (h *TransactionHandler) GetByID(c *gin.Context) {
 // @Failure 404 {object} map[string]string
 // @Router /transactions/customer/{customer_id} [get]
 func (h *TransactionHandler) GetByCustomerID(c *gin.Context) {
-	customerID, err := uuid.Parse(c.Param("customer_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid customer ID"})
+	customerID := c.Param("customer_id")
+	if customerID == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "customer_id",
+			Message: "invalid customer ID",
+		})
 		return
 	}
 
-	transactions, err := h.transactionService.GetByCustomerID(c.Request.Context(), customerID)
+	transactions, err := h.transactionService.GetByCustomerID(customerID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -121,17 +122,44 @@ func (h *TransactionHandler) GetByCustomerID(c *gin.Context) {
 // @Failure 404 {object} map[string]string
 // @Router /transactions/merchant/{merchant_id} [get]
 func (h *TransactionHandler) GetByMerchantID(c *gin.Context) {
-	merchantID, err := uuid.Parse(c.Param("merchant_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid merchant ID"})
+	merchantID := c.Param("merchant_id")
+	if merchantID == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "merchant_id",
+			Message: "invalid merchant ID",
+		})
 		return
 	}
 
-	transactions, err := h.transactionService.GetByMerchantID(c.Request.Context(), merchantID)
+	transactions, err := h.transactionService.GetByMerchantID(merchantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, transactions)
+}
+
+func (h *TransactionHandler) UpdateStatus(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid transaction ID",
+		})
+		return
+	}
+
+	var req domain.UpdateTransactionStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
+		return
+	}
+
+	if err := h.transactionService.UpdateStatus(id, req.Status); err != nil {
+		util.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Transaction status updated successfully"})
 }

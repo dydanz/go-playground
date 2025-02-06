@@ -1,18 +1,18 @@
 package handler
 
 import (
-	"go-playground/internal/service"
+	"go-playground/internal/domain"
+	"go-playground/internal/util"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type PointsHandler struct {
-	pointsService *service.PointsService
+	pointsService domain.PointsService
 }
 
-func NewPointsHandler(pointsService *service.PointsService) *PointsHandler {
+func NewPointsHandler(pointsService domain.PointsService) *PointsHandler {
 	return &PointsHandler{pointsService: pointsService}
 }
 
@@ -31,21 +31,19 @@ func NewPointsHandler(pointsService *service.PointsService) *PointsHandler {
 // @Failure 500 {object} map[string]string
 // @Router /points/{customer_id}/{program_id}/ledger [get]
 func (h *PointsHandler) GetLedger(c *gin.Context) {
-	customerID, err := uuid.Parse(c.Param("customer_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid customer ID"})
+	customerID := c.Param("customer_id")
+	programID := c.Param("program_id")
+
+	if customerID == "" || programID == "" {
+		util.HandleError(c, domain.ValidationError{
+			Message: "customer_id and program_id are required",
+		})
 		return
 	}
 
-	programID, err := uuid.Parse(c.Param("program_id"))
+	ledger, err := h.pointsService.GetLedger(customerID, programID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid program ID"})
-		return
-	}
-
-	ledger, err := h.pointsService.GetLedger(c.Request.Context(), customerID, programID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -67,25 +65,23 @@ func (h *PointsHandler) GetLedger(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /points/{customer_id}/{program_id}/balance [get]
 func (h *PointsHandler) GetBalance(c *gin.Context) {
-	customerID, err := uuid.Parse(c.Param("customer_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid customer ID"})
+	customerID := c.Param("customer_id")
+	programID := c.Param("program_id")
+
+	if customerID == "" || programID == "" {
+		util.HandleError(c, domain.ValidationError{
+			Message: "customer_id and program_id are required",
+		})
 		return
 	}
 
-	programID, err := uuid.Parse(c.Param("program_id"))
+	balance, err := h.pointsService.GetBalance(customerID, programID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid program ID"})
+		util.HandleError(c, err)
 		return
 	}
 
-	balance, err := h.pointsService.GetBalance(c.Request.Context(), customerID, programID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"balance": balance})
+	c.JSON(http.StatusOK, balance)
 }
 
 // EarnPoints godoc
@@ -104,40 +100,32 @@ func (h *PointsHandler) GetBalance(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /points/{customer_id}/{program_id}/earn [post]
 func (h *PointsHandler) EarnPoints(c *gin.Context) {
-	customerID, err := uuid.Parse(c.Param("customer_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid customer ID"})
+	customerID := c.Param("customer_id")
+	programID := c.Param("program_id")
+
+	if customerID == "" || programID == "" {
+		util.HandleError(c, domain.ValidationError{
+			Message: "customer_id and program_id are required",
+		})
 		return
 	}
 
-	programID, err := uuid.Parse(c.Param("program_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid program ID"})
-		return
-	}
-
-	var req EarnPointsRequest
+	var req domain.EarnPointsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
-	var transactionID *uuid.UUID
-	if req.TransactionID != "" {
-		id, err := uuid.Parse(req.TransactionID)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid transaction ID"})
-			return
-		}
-		transactionID = &id
-	}
+	req.CustomerID = customerID
+	req.ProgramID = programID
 
-	if err := h.pointsService.EarnPoints(c.Request.Context(), customerID, programID, req.Points, transactionID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	result, err := h.pointsService.EarnPoints(&req)
+	if err != nil {
+		util.HandleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Points earned successfully"})
+	c.JSON(http.StatusOK, result)
 }
 
 // RedeemPoints godoc
@@ -156,48 +144,30 @@ func (h *PointsHandler) EarnPoints(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /points/{customer_id}/{program_id}/redeem [post]
 func (h *PointsHandler) RedeemPoints(c *gin.Context) {
-	customerID, err := uuid.Parse(c.Param("customer_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid customer ID"})
+	customerID := c.Param("customer_id")
+	programID := c.Param("program_id")
+
+	if customerID == "" || programID == "" {
+		util.HandleError(c, domain.ValidationError{
+			Message: "customer_id and program_id are required",
+		})
 		return
 	}
 
-	programID, err := uuid.Parse(c.Param("program_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid program ID"})
-		return
-	}
-
-	var req RedeemPointsRequest
+	var req domain.RedeemPointsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
-	var transactionID *uuid.UUID
-	if req.TransactionID != "" {
-		id, err := uuid.Parse(req.TransactionID)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid transaction ID"})
-			return
-		}
-		transactionID = &id
-	}
+	req.CustomerID = customerID
+	req.ProgramID = programID
 
-	if err := h.pointsService.RedeemPoints(c.Request.Context(), customerID, programID, req.Points, transactionID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	result, err := h.pointsService.RedeemPoints(&req)
+	if err != nil {
+		util.HandleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Points redeemed successfully"})
-}
-
-type EarnPointsRequest struct {
-	Points        int    `json:"points" binding:"required,gt=0"`
-	TransactionID string `json:"transaction_id,omitempty"`
-}
-
-type RedeemPointsRequest struct {
-	Points        int    `json:"points" binding:"required,gt=0"`
-	TransactionID string `json:"transaction_id,omitempty"`
+	c.JSON(http.StatusOK, result)
 }

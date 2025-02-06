@@ -29,7 +29,7 @@ type Handlers struct {
 	InternalLoadTestHandler *handler.InternalLoadTestHandler
 	MerchantHandler         *handler.MerchantHandler
 	ProgramHandler          *handler.ProgramHandler
-	ProgramRuleHandler      *handler.ProgramRuleHandler
+	ProgramRulesHandler     *handler.ProgramRulesHandler
 }
 
 // InitializeHandlers initializes all handlers
@@ -45,7 +45,7 @@ func InitializeHandlers(services *Services, db *sql.DB, dbReplication *sql.DB, r
 		InternalLoadTestHandler: handler.NewInternalLoadTestHandler(services.AuthService),
 		MerchantHandler:         handler.NewMerchantHandler(services.MerchantService),
 		ProgramHandler:          handler.NewProgramHandler(services.ProgramService),
-		ProgramRuleHandler:      handler.NewProgramRuleHandler(services.ProgramRuleService),
+		ProgramRulesHandler:     handler.NewProgramRulesHandler(services.ProgramRuleService),
 	}
 }
 
@@ -162,10 +162,10 @@ func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo red
 
 		programRules := api.Group("/program-rules")
 		{
-			programRules.POST("", h.ProgramRuleHandler.Create)
-			programRules.GET("/:id", h.ProgramRuleHandler.GetByID)
-			programRules.GET("/program/:program_id", h.ProgramRuleHandler.GetByProgramID)
-			programRules.PUT("/:id", h.ProgramRuleHandler.Update)
+			programRules.POST("", h.ProgramRulesHandler.Create)
+			programRules.GET("/:id", h.ProgramRulesHandler.GetByID)
+			programRules.GET("/program/:program_id", h.ProgramRulesHandler.GetByProgramID)
+			programRules.PUT("/:id", h.ProgramRulesHandler.Update)
 		}
 	}
 

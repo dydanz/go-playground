@@ -41,7 +41,7 @@ func (s *AuthService) Register(req *domain.RegistrationRequest) (*domain.User, e
 	if existingUser != nil {
 		return nil, domain.ResourceConflictError{
 			Resource: "user",
-			Message:  "Email already exists",
+			Message:  "email already exists",
 		}
 	}
 
@@ -137,25 +137,26 @@ func (s *AuthService) Login(req *domain.LoginRequest) (*domain.AuthToken, error)
 	// Check login attempts
 	attempt, err := s.authRepo.UpdateLoginAttempts(req.Email, true)
 	if err != nil {
-		return nil, fmt.Errorf("error checking login attempts: %v", err)
+		return nil, domain.AuthenticationError{
+			Message: fmt.Sprintf("error checking login attempts: %v", err),
+		}
 	}
 
 	if attempt.LockedUntil.After(time.Now()) {
 		return nil, domain.AuthenticationError{
-			Message: fmt.Sprintf("Account temporarily locked. Try again after %v", attempt.LockedUntil),
+			Message: fmt.Sprintf("account temporarily locked. Try again after %v", attempt.LockedUntil),
 		}
 	}
 
 	user, err := s.userRepo.GetByEmail(req.Email)
 	if err != nil {
-		return nil, domain.ResourceNotFoundError{
-			Resource: "user",
-			Message:  "Error finding user",
+		return nil, domain.AuthenticationError{
+			Message: "invalid credentials",
 		}
 	}
 	if user == nil {
 		return nil, domain.AuthenticationError{
-			Message: "Invalid credentials",
+			Message: "invalid credentials",
 		}
 	}
 
@@ -167,19 +168,23 @@ func (s *AuthService) Login(req *domain.LoginRequest) (*domain.AuthToken, error)
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		return nil, domain.AuthenticationError{
-			Message: "Invalid credentials",
+			Message: "invalid credentials",
 		}
 	}
 
 	// Reset login attempts on successful login
 	if _, err := s.authRepo.UpdateLoginAttempts(req.Email, false); err != nil {
-		return nil, fmt.Errorf("error resetting login attempts: %v", err)
+		return nil, domain.AuthenticationError{
+			Message: fmt.Sprintf("error resetting login attempts: %v", err),
+		}
 	}
 
 	// Generate token
 	tokenBytes := make([]byte, 32)
 	if _, err := rand.Read(tokenBytes); err != nil {
-		return nil, fmt.Errorf("error generating token: %v", err)
+		return nil, domain.AuthenticationError{
+			Message: fmt.Sprintf("error generating token: %v", err),
+		}
 	}
 	token := hex.EncodeToString(tokenBytes)
 
@@ -191,12 +196,16 @@ func (s *AuthService) Login(req *domain.LoginRequest) (*domain.AuthToken, error)
 	}
 
 	if err := s.authRepo.CreateToken(authToken); err != nil {
-		return nil, fmt.Errorf("error creating auth token: %v", err)
+		return nil, domain.AuthenticationError{
+			Message: fmt.Sprintf("error creating auth token: %v", err),
+		}
 	}
 
 	// Store session data
 	if err := s.sessionRepo.StoreSession(context.Background(), user.ID, token, authToken.ExpiresAt); err != nil {
-		return nil, fmt.Errorf("error storing session: %v", err)
+		return nil, domain.AuthenticationError{
+			Message: fmt.Sprintf("error storing session: %v", err),
+		}
 	}
 
 	return authToken, nil

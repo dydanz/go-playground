@@ -2,7 +2,6 @@ package util
 
 import (
 	"go-playground/internal/domain"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,39 +15,17 @@ type ErrorResponse struct {
 
 // HandleError is a helper function to handle different types of errors and return appropriate HTTP status codes
 func HandleError(c *gin.Context, err error) {
-	log.Printf("Error occurred: %v", err)
-
-	switch {
-	case domain.IsValidationError(err):
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error: err.Error(),
-			Type:  "validation_error",
-		})
-	case domain.IsAuthenticationError(err):
-		c.JSON(http.StatusUnauthorized, ErrorResponse{
-			Error: err.Error(),
-			Type:  "authentication_error",
-		})
-	case domain.IsResourceNotFoundError(err):
-		c.JSON(http.StatusNotFound, ErrorResponse{
-			Error: err.Error(),
-			Type:  "not_found_error",
-		})
-	case domain.IsResourceConflictError(err):
-		c.JSON(http.StatusConflict, ErrorResponse{
-			Error: err.Error(),
-			Type:  "conflict_error",
-		})
-	case domain.IsInvalidInputError(err):
-		c.JSON(http.StatusBadRequest, ErrorResponse{
-			Error: err.Error(),
-			Type:  "invalid_input_error",
-		})
+	switch e := err.(type) {
+	case domain.ValidationError:
+		c.JSON(http.StatusBadRequest, gin.H{"error": e.Message})
+	case domain.ResourceNotFoundError:
+		c.JSON(http.StatusNotFound, gin.H{"error": e.Message})
+	case domain.ResourceConflictError:
+		c.JSON(http.StatusConflict, gin.H{"error": e.Message})
+	case domain.AuthenticationError:
+		c.JSON(http.StatusUnauthorized, gin.H{"error": e.Message})
 	default:
-		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Error: "An internal server error occurred",
-			Type:  "internal_server_error",
-		})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 }
 

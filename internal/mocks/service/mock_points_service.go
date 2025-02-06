@@ -20,9 +20,12 @@ func (m *MockPointsService) GetLedger(ctx context.Context, customerID, programID
 	return args.Get(0).([]*domain.PointsLedger), args.Error(1)
 }
 
-func (m *MockPointsService) GetBalance(ctx context.Context, customerID, programID uuid.UUID) (int, error) {
-	args := m.Called(ctx, customerID, programID)
-	return args.Get(0).(int), args.Error(1)
+func (m *MockPointsService) GetBalance(customerID, programID string) (*domain.PointsBalance, error) {
+	args := m.Called(customerID, programID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.PointsBalance), args.Error(1)
 }
 
 func (m *MockPointsService) EarnPoints(ctx context.Context, customerID, programID uuid.UUID, points int, transactionID *uuid.UUID) error {

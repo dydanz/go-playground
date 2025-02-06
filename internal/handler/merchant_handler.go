@@ -1,19 +1,18 @@
 package handler
 
 import (
-	"database/sql"
 	"go-playground/internal/domain"
-	"go-playground/internal/service"
+	"go-playground/internal/util"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 type MerchantHandler struct {
-	merchantService *service.MerchantService
+	merchantService domain.MerchantService
 }
 
-func NewMerchantHandler(merchantService *service.MerchantService) *MerchantHandler {
+func NewMerchantHandler(merchantService domain.MerchantService) *MerchantHandler {
 	return &MerchantHandler{merchantService: merchantService}
 }
 
@@ -29,13 +28,13 @@ func NewMerchantHandler(merchantService *service.MerchantService) *MerchantHandl
 func (h *MerchantHandler) Create(c *gin.Context) {
 	var req domain.CreateMerchantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
 	merchant, err := h.merchantService.Create(&req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -52,13 +51,17 @@ func (h *MerchantHandler) Create(c *gin.Context) {
 // @Router /merchants/{id} [get]
 func (h *MerchantHandler) GetByID(c *gin.Context) {
 	id := c.Param("id")
-	merchant, err := h.merchantService.GetByID(id)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid merchant ID",
+		})
 		return
 	}
-	if merchant == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "merchant not found"})
+
+	merchant, err := h.merchantService.GetByID(id)
+	if err != nil {
+		util.HandleError(c, err)
 		return
 	}
 
@@ -74,7 +77,7 @@ func (h *MerchantHandler) GetByID(c *gin.Context) {
 func (h *MerchantHandler) GetAll(c *gin.Context) {
 	merchants, err := h.merchantService.GetAll()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -93,19 +96,23 @@ func (h *MerchantHandler) GetAll(c *gin.Context) {
 // @Router /merchants/{id} [put]
 func (h *MerchantHandler) Update(c *gin.Context) {
 	id := c.Param("id")
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid merchant ID",
+		})
+		return
+	}
+
 	var req domain.UpdateMerchantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
 	merchant, err := h.merchantService.Update(id, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	if merchant == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "merchant not found"})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -122,14 +129,18 @@ func (h *MerchantHandler) Update(c *gin.Context) {
 // @Router /merchants/{id} [delete]
 func (h *MerchantHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
-	err := h.merchantService.Delete(id)
-	if err == nil {
-		c.Status(http.StatusNoContent)
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid merchant ID",
+		})
 		return
 	}
-	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "merchant not found"})
+
+	if err := h.merchantService.Delete(id); err != nil {
+		util.HandleError(c, err)
 		return
 	}
-	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+
+	c.JSON(http.StatusOK, gin.H{"message": "Merchant deleted successfully"})
 }
