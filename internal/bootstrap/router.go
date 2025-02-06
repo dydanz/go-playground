@@ -18,33 +18,33 @@ import (
 
 // Handlers holds all handler instances
 type Handlers struct {
-	UserHandler        *handler.UserHandler
-	AuthHandler        *handler.AuthHandler
-	PointsHandler      *handler.PointsHandler
-	TransactionHandler *handler.TransactionHandler
-	RewardsHandler     *handler.RewardsHandler
-	RedemptionHandler  *handler.RedemptionHandler
-	PingHandler        *handler.PingHandler
-	TestHandler        *handler.TestHandler
-	MerchantHandler    *handler.MerchantHandler
-	ProgramHandler     *handler.ProgramHandler
-	ProgramRuleHandler *handler.ProgramRuleHandler
+	UserHandler             *handler.UserHandler
+	AuthHandler             *handler.AuthHandler
+	PointsHandler           *handler.PointsHandler
+	TransactionHandler      *handler.TransactionHandler
+	RewardsHandler          *handler.RewardsHandler
+	RedemptionHandler       *handler.RedemptionHandler
+	PingHandler             *handler.PingHandler
+	InternalLoadTestHandler *handler.InternalLoadTestHandler
+	MerchantHandler         *handler.MerchantHandler
+	ProgramHandler          *handler.ProgramHandler
+	ProgramRuleHandler      *handler.ProgramRuleHandler
 }
 
 // InitializeHandlers initializes all handlers
 func InitializeHandlers(services *Services, db *sql.DB, dbReplication *sql.DB, rdb *redislib.Client) *Handlers {
 	return &Handlers{
-		UserHandler:        handler.NewUserHandler(services.UserService),
-		AuthHandler:        handler.NewAuthHandler(services.AuthService),
-		PointsHandler:      handler.NewPointsHandler(services.PointsService),
-		TransactionHandler: handler.NewTransactionHandler(services.TransactionService),
-		RewardsHandler:     handler.NewRewardsHandler(services.RewardsService),
-		RedemptionHandler:  handler.NewRedemptionHandler(services.RedemptionService),
-		PingHandler:        handler.NewPingHandler(db, dbReplication, rdb),
-		TestHandler:        handler.NewTestHandler(services.AuthService),
-		MerchantHandler:    handler.NewMerchantHandler(services.MerchantService),
-		ProgramHandler:     handler.NewProgramHandler(services.ProgramService),
-		ProgramRuleHandler: handler.NewProgramRuleHandler(services.ProgramRuleService),
+		UserHandler:             handler.NewUserHandler(services.UserService),
+		AuthHandler:             handler.NewAuthHandler(services.AuthService),
+		PointsHandler:           handler.NewPointsHandler(services.PointsService),
+		TransactionHandler:      handler.NewTransactionHandler(services.TransactionService),
+		RewardsHandler:          handler.NewRewardsHandler(services.RewardsService),
+		RedemptionHandler:       handler.NewRedemptionHandler(services.RedemptionService),
+		PingHandler:             handler.NewPingHandler(db, dbReplication, rdb),
+		InternalLoadTestHandler: handler.NewTestHandler(services.AuthService),
+		MerchantHandler:         handler.NewMerchantHandler(services.MerchantService),
+		ProgramHandler:          handler.NewProgramHandler(services.ProgramService),
+		ProgramRuleHandler:      handler.NewProgramRuleHandler(services.ProgramRuleService),
 	}
 }
 
@@ -79,8 +79,8 @@ func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo red
 		auth.POST("/login", h.AuthHandler.Login)
 
 		// FOR LOAD TEST ONLY
-		auth.GET("/test/get-verification/code", h.TestHandler.GetVerificationCode)
-		auth.GET("/test/random-user", h.TestHandler.GetRandomVerifiedUser)
+		auth.GET("/test/get-verification/code", h.InternalLoadTestHandler.GetVerificationCode)
+		auth.GET("/test/random-user", h.InternalLoadTestHandler.GetRandomVerifiedUser)
 	}
 
 	// Protected routes with auth middleware

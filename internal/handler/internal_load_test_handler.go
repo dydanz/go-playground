@@ -7,17 +7,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type TestHandler struct {
+type InternalLoadTestHandler struct {
 	authService domain.AuthService
 }
 
-func NewTestHandler(authService domain.AuthService) *TestHandler {
-	return &TestHandler{authService: authService}
+func NewTestHandler(authService domain.AuthService) *InternalLoadTestHandler {
+	return &InternalLoadTestHandler{authService: authService}
 }
 
 // @Summary Get verification code for testing
 // @Description Get OTP verification code by email (for testing purposes only)
-// @Tags test
+// @Tags internal-load-testing
 // @Accept json
 // @Produce json
 // @Param email query string true "Email address"
@@ -25,7 +25,7 @@ func NewTestHandler(authService domain.AuthService) *TestHandler {
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /auth/test/get-verification/code [get]
-func (h *TestHandler) GetVerificationCode(c *gin.Context) {
+func (h *InternalLoadTestHandler) GetVerificationCode(c *gin.Context) {
 	email := c.Query("email")
 	if email == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "email is required"})
@@ -57,14 +57,14 @@ func (h *TestHandler) GetVerificationCode(c *gin.Context) {
 
 // @Summary Get random verified user
 // @Description Get a random verified user's credentials (for testing purposes only)
-// @Tags test
+// @Tags internal-load-testing
 // @Accept json
 // @Produce json
 // @Success 200 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /auth/test/random-user [get]
-func (h *TestHandler) GetRandomVerifiedUser(c *gin.Context) {
+func (h *InternalLoadTestHandler) GetRandomVerifiedUser(c *gin.Context) {
 	user, err := h.authService.GetRandomActiveUser()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
