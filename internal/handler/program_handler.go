@@ -1,18 +1,18 @@
 package handler
 
 import (
-	"go-playground/internal/service"
+	"go-playground/internal/domain"
+	"go-playground/internal/util"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 type ProgramHandler struct {
-	programService *service.ProgramService
+	programService domain.ProgramService
 }
 
-func NewProgramHandler(programService *service.ProgramService) *ProgramHandler {
+func NewProgramHandler(programService domain.ProgramService) *ProgramHandler {
 	return &ProgramHandler{programService: programService}
 }
 
@@ -30,21 +30,15 @@ func NewProgramHandler(programService *service.ProgramService) *ProgramHandler {
 // @Failure 500 {object} map[string]string
 // @Router /programs [post]
 func (h *ProgramHandler) Create(c *gin.Context) {
-	var req CreateProgramRequest
+	var req domain.CreateProgramRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
-	merchantID, err := uuid.Parse(req.MerchantID)
+	program, err := h.programService.Create(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid merchant ID"})
-		return
-	}
-
-	program, err := h.programService.CreateProgram(c.Request.Context(), merchantID, req.ProgramName, req.PointCurrencyName)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -66,19 +60,18 @@ func (h *ProgramHandler) Create(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /programs/{id} [get]
 func (h *ProgramHandler) GetByID(c *gin.Context) {
-	programID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid program ID"})
+	id := c.Param("id")
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid program ID",
+		})
 		return
 	}
 
-	program, err := h.programService.GetProgram(c.Request.Context(), programID)
+	program, err := h.programService.GetByID(id)
 	if err != nil {
-		if err == service.ErrProgramNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "program not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -99,15 +92,18 @@ func (h *ProgramHandler) GetByID(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /programs/merchant/{merchant_id} [get]
 func (h *ProgramHandler) GetByMerchantID(c *gin.Context) {
-	merchantID, err := uuid.Parse(c.Param("merchant_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid merchant ID"})
+	merchantID := c.Param("merchant_id")
+	if merchantID == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "merchant_id",
+			Message: "invalid merchant ID",
+		})
 		return
 	}
 
-	programs, err := h.programService.GetMerchantPrograms(c.Request.Context(), merchantID)
+	programs, err := h.programService.GetByMerchantID(merchantID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -130,25 +126,24 @@ func (h *ProgramHandler) GetByMerchantID(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /programs/{id} [put]
 func (h *ProgramHandler) Update(c *gin.Context) {
-	programID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid program ID"})
+	id := c.Param("id")
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid program ID",
+		})
 		return
 	}
 
-	var req UpdateProgramRequest
+	var req domain.UpdateProgramRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
-	program, err := h.programService.UpdateProgram(c.Request.Context(), programID, req.ProgramName, req.PointCurrencyName)
+	program, err := h.programService.Update(id, &req)
 	if err != nil {
-		if err == service.ErrProgramNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "program not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -170,23 +165,21 @@ func (h *ProgramHandler) Update(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /programs/{id} [delete]
 func (h *ProgramHandler) Delete(c *gin.Context) {
-	programID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid program ID"})
+	id := c.Param("id")
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid program ID",
+		})
 		return
 	}
 
-	err = h.programService.DeleteProgram(c.Request.Context(), programID)
-	if err != nil {
-		if err == service.ErrProgramNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "program not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err := h.programService.Delete(id); err != nil {
+		util.HandleError(c, err)
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusOK, gin.H{"message": "Program deleted successfully"})
 }
 
 type CreateProgramRequest struct {

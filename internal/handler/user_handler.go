@@ -3,6 +3,7 @@ package handler
 import (
 	"go-playground/internal/domain"
 	"go-playground/internal/service"
+	"go-playground/internal/util"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -36,13 +37,13 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 func (h *UserHandler) Create(c *gin.Context) {
 	var req domain.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
 	user, err := h.userService.Create(&req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -63,13 +64,16 @@ func (h *UserHandler) Create(c *gin.Context) {
 func (h *UserHandler) GetByID(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid user ID",
+		})
 		return
 	}
 
 	user, err := h.userService.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -89,7 +93,7 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 func (h *UserHandler) GetAll(c *gin.Context) {
 	users, err := h.userService.GetAll()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, users)
@@ -110,15 +114,23 @@ func (h *UserHandler) GetAll(c *gin.Context) {
 // @Router       /users/{id} [put]
 func (h *UserHandler) Update(c *gin.Context) {
 	id := c.Param("id")
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid user ID",
+		})
+		return
+	}
+
 	var req domain.UpdateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
 	user, err := h.userService.Update(id, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -137,8 +149,16 @@ func (h *UserHandler) Update(c *gin.Context) {
 // @Router       /users/{id} [delete]
 func (h *UserHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid user ID",
+		})
+		return
+	}
+
 	if err := h.userService.Delete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -158,13 +178,13 @@ func (h *UserHandler) Delete(c *gin.Context) {
 func (h *UserHandler) GetMe(c *gin.Context) {
 	userID := c.GetString("user_id")
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		util.HandleError(c, domain.AuthenticationError{Message: "unauthorized"})
 		return
 	}
 
 	user, err := h.userService.GetByID(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 

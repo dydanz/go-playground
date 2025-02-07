@@ -2,11 +2,10 @@ package handler
 
 import (
 	"go-playground/internal/domain"
-	"log"
+	"go-playground/internal/middleware"
+	"go-playground/internal/util"
 	"net/http"
 	"strings"
-
-	"go-playground/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -32,13 +31,13 @@ func NewAuthHandler(authService domain.AuthService) *AuthHandler {
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req domain.RegistrationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
 	user, err := h.authService.Register(&req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -54,16 +53,16 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /auth/verify [post]
+// @Router /auth/verify [post ]
 func (h *AuthHandler) Verify(c *gin.Context) {
 	var req domain.VerificationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
 	if err := h.authService.VerifyRegistration(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -82,15 +81,13 @@ func (h *AuthHandler) Verify(c *gin.Context) {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req domain.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("Login bind error: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
 	authToken, err := h.authService.Login(&req)
 	if err != nil {
-		log.Printf("Login error: %v", err)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -120,9 +117,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Router /api/auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
 	userID, exists := c.Get("user_id")
-	log.Printf("User ID: %v", userID)
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User unauthorized"})
+		util.HandleError(c, domain.AuthenticationError{Message: "User unauthorized"})
 		return
 	}
 
@@ -133,24 +129,21 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token Header unauthorized"})
-			c.Abort()
+			util.HandleError(c, domain.AuthenticationError{Message: "Token Header unauthorized"})
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
-			c.Abort()
+			util.HandleError(c, domain.AuthenticationError{Message: "Invalid authorization format"})
 			return
 		}
 
 		tokenHash = parts[1]
 	}
 
-	err = h.authService.Logout(userID.(string), tokenHash)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err := h.authService.Logout(userID.(string), tokenHash); err != nil {
+		util.HandleError(c, err)
 		return
 	}
 

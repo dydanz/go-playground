@@ -1,21 +1,19 @@
 package handler
 
 import (
-	"errors"
 	"go-playground/internal/domain"
-	"go-playground/internal/service"
+	"go-playground/internal/util"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
-type ProgramRuleHandler struct {
-	programRuleService *service.ProgramRuleService
+type ProgramRulesHandler struct {
+	programRulesService domain.ProgramRulesService
 }
 
-func NewProgramRuleHandler(programRuleService *service.ProgramRuleService) *ProgramRuleHandler {
-	return &ProgramRuleHandler{programRuleService: programRuleService}
+func NewProgramRulesHandler(programRulesService domain.ProgramRulesService) *ProgramRulesHandler {
+	return &ProgramRulesHandler{programRulesService: programRulesService}
 }
 
 // CreateProgramRule godoc
@@ -30,16 +28,16 @@ func NewProgramRuleHandler(programRuleService *service.ProgramRuleService) *Prog
 // @Success 201 {object} domain.ProgramRule
 // @Failure 400 {object} map[string]string
 // @Router /program-rules [post]
-func (h *ProgramRuleHandler) Create(c *gin.Context) {
+func (h *ProgramRulesHandler) Create(c *gin.Context) {
 	var req domain.CreateProgramRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
-	rule, err := h.programRuleService.Create(c.Request.Context(), &req)
+	rule, err := h.programRulesService.Create(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -59,20 +57,19 @@ func (h *ProgramRuleHandler) Create(c *gin.Context) {
 // @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Router /program-rules/{id} [get]
-func (h *ProgramRuleHandler) GetByID(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid program rule ID"})
+func (h *ProgramRulesHandler) GetByID(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid rule ID",
+		})
 		return
 	}
 
-	rule, err := h.programRuleService.GetByID(c.Request.Context(), id)
+	rule, err := h.programRulesService.GetByID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	if rule == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "program rule not found"})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -91,16 +88,19 @@ func (h *ProgramRuleHandler) GetByID(c *gin.Context) {
 // @Success 200 {array} domain.ProgramRule
 // @Failure 400 {object} map[string]string
 // @Router /program-rules/program/{program_id} [get]
-func (h *ProgramRuleHandler) GetByProgramID(c *gin.Context) {
-	programID, err := uuid.Parse(c.Param("program_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid program ID"})
+func (h *ProgramRulesHandler) GetByProgramID(c *gin.Context) {
+	programID := c.Param("program_id")
+	if programID == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "program_id",
+			Message: "invalid program ID",
+		})
 		return
 	}
 
-	rules, err := h.programRuleService.GetByProgramID(c.Request.Context(), programID)
+	rules, err := h.programRulesService.GetByProgramID(programID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -121,26 +121,25 @@ func (h *ProgramRuleHandler) GetByProgramID(c *gin.Context) {
 // @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Router /program-rules/{id} [put]
-func (h *ProgramRuleHandler) Update(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid program rule ID"})
+func (h *ProgramRulesHandler) Update(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid rule ID",
+		})
 		return
 	}
 
 	var req domain.UpdateProgramRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
-	rule, err := h.programRuleService.Update(c.Request.Context(), id, &req)
+	rule, err := h.programRulesService.Update(id, &req)
 	if err != nil {
-		if err == errors.New("resource was not found") {
-			c.JSON(http.StatusNotFound, gin.H{"error": "program rule not found"})
-			return
-		}
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 
@@ -160,24 +159,22 @@ func (h *ProgramRuleHandler) Update(c *gin.Context) {
 // @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Router /program-rules/{id} [delete]
-func (h *ProgramRuleHandler) Delete(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid program rule ID"})
+func (h *ProgramRulesHandler) Delete(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "id",
+			Message: "invalid rule ID",
+		})
 		return
 	}
 
-	err = h.programRuleService.Delete(c.Request.Context(), id)
-	if err != nil {
-		if err == errors.New("resource was not found") {
-			c.JSON(http.StatusNotFound, gin.H{"error": "program rule not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err := h.programRulesService.Delete(id); err != nil {
+		util.HandleError(c, err)
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusOK, gin.H{"message": "Program rule deleted successfully"})
 }
 
 // GetActiveProgramRules godoc
@@ -192,16 +189,19 @@ func (h *ProgramRuleHandler) Delete(c *gin.Context) {
 // @Success 200 {array} domain.ProgramRule
 // @Failure 400 {object} map[string]string
 // @Router /program-rules/program/{program_id}/active [get]
-func (h *ProgramRuleHandler) GetActiveRules(c *gin.Context) {
-	programID, err := uuid.Parse(c.Param("program_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid program ID"})
+func (h *ProgramRulesHandler) GetActiveRules(c *gin.Context) {
+	programID := c.Param("program_id")
+	if programID == "" {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "program_id",
+			Message: "invalid program ID",
+		})
 		return
 	}
 
-	rules, err := h.programRuleService.GetActiveRules(c.Request.Context(), programID)
+	rules, err := h.programRulesService.GetActiveRules(programID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		util.HandleError(c, err)
 		return
 	}
 

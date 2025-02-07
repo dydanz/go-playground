@@ -14,7 +14,7 @@ type Services struct {
 	RedemptionService  *service.RedemptionService
 	MerchantService    *service.MerchantService
 	ProgramService     *service.ProgramService
-	ProgramRuleService *service.ProgramRuleService
+	ProgramRuleService *service.ProgramRulesService
 }
 
 // InitializeServices initializes all services
@@ -28,7 +28,7 @@ func InitializeServices(repos *Repositories) *Services {
 		RedemptionService:  service.NewRedemptionService(repos.RedemptionRepo, repos.RewardsRepo, nil, repos.EventRepo), // PointsService will be set after initialization
 		MerchantService:    service.NewMerchantService(repos.MerchantRepo),
 		ProgramService:     service.NewProgramService(repos.ProgramRepo),
-		ProgramRuleService: service.NewProgramRuleService(repos.ProgramRuleRepo, repos.EventRepo),
+		ProgramRuleService: service.NewProgramRulesService(repos.ProgramRuleRepo),
 	}
 }
 

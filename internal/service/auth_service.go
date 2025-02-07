@@ -3,7 +3,6 @@ package service
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"go-playground/internal/domain"
 	"go-playground/internal/repository/redis"
@@ -34,16 +33,22 @@ func (s *AuthService) Register(req *domain.RegistrationRequest) (*domain.User, e
 	// Check if email already exists
 	existingUser, err := s.userRepo.GetByEmail(req.Email)
 	if err != nil {
-		return nil, err
+		return nil, domain.ResourceNotFoundError{
+			Resource: "user",
+			Message:  fmt.Sprintf("Error checking email: %v", err),
+		}
 	}
 	if existingUser != nil {
-		return nil, errors.New("email already exists")
+		return nil, domain.ResourceConflictError{
+			Resource: "user",
+			Message:  "email already exists",
+		}
 	}
 
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error hashing password: %v", err)
 	}
 
 	// Create user
@@ -56,7 +61,7 @@ func (s *AuthService) Register(req *domain.RegistrationRequest) (*domain.User, e
 
 	user, err := s.userRepo.Create(context.Background(), createReq)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating user: %v", err)
 	}
 
 	// Generate and store OTP
@@ -68,7 +73,7 @@ func (s *AuthService) Register(req *domain.RegistrationRequest) (*domain.User, e
 	}
 
 	if err := s.authRepo.CreateVerification(verification); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating verification: %v", err)
 	}
 
 	// TODO: Send OTP via email
@@ -80,19 +85,31 @@ func (s *AuthService) Register(req *domain.RegistrationRequest) (*domain.User, e
 func (s *AuthService) VerifyRegistration(req *domain.VerificationRequest) error {
 	user, err := s.userRepo.GetByEmail(req.Email)
 	if err != nil {
-		return fmt.Errorf("error getting user: %v", err)
+		return domain.ResourceNotFoundError{
+			Resource: "user",
+			Message:  fmt.Sprintf("Error getting user: %v", err),
+		}
 	}
 	if user == nil {
-		return fmt.Errorf("user not found")
+		return domain.ResourceNotFoundError{
+			Resource: "user",
+			Message:  "User not found",
+		}
 	}
 
 	if user.Status == domain.UserStatusActive {
-		return fmt.Errorf("user already verified")
+		return domain.ResourceConflictError{
+			Resource: "user",
+			Message:  "User already verified",
+		}
 	}
 
 	verification, err := s.authRepo.GetVerification(user.ID, req.OTP)
 	if err != nil {
-		return fmt.Errorf("verification error: %v", err)
+		return domain.ValidationError{
+			Field:   "otp",
+			Message: "Invalid or expired OTP",
+		}
 	}
 
 	// Start transaction
@@ -120,58 +137,135 @@ func (s *AuthService) Login(req *domain.LoginRequest) (*domain.AuthToken, error)
 	// Check login attempts
 	attempt, err := s.authRepo.UpdateLoginAttempts(req.Email, true)
 	if err != nil {
-		return nil, err
+		return nil, domain.AuthenticationError{
+			Message: fmt.Sprintf("error checking login attempts: %v", err),
+		}
 	}
 
 	if attempt.LockedUntil.After(time.Now()) {
-		return nil, fmt.Errorf("account temporarily locked. Try again after %v", attempt.LockedUntil)
+		return nil, domain.AuthenticationError{
+			Message: fmt.Sprintf("account temporarily locked. Try again after %v", attempt.LockedUntil),
+		}
 	}
 
 	user, err := s.userRepo.GetByEmail(req.Email)
 	if err != nil {
-		return nil, err
+		return nil, domain.AuthenticationError{
+			Message: "invalid credentials",
+		}
 	}
 	if user == nil {
-		return nil, fmt.Errorf("invalid credentials")
+		return nil, domain.AuthenticationError{
+			Message: "invalid credentials",
+		}
 	}
 
 	if user.Status != domain.UserStatusActive {
-		return nil, fmt.Errorf("account not verified")
+		return nil, domain.AuthenticationError{
+			Message: "Account not verified",
+		}
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		return nil, fmt.Errorf("invalid credentials")
+		return nil, domain.AuthenticationError{
+			Message: "invalid credentials",
+		}
 	}
 
 	// Reset login attempts on successful login
 	if _, err := s.authRepo.UpdateLoginAttempts(req.Email, false); err != nil {
-		return nil, err
+		return nil, domain.AuthenticationError{
+			Message: fmt.Sprintf("error resetting login attempts: %v", err),
+		}
 	}
 
 	// Generate token
 	tokenBytes := make([]byte, 32)
 	if _, err := rand.Read(tokenBytes); err != nil {
-		return nil, err
+		return nil, domain.AuthenticationError{
+			Message: fmt.Sprintf("error generating token: %v", err),
+		}
 	}
 	token := hex.EncodeToString(tokenBytes)
 
 	// Store the raw token
 	authToken := &domain.AuthToken{
 		UserID:    user.ID,
-		TokenHash: token, // Store raw token
+		TokenHash: token,
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
 
 	if err := s.authRepo.CreateToken(authToken); err != nil {
-		return nil, err
+		return nil, domain.AuthenticationError{
+			Message: fmt.Sprintf("error creating auth token: %v", err),
+		}
 	}
 
 	// Store session data
 	if err := s.sessionRepo.StoreSession(context.Background(), user.ID, token, authToken.ExpiresAt); err != nil {
-		log.Fatal("Failed to store session in cache:", err)
+		return nil, domain.AuthenticationError{
+			Message: fmt.Sprintf("error storing session: %v", err),
+		}
 	}
 
 	return authToken, nil
+}
+
+func (s *AuthService) Logout(userID string, tokenHash string) error {
+	if err := s.sessionRepo.DeleteSession(context.Background(), userID); err != nil {
+		return fmt.Errorf("error deleting session: %v", err)
+	}
+
+	if err := s.authRepo.InvalidateToken(userID); err != nil {
+		return fmt.Errorf("error invalidating token: %v", err)
+	}
+
+	return nil
+}
+
+func (s *AuthService) GetUserByEmail(email string) (*domain.User, error) {
+	user, err := s.userRepo.GetByEmail(email)
+	if err != nil {
+		return nil, domain.ResourceNotFoundError{
+			Resource: "user",
+			Message:  fmt.Sprintf("Error finding user: %v", err),
+		}
+	}
+	if user == nil {
+		return nil, domain.ResourceNotFoundError{
+			Resource: "user",
+			Message:  "User not found",
+		}
+	}
+	return user, nil
+}
+
+func (s *AuthService) GetVerificationByUserID(userID string) (*domain.RegistrationVerification, error) {
+	verification, err := s.authRepo.GetLatestVerification(userID)
+	if err != nil {
+		return nil, domain.ResourceNotFoundError{
+			Resource: "verification",
+			Message:  fmt.Sprintf("Error finding verification: %v", err),
+		}
+	}
+	return verification, nil
+}
+
+func (s *AuthService) GetRandomActiveUser() (*domain.User, error) {
+	user, err := s.userRepo.GetRandomActiveUser()
+	if err != nil {
+		return nil, domain.ResourceNotFoundError{
+			Resource: "user",
+			Message:  fmt.Sprintf("Error finding random user: %v", err),
+		}
+	}
+	if user == nil {
+		return nil, domain.ResourceNotFoundError{
+			Resource: "user",
+			Message:  "No active users found",
+		}
+	}
+	return user, nil
 }
 
 func (s *AuthService) generateOTP() string {
@@ -185,21 +279,4 @@ func (s *AuthService) generateOTP() string {
 		result[i] = digits[num.Int64()]
 	}
 	return string(result)
-}
-
-func (s *AuthService) Logout(userID string, tokenHash string) error {
-	s.sessionRepo.DeleteSession(context.Background(), userID)
-	return s.authRepo.InvalidateToken(userID)
-}
-
-func (s *AuthService) GetUserByEmail(email string) (*domain.User, error) {
-	return s.userRepo.GetByEmail(email)
-}
-
-func (s *AuthService) GetVerificationByUserID(userID string) (*domain.RegistrationVerification, error) {
-	return s.authRepo.GetLatestVerification(userID)
-}
-
-func (s *AuthService) GetRandomActiveUser() (*domain.User, error) {
-	return s.userRepo.GetRandomActiveUser()
 }

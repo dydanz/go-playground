@@ -100,3 +100,53 @@ type ProgramRuleRepository interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 	GetActiveRules(ctx context.Context, programID uuid.UUID, timestamp time.Time) ([]*ProgramRule, error)
 }
+
+type UserService interface {
+	Create(req *CreateUserRequest) (*User, error)
+	GetByID(id string) (*User, error)
+	GetAll() ([]*User, error)
+	Update(id string, req *UpdateUserRequest) (*User, error)
+	Delete(id string) error
+}
+
+type PointsService interface {
+	GetLedger(customerID string, programID string) (*PointsLedger, error)
+	GetBalance(customerID string, programID string) (*PointsBalance, error)
+	EarnPoints(req *EarnPointsRequest) (*PointsTransaction, error)
+	RedeemPoints(req *RedeemPointsRequest) (*PointsTransaction, error)
+}
+
+type ProgramService interface {
+	Create(req *CreateProgramRequest) (*Program, error)
+	GetByID(id string) (*Program, error)
+	GetAll() ([]*Program, error)
+	Update(id string, req *UpdateProgramRequest) (*Program, error)
+	Delete(id string) error
+	GetByMerchantID(merchantID string) ([]*Program, error)
+}
+
+type MerchantService interface {
+	Create(req *CreateMerchantRequest) (*Merchant, error)
+	GetByID(id string) (*Merchant, error)
+	GetAll() ([]*Merchant, error)
+	Update(id string, req *UpdateMerchantRequest) (*Merchant, error)
+	Delete(id string) error
+}
+
+type ProgramRulesService interface {
+	Create(req *CreateProgramRuleRequest) (*ProgramRule, error)
+	GetByID(id string) (*ProgramRule, error)
+	GetByProgramID(programID string) ([]*ProgramRule, error)
+	Update(id string, req *UpdateProgramRuleRequest) (*ProgramRule, error)
+	Delete(id string) error
+	GetActiveRules(programID string) ([]*ProgramRule, error)
+}
+
+type ProgramRepository interface {
+	Create(program *Program) error
+	GetByID(id string) (*Program, error)
+	GetAll() ([]*Program, error)
+	Update(program *Program) error
+	Delete(id string) error
+	GetByMerchantID(merchantID string) ([]*Program, error)
+}

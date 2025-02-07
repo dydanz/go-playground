@@ -170,7 +170,9 @@ func TestLogin(t *testing.T) {
 	})
 
 	t.Run("Failure", func(t *testing.T) {
-		mockService.On("Login", mock.AnythingOfType("*domain.LoginRequest")).Return(nil, errors.New("invalid credentials")).Once()
+		mockService.On("Login", mock.AnythingOfType("*domain.LoginRequest")).Return(nil, domain.AuthenticationError{
+			Message: "invalid credentials",
+		}).Once()
 
 		body := []byte(`{
 			"email": "test@example.com",

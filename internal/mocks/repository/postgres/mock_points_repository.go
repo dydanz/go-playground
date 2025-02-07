@@ -27,6 +27,9 @@ func (m *MockPointsRepository) GetByCustomerAndProgram(ctx context.Context, cust
 
 func (m *MockPointsRepository) GetCurrentBalance(ctx context.Context, customerID, programID uuid.UUID) (int, error) {
 	args := m.Called(ctx, customerID, programID)
+	if v, ok := args.Get(0).(int64); ok {
+		return int(v), args.Error(1)
+	}
 	return args.Get(0).(int), args.Error(1)
 }
 
