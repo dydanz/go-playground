@@ -53,7 +53,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /auth/verify [post]
+// @Router /auth/verify [post ]
 func (h *AuthHandler) Verify(c *gin.Context) {
 	var req domain.VerificationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

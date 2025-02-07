@@ -125,14 +125,22 @@ func TestRewardsService_Update_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, reward)
-	assert.Equal(t, req.PointsRequired, reward.PointsRequired)
-	assert.Equal(t, req.IsActive, reward.IsActive)
+	assert.Equal(t, 150, reward.PointsRequired)
+	assert.Equal(t, true, reward.IsActive)
 	mockRepo.AssertExpectations(t)
 }
 
 func TestRewardsService_Update_InvalidPoints(t *testing.T) {
 	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
+
+	existingReward := &domain.Reward{
+		ID:             "reward123",
+		PointsRequired: 100,
+		IsActive:       true,
+	}
+
+	mockRepo.On("GetByID", "reward123").Return(existingReward, nil)
 
 	req := &domain.UpdateRewardRequest{
 		PointsRequired: new(int),
@@ -147,6 +155,7 @@ func TestRewardsService_Update_InvalidPoints(t *testing.T) {
 	assert.Nil(t, reward)
 	assert.Equal(t, "points required must be greater than 0", err.Error())
 	mockRepo.AssertNotCalled(t, "Update")
+	mockRepo.AssertExpectations(t)
 }
 
 func TestRewardsService_Delete_Success(t *testing.T) {
