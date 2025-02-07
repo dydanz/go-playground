@@ -24,7 +24,7 @@ const (
 // The function sets the following cookies:
 //   - Session cookie: HTTP-only, secure cookie containing the session token
 //   - CSRF cookie: Secure (not HTTP-only) cookie containing the CSRF token
-func SetSecureCookie(c *gin.Context, token string) {
+func SetSecureCookie(c *gin.Context, token string, userID string) {
 	c.SetCookie(
 		sessionCookieName,
 		token,
@@ -33,6 +33,17 @@ func SetSecureCookie(c *gin.Context, token string) {
 		"",   // domain
 		true, // secure
 		true, // httpOnly
+	)
+
+	// Set user ID cookie
+	c.SetCookie(
+		userIdCookieName,
+		userID,
+		int(24*time.Hour.Seconds()),
+		"/",
+		"",
+		true,
+		false, // not httpOnly so JS can read it
 	)
 
 	// Set CSRF token

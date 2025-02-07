@@ -91,8 +91,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// Set secure cookie with session token
-	middleware.SetSecureCookie(c, authToken.TokenHash)
+	// Set secure cookie with session token and user ID
+	middleware.SetSecureCookie(c, authToken.TokenHash, authToken.UserID)
 
 	response := domain.LoginResponse{
 		Token:     authToken.TokenHash,

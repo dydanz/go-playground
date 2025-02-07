@@ -57,18 +57,22 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 
 		// Get User-ID from header first, then fallback to cookie
 		userIDHeader := c.GetHeader("X-User-Id")
-		if userIDHeader == "" {
-			// Fallback to cookie
-			userIDHeader, err = c.Cookie(userIdCookieName)
-			if err != nil {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "User-ID is required"})
-				c.Abort()
-				return
-			}
+		userIDCookie, _ := c.Cookie(userIdCookieName)
+
+		// Use either header or cookie value for user ID
+		userID := userIDHeader
+		if userID == "" {
+			userID = userIDCookie
+		}
+
+		if userID == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User-ID is required"})
+			c.Abort()
+			return
 		}
 
 		// Check session in Redis cache first
-		session, err := sessionRepo.GetSession(c.Request.Context(), userIDHeader)
+		session, err := sessionRepo.GetSession(c.Request.Context(), userID)
 		if err != nil {
 			log.Printf("Error getting session from Redis: %v\n", err)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "session validation failed"})
@@ -78,15 +82,15 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 
 		if session != nil {
 			// Validate User-ID matches session
-			if session.UserID != userIDHeader {
+			if session.UserID != userID {
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "User-ID mismatch"})
 				c.Abort()
 				return
 			}
 
 			// Session found in cache, set user context and continue
-			SetSecureCookie(c, tokenCookie)
-			c.SetCookie("user_id", session.UserID, int(24*time.Hour.Seconds()), "/", "", true, false)
+			SetSecureCookie(c, tokenCookie, session.UserID)
+			c.SetCookie(userIdCookieName, session.UserID, int(24*time.Hour.Seconds()), "/", "", true, false)
 			c.Set("user_id", session.UserID)
 			c.Next()
 			log.Printf("Session found in cache %s", tokenCookie)
@@ -111,17 +115,15 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 		}
 
 		// Validate User-ID matches token
-		if token.UserID != userIDHeader {
+		if token.UserID != userID {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User-ID mismatch"})
 			c.Abort()
 			return
 		}
 
 		// Store user ID in cookie and set secure cookie with session token
-		SetSecureCookie(c, tokenCookie)
-
-		// After validating the token, set the user ID in a cookie
-		c.SetCookie("user_id", token.UserID, int(24*time.Hour.Seconds()), "/", "", true, false)
+		SetSecureCookie(c, tokenCookie, token.UserID)
+		c.SetCookie(userIdCookieName, token.UserID, int(24*time.Hour.Seconds()), "/", "", true, false)
 		c.Set("user_id", token.UserID)
 		c.Next()
 	}

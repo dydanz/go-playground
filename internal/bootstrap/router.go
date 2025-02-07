@@ -53,6 +53,11 @@ func InitializeHandlers(services *Services, db *sql.DB, dbReplication *sql.DB, r
 func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo redis.SessionRepository) *gin.Engine {
 	r := gin.Default()
 
+	// Load HTML templates
+	r.LoadHTMLGlob("internal/static/*.html")
+	// Serve static files
+	r.Static("/static", "internal/static")
+
 	// Add latency middleware globally
 	r.Use(util.GinHandlerLatencyDecorator())
 
@@ -172,6 +177,11 @@ func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo red
 	// Protected HTML routes
 	r.GET("/dashboard", middleware.AuthMiddleware(authRepo, sessionRepo), func(c *gin.Context) {
 		c.HTML(http.StatusOK, "dashboard.html", nil)
+	})
+
+	// Add profile route
+	r.GET("/profile", middleware.AuthMiddleware(authRepo, sessionRepo), func(c *gin.Context) {
+		c.HTML(http.StatusOK, "user-profile.html", nil)
 	})
 
 	// Add CSRF middleware

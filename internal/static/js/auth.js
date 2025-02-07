@@ -1,144 +1,183 @@
-document.addEventListener('DOMContentLoaded', function() {
-    const loginForm = document.getElementById('loginForm');
-    const registerForm = document.getElementById('registerForm');
+// Constants
+const API_BASE_URL = 'http://localhost:8080/api';
 
-    if (loginForm) {
-        loginForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(loginForm);
-            const data = {
-                email: formData.get('email'),
-                password: formData.get('password')
-            };
+// Utility function to handle API errors
+const handleApiError = (error) => {
+    console.error('API Error:', error);
+    alert(error.message || 'An error occurred. Please try again.');
+};
 
-            console.log('Sending login request with data:', data);
+// Function to set secure cookies
+const setCookie = (name, value, days = 7) => {
+    const expires = new Date(Date.now() + days * 864e5).toUTCString();
+    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; secure; samesite=strict`;
+};
 
-            try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
+// Function to get cookie value
+const getCookie = (name) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+};
 
-                const result = await response.json();
-                console.log('Login response:', result);
-                
-                if (response.ok) {
-                    localStorage.setItem('token', result.token);
-                    window.location.href = '/dashboard';
-                } else {
-                    alert(result.error || 'Login failed');
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                alert('Error: ' + error.message);
-            }
-        });
-    }
-
-    if (registerForm) {
-        registerForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(registerForm);
-            const data = {
-                name: formData.get('name'),
-                email: formData.get('email'),
-                password: formData.get('password'),
-                phone: formData.get('phone')
-            };
-
-            try {
-                const response = await fetch('/api/auth/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
-
-                const result = await response.json();
-                
-                if (response.ok) {
-                    alert('Registration successful! Please check your email for verification.');
-                    window.location.href = '/login';
-                } else {
-                    alert(result.error || 'Registration failed');
-                }
-            } catch (error) {
-                alert('Error: ' + error.message);
-            }
-        });
-    }
-});
-
-async function handleLogin(event) {
+// Function to handle registration
+const handleRegister = async (event) => {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
-    
+
     try {
-        const response = await fetch('/api/auth/login', {
+        const response = await fetch(`${API_BASE_URL}/auth/register`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
-            body: JSON.stringify(Object.fromEntries(formData)),
+            body: JSON.stringify({
+                email: formData.get('email'),
+                name: formData.get('name'),
+                password: formData.get('password'),
+                phone: formData.get('phone')
+            })
         });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Registration failed');
+        }
+
+        alert('Registration successful! Please login.');
+        window.location.href = '/login';
+    } catch (error) {
+        handleApiError(error);
+    }
+};
+
+// Function to handle login
+const handleLogin = async (event) => {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                email: formData.get('email'),
+                password: formData.get('password')
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Login failed');
+        }
 
         const data = await response.json();
         
-        if (response.ok) {
-            // Store both session token and user ID in cookies
-            setCookie('session_token', data.token);
-            setCookie('user_id', data.user_id); // Make sure your backend sends user_id in response
-            
-            showMessage('Login successful!', 'success');
-            setTimeout(() => {
-                window.location.href = '/dashboard';
-            }, 1000);
-        } else {
-            showMessage(data.error || 'Login failed', 'error');
-        }
-    } catch (error) {
-        console.error('Login error:', error);
-        showMessage('Error during login', 'error');
-    }
-}
+        // Store auth token and user ID in secure cookies
+        setCookie('auth_token', data.token);
+        setCookie('user_id', data.user_id);
 
-async function logout() {
-    const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('user_id');
+        window.location.href = '/dashboard';
+    } catch (error) {
+        handleApiError(error);
+    }
+};
+
+// Function to load user profile
+const loadUserProfile = async () => {
+    const authToken = getCookie('auth_token');
+    if (!authToken) {
+        window.location.href = '/login';
+        return;
+    }
+
     try {
-        const response = await fetch('/api/auth/logout', {
-            method: 'POST',
+        const response = await fetch(`${API_BASE_URL}/users/me`, {
             headers: {
-                'Authorization': token,
-                'X-User-Id': userId
+                'Accept': 'application/json',
+                'Authorization': authToken
             }
         });
 
-        if (response.ok) {
-            localStorage.removeItem('token');
-            window.location.href = '/login';
-        } else {
-            const result = await response.json();
-            alert(result.error || 'Logout failed');
+        if (!response.ok) {
+            throw new Error('Failed to load user profile');
         }
-    } catch (error) {
-        console.error('Logout error:', error);
-        alert('Error during logout');
-    }
-}
 
-// Update the logout button handler
-const logoutBtn = document.getElementById('logoutBtn');
-if (logoutBtn) {
-    logoutBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        logout();
-    });
-}
+        const userData = await response.json();
+        
+        // Update UI with user data
+        const userNameElement = document.getElementById('userName');
+        if (userNameElement) {
+            userNameElement.textContent = userData.name;
+        }
+
+        return userData;
+    } catch (error) {
+        handleApiError(error);
+        window.location.href = '/login';
+    }
+};
+
+// Function to handle logout
+const handleLogout = () => {
+    // Clear auth cookies
+    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'user_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    window.location.href = '/login';
+};
+
+// Add event listeners when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Register form handler
+    const registerForm = document.getElementById('registerForm');
+    if (registerForm) {
+        registerForm.addEventListener('submit', handleRegister);
+    }
+
+    // Login form handler
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
+    }
+
+    // Logout button handler
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            handleLogout();
+        });
+    }
+
+    // Load user profile if on dashboard
+    if (window.location.pathname === '/dashboard') {
+        loadUserProfile();
+    }
+
+    // Load user profile if on profile page
+    if (window.location.pathname === '/profile') {
+        displayUserProfile();
+    }
+});
+
+// Password visibility toggle function
+const togglePassword = (inputId) => {
+    const passwordInput = document.getElementById(inputId);
+    const icon = passwordInput.parentElement.querySelector('.password-toggle i');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}; 
