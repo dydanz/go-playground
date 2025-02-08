@@ -53,8 +53,22 @@ func InitializeHandlers(services *Services, db *sql.DB, dbReplication *sql.DB, r
 func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo redis.SessionRepository) *gin.Engine {
 	r := gin.Default()
 
-	// Load HTML templates
-	r.LoadHTMLGlob("internal/static/pages/*.html")
+	// Debug mode
+	gin.SetMode(gin.DebugMode)
+
+	// Load templates explicitly
+	r.LoadHTMLFiles(
+		"internal/static/pages/sign-in.html",
+		"internal/static/pages/sign-up.html",
+		"internal/static/pages/dashboard.html",
+		"internal/static/pages/profile.html",
+		"internal/static/pages/billing.html",
+		"internal/static/pages/tables.html",
+		"internal/static/pages/components/navbar.tmpl",
+		"internal/static/pages/components/sidenav.tmpl",
+		"internal/static/pages/components/sidenav-card.tmpl",
+	)
+
 	// Serve static files
 	r.Static("/static/pages", "internal/static/pages")
 	r.Static("/static/assets", "internal/static/assets")
