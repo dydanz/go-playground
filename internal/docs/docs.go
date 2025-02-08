@@ -2635,6 +2635,7 @@ const docTemplate = `{
             "required": [
                 "customer_id",
                 "merchant_id",
+                "program_id",
                 "status",
                 "transaction_amount",
                 "transaction_type"
@@ -2647,6 +2648,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "merchant_id": {
+                    "type": "string"
+                },
+                "program_id": {
                     "type": "string"
                 },
                 "status": {
@@ -2982,6 +2986,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "merchant_id": {
+                    "type": "string"
+                },
+                "program_id": {
                     "type": "string"
                 },
                 "status": {

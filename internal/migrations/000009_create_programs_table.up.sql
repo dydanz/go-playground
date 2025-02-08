@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS programs (
     point_currency_name VARCHAR(50) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (merchant_id) REFERENCES merchants(merchant_id) ON DELETE CASCADE
+    FOREIGN KEY (merchant_id) REFERENCES merchants(merchant_id)
 );
 
 -- Create update timestamp function

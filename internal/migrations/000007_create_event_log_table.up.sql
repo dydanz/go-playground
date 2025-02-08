@@ -1,5 +1,5 @@
 -- Create event type enum
-CREATE TYPE event_type AS ENUM ('transaction', 'balance_update', 'reward_redeemed');
+CREATE TYPE event_type AS ENUM ('transaction_created', 'balance_update', 'reward_redeemed');
 
 CREATE TABLE IF NOT EXISTS event_log (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -23,8 +23,7 @@ CREATE INDEX idx_event_log_details ON event_log USING GIN (details);
 ALTER TABLE event_log
     ADD CONSTRAINT fk_user
     FOREIGN KEY (user_id)
-    REFERENCES users(id)
-    ON DELETE CASCADE;
+    REFERENCES users(id);
 
 COMMENT ON TABLE event_log IS 'Audit log for all point-related events in the system';
 COMMENT ON COLUMN event_log.details IS 'JSON structure containing event-specific details';

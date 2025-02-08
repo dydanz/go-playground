@@ -21,10 +21,10 @@ func NewTransactionRepository(db config.DbConnection) *TransactionRepository {
 func (r *TransactionRepository) Create(ctx context.Context, tx *domain.Transaction) error {
 	query := `
 		INSERT INTO transactions (
-			transaction_id, merchant_id, customer_id, 
+			transaction_id, merchant_id, customer_id, program_id,
 			transaction_type, transaction_amount, transaction_date,
-			branch_id, status
-		) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7)
+			branch_id, status 
+		) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, $7, $8)
 		RETURNING transaction_date, created_at
 	`
 	return r.db.RW.QueryRowContext(
@@ -33,6 +33,7 @@ func (r *TransactionRepository) Create(ctx context.Context, tx *domain.Transacti
 		tx.TransactionID,
 		tx.MerchantID,
 		tx.CustomerID,
+		tx.ProgramID,
 		tx.TransactionType,
 		tx.TransactionAmount,
 		tx.BranchID,
@@ -45,7 +46,7 @@ func (r *TransactionRepository) Create(ctx context.Context, tx *domain.Transacti
 
 func (r *TransactionRepository) GetByID(ctx context.Context, transactionID uuid.UUID) (*domain.Transaction, error) {
 	query := `
-		SELECT transaction_id, merchant_id, customer_id, 
+		SELECT transaction_id, merchant_id, customer_id, program_id,
 			   transaction_type, transaction_amount, transaction_date,
 			   branch_id, created_at, status
 		FROM transactions
@@ -56,6 +57,7 @@ func (r *TransactionRepository) GetByID(ctx context.Context, transactionID uuid.
 		&tx.TransactionID,
 		&tx.MerchantID,
 		&tx.CustomerID,
+		&tx.ProgramID,
 		&tx.TransactionType,
 		&tx.TransactionAmount,
 		&tx.TransactionDate,
@@ -88,7 +90,7 @@ func (r *TransactionRepository) GetByCustomerIDWithPagination(ctx context.Contex
 
 	// Build query with pagination
 	query := `
-		SELECT transaction_id, merchant_id, customer_id, 
+		SELECT transaction_id, merchant_id, customer_id, program_id,
 			   transaction_type, transaction_amount, transaction_date,
 			   branch_id, created_at, status
 		FROM transactions
@@ -116,6 +118,7 @@ func (r *TransactionRepository) GetByCustomerIDWithPagination(ctx context.Contex
 			&tx.TransactionID,
 			&tx.MerchantID,
 			&tx.CustomerID,
+			&tx.ProgramID,
 			&tx.TransactionType,
 			&tx.TransactionAmount,
 			&tx.TransactionDate,
@@ -133,7 +136,7 @@ func (r *TransactionRepository) GetByCustomerIDWithPagination(ctx context.Contex
 
 func (r *TransactionRepository) GetByMerchantID(ctx context.Context, merchantID uuid.UUID) ([]*domain.Transaction, error) {
 	query := `
-		SELECT transaction_id, merchant_id, customer_id, 
+		SELECT transaction_id, merchant_id, customer_id, program_id,
 			   transaction_type, transaction_amount, transaction_date,
 			   branch_id, created_at, status
 		FROM transactions
@@ -153,6 +156,7 @@ func (r *TransactionRepository) GetByMerchantID(ctx context.Context, merchantID 
 			&tx.TransactionID,
 			&tx.MerchantID,
 			&tx.CustomerID,
+			&tx.ProgramID,
 			&tx.TransactionType,
 			&tx.TransactionAmount,
 			&tx.TransactionDate,

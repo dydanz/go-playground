@@ -309,6 +309,7 @@ class MerchantOnboarding(HttpUser):
         transaction_data = {
             "merchant_id": merchant_id,
             "customer_id": user_id,  # Using the logged-in user as customer
+            "program_id": program_id,
             "transaction_type": "purchase",
             "transaction_amount": 100.00,
             "status": "completed"

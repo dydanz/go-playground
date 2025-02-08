@@ -32,6 +32,7 @@ func (s *TransactionService) Create(req *domain.CreateTransactionRequest) (*doma
 		TransactionID:     uuid.New(),
 		MerchantID:        req.MerchantID,
 		CustomerID:        req.CustomerID,
+		ProgramID:         req.ProgramID,
 		BranchID:          req.BranchID,
 		TransactionType:   req.TransactionType,
 		TransactionAmount: req.TransactionAmount,
@@ -56,12 +57,12 @@ func (s *TransactionService) Create(req *domain.CreateTransactionRequest) (*doma
 
 	// Update points balance if applicable
 	if points != 0 {
-		if err := s.pointsService.EarnPoints(context.Background(), tx.CustomerID, tx.MerchantID, points, &tx.TransactionID); err != nil {
+		if err := s.pointsService.EarnPoints(context.Background(), tx.CustomerID, tx.ProgramID, points, &tx.TransactionID); err != nil {
 			return nil, err
 		}
 	}
 
-	// Log the transaction event
+	// Log the transaction event, make async
 	txIDStr := tx.TransactionID.String()
 	event := &domain.EventLog{
 		EventType:   "transaction_created",

@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS points_ledger (
     points_balance INTEGER NOT NULL DEFAULT 0,
     transaction_id UUID,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (program_id) REFERENCES programs(program_id) ON DELETE CASCADE,
-    FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id) ON DELETE SET NULL
+    FOREIGN KEY (customer_id) REFERENCES users(id),
+    FOREIGN KEY (program_id) REFERENCES programs(program_id),
+    FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id)
 ); 
