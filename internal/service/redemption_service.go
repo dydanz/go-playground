@@ -133,3 +133,7 @@ func (s *RedemptionService) UpdateStatus(ctx context.Context, id string, status 
 
 	return s.redemptionRepo.Update(redemption)
 }
+
+func (s *RedemptionService) SetPointsService(pointsService domain.PointsServiceInterface) {
+	s.pointsService = pointsService
+}

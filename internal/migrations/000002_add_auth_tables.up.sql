@@ -15,7 +15,7 @@ CREATE TABLE registration_verifications (
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     used_at TIMESTAMP WITH TIME ZONE,
-    CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 -- Create auth tokens table
@@ -27,7 +27,7 @@ CREATE TABLE auth_tokens (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     last_used_at TIMESTAMP WITH TIME ZONE,
     UNIQUE(user_id),
-    CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 -- Create login attempts table for rate limiting

@@ -23,8 +23,8 @@ func NewProgramHandler(programService domain.ProgramService) *ProgramHandler {
 // @Accept json
 // @Produce json
 // @Param Authorization header string true "Bearer token"
-// @Param program body CreateProgramRequest true "Program details"
-// @Success 201 {object} postgres.Program
+// @Param program body domain.CreateProgramRequest true "Program details"
+// @Success 201 {object} domain.Program
 // @Failure 400 {object} map[string]string
 // @Failure 401 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -53,7 +53,7 @@ func (h *ProgramHandler) Create(c *gin.Context) {
 // @Produce json
 // @Param Authorization header string true "Bearer token"
 // @Param id path string true "Program ID"
-// @Success 200 {object} postgres.Program
+// @Success 200 {object} domain.Program
 // @Failure 400 {object} map[string]string
 // @Failure 401 {object} map[string]string
 // @Failure 404 {object} map[string]string
@@ -86,7 +86,7 @@ func (h *ProgramHandler) GetByID(c *gin.Context) {
 // @Produce json
 // @Param Authorization header string true "Bearer token"
 // @Param merchant_id path string true "Merchant ID"
-// @Success 200 {array} postgres.Program
+// @Success 200 {array} domain.Program
 // @Failure 400 {object} map[string]string
 // @Failure 401 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -118,8 +118,8 @@ func (h *ProgramHandler) GetByMerchantID(c *gin.Context) {
 // @Produce json
 // @Param Authorization header string true "Bearer token"
 // @Param id path string true "Program ID"
-// @Param program body UpdateProgramRequest true "Program details"
-// @Success 200 {object} postgres.Program
+// @Param program body domain.UpdateProgramRequest true "Program details"
+// @Success 200 {object} domain.Program
 // @Failure 400 {object} map[string]string
 // @Failure 401 {object} map[string]string
 // @Failure 404 {object} map[string]string

@@ -9,4 +9,4 @@ ALTER TABLE auth_tokens ADD CONSTRAINT auth_tokens_user_id_key UNIQUE (user_id);
 
 -- Re-add foreign key constraint
 ALTER TABLE auth_tokens ADD CONSTRAINT fk_user 
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE; 
+    FOREIGN KEY (user_id) REFERENCES users(id); 

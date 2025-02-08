@@ -1,0 +1,46 @@
+{
+  "name": "argon-dashboard",
+  "version": "2.1.0",
+  "description": "Freebie Dashboard for Bootstrap 5",
+  "main": "pages/dashboard.html",
+  "type": "module",
+  "directories": {
+    "example": "root"
+  },
+  "scripts": {
+    "open-app": "gulp open-app",
+    "start": "npm run open-app",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "gulp-watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/creativetimofficial/argon-dashboard.git"
+  },
+  "keywords": [
+    "argon dashboard",
+    "bootstrap 5",
+    "dashboard",
+    "creative tim",
+    "html dashboard",
+    "html css dashboard",
+    "web dashboard",
+    "freebie",
+    "free bootstrap dashboard",
+    "css3 dashboard",
+    "bootstrap dashboard",
+    "frontend",
+    "responsive bootstrap dashboard"
+  ],
+  "author": "Creative Tim <hello@creative-tim.com> (https://www.creative-tim.com/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/creativetimofficial/argon-dashboard/issues"
+  },
+  "devDependencies": {
+    "gulp": "5.0.0",
+    "gulp-open": "3.0.1",
+    "sass": "1.80.2"
+  },
+  "homepage": "http://creative-tim.com/product/argon-dashboard"
+}

@@ -56,7 +56,6 @@ func main() {
 
 	// Initialize services
 	services := bootstrap.InitializeServices(repos)
-	services.SetupServiceDependencies()
 
 	// Initialize handlers
 	handlers := bootstrap.InitializeHandlers(services, dbConn.RW, dbConn.RR, rdb)

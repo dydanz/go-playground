@@ -94,7 +94,7 @@ func (h *PointsHandler) GetBalance(c *gin.Context) {
 // @Security UserIdAuth
 // @Param customer_id path string true "Customer ID"
 // @Param program_id path string true "Program ID"
-// @Param points body EarnPointsRequest true "Points to earn"
+// @Param points body domain.EarnPointsRequest true "Points to earn"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -138,7 +138,7 @@ func (h *PointsHandler) EarnPoints(c *gin.Context) {
 // @Security UserIdAuth
 // @Param customer_id path string true "Customer ID"
 // @Param program_id path string true "Program ID"
-// @Param points body RedeemPointsRequest true "Points to redeem"
+// @Param points body domain.RedeemPointsRequest true "Points to redeem"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string

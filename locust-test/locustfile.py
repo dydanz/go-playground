@@ -258,7 +258,7 @@ class MerchantOnboarding(HttpUser):
         if program_response.status_code != 201:
             return
 
-        program_id = program_response.json().get("program_id")
+        program_id = program_response.json().get("id")
         if not program_id:
             return
 
@@ -270,8 +270,9 @@ class MerchantOnboarding(HttpUser):
                 "condition_type": "transaction_amount",
                 "condition_value": ">0",
                 "multiplier": 1.0,
-                "points_awarded": 0,
-                "effective_from": "2023-01-01T00:00:00Z"
+                "points_awarded": 123,
+                "effective_from": "2023-01-01T00:00:00Z",
+                "effective_to": "2023-12-01T00:00:00Z"
             },
             {
                 "program_id": program_id,
@@ -279,8 +280,9 @@ class MerchantOnboarding(HttpUser):
                 "condition_type": "item_category",
                 "condition_value": "Dining",
                 "multiplier": 5.0,
-                "points_awarded": 0,
-                "effective_from": "2023-01-01T00:00:00Z"
+                "points_awarded": 123,
+                "effective_from": "2023-01-01T00:00:00Z",
+                "effective_to": "2023-12-01T00:00:00Z"
             },
             {
                 "program_id": program_id,
@@ -288,8 +290,9 @@ class MerchantOnboarding(HttpUser):
                 "condition_type": "item_category",
                 "condition_value": "Travel",
                 "multiplier": 3.0,
-                "points_awarded": 0,
-                "effective_from": "2023-01-01T00:00:00Z"
+                "points_awarded": 123,
+                "effective_from": "2023-01-01T00:00:00Z",
+                "effective_to": "2023-12-01T00:00:00Z"
             }
         ]
 
@@ -306,8 +309,10 @@ class MerchantOnboarding(HttpUser):
         transaction_data = {
             "merchant_id": merchant_id,
             "customer_id": user_id,  # Using the logged-in user as customer
+            "program_id": program_id,
             "transaction_type": "purchase",
-            "transaction_amount": 100.00
+            "transaction_amount": 100.00,
+            "status": "completed"
         }
         transaction_response = self.client.post(
             "/api/transactions",

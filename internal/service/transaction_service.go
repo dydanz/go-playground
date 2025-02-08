@@ -11,13 +11,13 @@ import (
 
 type TransactionService struct {
 	transactionRepo domain.TransactionRepository
-	pointsService   domain.PointsService
+	pointsService   domain.PointsServiceInterface
 	eventRepo       domain.EventLogRepository
 }
 
 func NewTransactionService(
 	transactionRepo domain.TransactionRepository,
-	pointsService domain.PointsService,
+	pointsService domain.PointsServiceInterface,
 	eventRepo domain.EventLogRepository,
 ) *TransactionService {
 	return &TransactionService{
@@ -32,6 +32,7 @@ func (s *TransactionService) Create(req *domain.CreateTransactionRequest) (*doma
 		TransactionID:     uuid.New(),
 		MerchantID:        req.MerchantID,
 		CustomerID:        req.CustomerID,
+		ProgramID:         req.ProgramID,
 		BranchID:          req.BranchID,
 		TransactionType:   req.TransactionType,
 		TransactionAmount: req.TransactionAmount,
@@ -54,19 +55,18 @@ func (s *TransactionService) Create(req *domain.CreateTransactionRequest) (*doma
 		points = int(tx.TransactionAmount * 2) // Example: Double points for bonus
 	}
 
-	// Update points balance if applicable
+	// TODO: Check if the transaction is valid for the program, branch/merchant
+	// TODO: Calculate points based on the transaction type and program rules
+	// TODO: Check if the customer has enough points to redeem
+	// TODO: Update points balance if applicable
+
 	if points != 0 {
-		earnReq := &domain.EarnPointsRequest{
-			CustomerID: tx.CustomerID.String(),
-			ProgramID:  tx.MerchantID.String(),
-			Points:     points,
-		}
-		if _, err := s.pointsService.EarnPoints(earnReq); err != nil {
+		if err := s.pointsService.EarnPoints(context.Background(), tx.CustomerID, tx.ProgramID, points, &tx.TransactionID); err != nil {
 			return nil, err
 		}
 	}
 
-	// Log the transaction event
+	// Log the transaction event, make async
 	txIDStr := tx.TransactionID.String()
 	event := &domain.EventLog{
 		EventType:   "transaction_created",
@@ -100,7 +100,16 @@ func (s *TransactionService) GetByCustomerID(customerID string) ([]*domain.Trans
 	if err != nil {
 		return nil, err
 	}
-	return s.transactionRepo.GetByCustomerID(context.Background(), custID)
+	txs, _, err := s.transactionRepo.GetByCustomerIDWithPagination(context.Background(), custID, 0, -1)
+	return txs, err
+}
+
+func (s *TransactionService) GetByCustomerIDWithPagination(customerID string, offset, limit int) ([]*domain.Transaction, int64, error) {
+	custID, err := uuid.Parse(customerID)
+	if err != nil {
+		return nil, 0, err
+	}
+	return s.transactionRepo.GetByCustomerIDWithPagination(context.Background(), custID, offset, limit)
 }
 
 func (s *TransactionService) GetByMerchantID(merchantID string) ([]*domain.Transaction, error) {
@@ -117,4 +126,8 @@ func (s *TransactionService) UpdateStatus(id string, status string) error {
 		return err
 	}
 	return s.transactionRepo.UpdateStatus(context.Background(), txID, status)
+}
+
+func (s *TransactionService) SetPointsService(pointsService domain.PointsServiceInterface) {
+	s.pointsService = pointsService
 }

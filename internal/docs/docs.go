@@ -190,7 +190,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "test"
+                    "internal-load-testing"
                 ],
                 "summary": "Get verification code for testing",
                 "parameters": [
@@ -243,7 +243,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "test"
+                    "internal-load-testing"
                 ],
                 "summary": "Get random verified user",
                 "responses": {
@@ -653,7 +653,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.EarnPointsRequest"
+                            "$ref": "#/definitions/domain.EarnPointsRequest"
                         }
                     }
                 ],
@@ -798,7 +798,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.RedeemPointsRequest"
+                            "$ref": "#/definitions/domain.RedeemPointsRequest"
                         }
                     }
                 ],
@@ -1191,7 +1191,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.CreateProgramRequest"
+                            "$ref": "#/definitions/domain.CreateProgramRequest"
                         }
                     }
                 ],
@@ -1199,7 +1199,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/postgres.Program"
+                            "$ref": "#/definitions/domain.Program"
                         }
                     },
                     "400": {
@@ -1267,7 +1267,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/postgres.Program"
+                                "$ref": "#/definitions/domain.Program"
                             }
                         }
                     },
@@ -1334,7 +1334,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/postgres.Program"
+                            "$ref": "#/definitions/domain.Program"
                         }
                     },
                     "400": {
@@ -1408,7 +1408,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.UpdateProgramRequest"
+                            "$ref": "#/definitions/domain.UpdateProgramRequest"
                         }
                     }
                 ],
@@ -1416,7 +1416,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/postgres.Program"
+                            "$ref": "#/definitions/domain.Program"
                         }
                     },
                     "400": {
@@ -2072,7 +2072,7 @@ const docTemplate = `{
                         "UserIdAuth": []
                     }
                 ],
-                "description": "Get all transactions for a specific customer",
+                "description": "Get all transactions for a specific customer with pagination",
                 "consumes": [
                     "application/json"
                 ],
@@ -2090,16 +2090,26 @@ const docTemplate = `{
                         "name": "customer_id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of items per page (default: 10)",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.Transaction"
-                            }
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
@@ -2562,6 +2572,25 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.CreateProgramRequest": {
+            "type": "object",
+            "required": [
+                "merchant_id",
+                "point_currency_name",
+                "program_name"
+            ],
+            "properties": {
+                "merchant_id": {
+                    "type": "string"
+                },
+                "point_currency_name": {
+                    "type": "string"
+                },
+                "program_name": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.CreateProgramRuleRequest": {
             "type": "object",
             "required": [
@@ -2606,6 +2635,8 @@ const docTemplate = `{
             "required": [
                 "customer_id",
                 "merchant_id",
+                "program_id",
+                "status",
                 "transaction_amount",
                 "transaction_type"
             ],
@@ -2618,6 +2649,18 @@ const docTemplate = `{
                 },
                 "merchant_id": {
                     "type": "string"
+                },
+                "program_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "pending",
+                        "completed",
+                        "failed",
+                        "cancelled"
+                    ]
                 },
                 "transaction_amount": {
                     "type": "number"
@@ -2656,6 +2699,23 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.EarnPointsRequest": {
+            "type": "object",
+            "required": [
+                "points"
+            ],
+            "properties": {
+                "customer_id": {
+                    "type": "string"
+                },
+                "points": {
+                    "type": "integer"
+                },
+                "program_id": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.LoginRequest": {
             "type": "object",
             "required": [
@@ -2683,6 +2743,9 @@ const docTemplate = `{
                     "example": "Bearer eyJhbGciOiJ..."
                 },
                 "user_id": {
+                    "type": "string"
+                },
+                "user_name": {
                     "type": "string"
                 }
             }
@@ -2749,6 +2812,29 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.Program": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "merchant_id": {
+                    "type": "string"
+                },
+                "point_currency_name": {
+                    "type": "string"
+                },
+                "program_name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.ProgramRule": {
             "type": "object",
             "properties": {
@@ -2783,6 +2869,23 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.RedeemPointsRequest": {
+            "type": "object",
+            "required": [
+                "points"
+            ],
+            "properties": {
+                "customer_id": {
+                    "type": "string"
+                },
+                "points": {
+                    "type": "integer"
+                },
+                "program_id": {
                     "type": "string"
                 }
             }
@@ -2885,6 +2988,9 @@ const docTemplate = `{
                 "merchant_id": {
                     "type": "string"
                 },
+                "program_id": {
+                    "type": "string"
+                },
                 "status": {
                     "type": "string"
                 },
@@ -2924,6 +3030,17 @@ const docTemplate = `{
                             "$ref": "#/definitions/domain.MerchantType"
                         }
                     ]
+                }
+            }
+        },
+        "domain.UpdateProgramRequest": {
+            "type": "object",
+            "properties": {
+                "point_currency_name": {
+                    "type": "string"
+                },
+                "program_name": {
+                    "type": "string"
                 }
             }
         },
@@ -3022,91 +3139,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "otp": {
-                    "type": "string"
-                }
-            }
-        },
-        "handler.CreateProgramRequest": {
-            "type": "object",
-            "required": [
-                "merchant_id",
-                "point_currency_name",
-                "program_name"
-            ],
-            "properties": {
-                "merchant_id": {
-                    "type": "string"
-                },
-                "point_currency_name": {
-                    "type": "string"
-                },
-                "program_name": {
-                    "type": "string"
-                }
-            }
-        },
-        "handler.EarnPointsRequest": {
-            "type": "object",
-            "required": [
-                "points"
-            ],
-            "properties": {
-                "points": {
-                    "type": "integer"
-                },
-                "transaction_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "handler.RedeemPointsRequest": {
-            "type": "object",
-            "required": [
-                "points"
-            ],
-            "properties": {
-                "points": {
-                    "type": "integer"
-                },
-                "transaction_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "handler.UpdateProgramRequest": {
-            "type": "object",
-            "required": [
-                "point_currency_name",
-                "program_name"
-            ],
-            "properties": {
-                "point_currency_name": {
-                    "type": "string"
-                },
-                "program_name": {
-                    "type": "string"
-                }
-            }
-        },
-        "postgres.Program": {
-            "type": "object",
-            "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "merchantID": {
-                    "type": "string"
-                },
-                "pointCurrencyName": {
-                    "type": "string"
-                },
-                "programID": {
-                    "type": "string"
-                },
-                "programName": {
-                    "type": "string"
-                },
-                "updatedAt": {
                     "type": "string"
                 }
             }
