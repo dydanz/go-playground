@@ -55,7 +55,11 @@ func (s *TransactionService) Create(req *domain.CreateTransactionRequest) (*doma
 		points = int(tx.TransactionAmount * 2) // Example: Double points for bonus
 	}
 
-	// Update points balance if applicable
+	// TODO: Check if the transaction is valid for the program, branch/merchant
+	// TODO: Calculate points based on the transaction type and program rules
+	// TODO: Check if the customer has enough points to redeem
+	// TODO: Update points balance if applicable
+
 	if points != 0 {
 		if err := s.pointsService.EarnPoints(context.Background(), tx.CustomerID, tx.ProgramID, points, &tx.TransactionID); err != nil {
 			return nil, err

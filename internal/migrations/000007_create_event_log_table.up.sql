@@ -1,5 +1,13 @@
 -- Create event type enum
-CREATE TYPE event_type AS ENUM ('transaction_created', 'balance_update', 'reward_redeemed');
+CREATE TYPE event_type AS ENUM (
+    'transaction_created',  -- Transaction created
+    'program_id_created', -- Program ID created
+    'program_rule_created', -- Program rule created
+    'points_earned',        -- Points earned
+    'points_redeemed',      -- Points redeemed
+    'points_balance_updated', -- Points balance updated
+    'reward_redeemed'       -- Reward redeemed
+);
 
 CREATE TABLE IF NOT EXISTS event_log (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
