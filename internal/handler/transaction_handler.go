@@ -4,6 +4,7 @@ import (
 	"go-playground/internal/domain"
 	"go-playground/internal/util"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -78,14 +79,16 @@ func (h *TransactionHandler) GetByID(c *gin.Context) {
 
 // GetCustomerTransactions godoc
 // @Summary Get customer transactions
-// @Description Get all transactions for a specific customer
+// @Description Get all transactions for a specific customer with pagination
 // @Tags transactions
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Security UserIdAuth
 // @Param customer_id path string true "Customer ID"
-// @Success 200 {array} domain.Transaction
+// @Param page query int false "Page number (default: 1)"
+// @Param limit query int false "Number of items per page (default: 10)"
+// @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Router /transactions/customer/{customer_id} [get]
@@ -99,13 +102,44 @@ func (h *TransactionHandler) GetByCustomerID(c *gin.Context) {
 		return
 	}
 
-	transactions, err := h.transactionService.GetByCustomerID(customerID)
+	// Parse pagination parameters
+	page := 1
+	limit := 10
+	if pageStr := c.Query("page"); pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+
+	// Calculate offset
+	offset := (page - 1) * limit
+
+	transactions, total, err := h.transactionService.GetByCustomerIDWithPagination(customerID, offset, limit)
 	if err != nil {
 		util.HandleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, transactions)
+	// Calculate total pages
+	totalPages := (total + int64(limit) - 1) / int64(limit)
+
+	// Prepare response with pagination metadata
+	response := gin.H{
+		"transactions": transactions,
+		"pagination": gin.H{
+			"current_page": page,
+			"per_page":     limit,
+			"total_items":  total,
+			"total_pages":  totalPages,
+		},
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // GetMerchantTransactions godoc

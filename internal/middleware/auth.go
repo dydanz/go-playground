@@ -89,8 +89,9 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 			}
 
 			// Session found in cache, set user context and continue
-			SetSecureCookie(c, tokenCookie, session.UserID)
+			SetSecureCookie(c, tokenCookie, session.UserID, "")
 			c.SetCookie(userIdCookieName, session.UserID, int(24*time.Hour.Seconds()), "/", "", true, false)
+
 			c.Set("user_id", session.UserID)
 			c.Next()
 			log.Printf("Session found in cache %s", tokenCookie)
@@ -122,9 +123,9 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 		}
 
 		// Store user ID in cookie and set secure cookie with session token
-		SetSecureCookie(c, tokenCookie, token.UserID)
+		SetSecureCookie(c, tokenCookie, token.UserID, "")
 		c.SetCookie(userIdCookieName, token.UserID, int(24*time.Hour.Seconds()), "/", "", true, false)
-		c.Set("user_id", token.UserID)
+		c.Set(userIdCookieName, token.UserID)
 		c.Next()
 	}
 }

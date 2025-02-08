@@ -24,16 +24,9 @@ type CreateTransactionRequest struct {
 	TransactionType   string     `json:"transaction_type" binding:"required,oneof=purchase refund bonus"`
 	TransactionAmount float64    `json:"transaction_amount" binding:"required,gt=0"`
 	BranchID          *uuid.UUID `json:"branch_id,omitempty"`
+	Status            string     `json:"status" binding:"required,oneof=pending completed failed cancelled"`
 }
 
 type UpdateTransactionStatusRequest struct {
 	Status string `json:"status" binding:"required,oneof=pending completed failed cancelled"`
-}
-
-type TransactionService interface {
-	Create(req *CreateTransactionRequest) (*Transaction, error)
-	GetByID(id string) (*Transaction, error)
-	GetByCustomerID(customerID string) ([]*Transaction, error)
-	GetByMerchantID(merchantID string) ([]*Transaction, error)
-	UpdateStatus(id string, status string) error
 }

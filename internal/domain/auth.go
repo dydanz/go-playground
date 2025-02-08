@@ -24,6 +24,7 @@ type LoginRequest struct {
 type AuthToken struct {
 	ID         string    `json:"id"`
 	UserID     string    `json:"user_id"`
+	UserName   string    `json:"user_name"`
 	TokenHash  string    `json:"-"`
 	ExpiresAt  time.Time `json:"expires_at"`
 	CreatedAt  time.Time `json:"created_at"`
@@ -52,4 +53,5 @@ type LoginResponse struct {
 	Token     string    `json:"token" example:"Bearer eyJhbGciOiJ..."` // Token with Bearer prefix
 	ExpiresAt time.Time `json:"expires_at"`
 	UserID    string    `json:"user_id"`
+	UserName  string    `json:"user_name"`
 }

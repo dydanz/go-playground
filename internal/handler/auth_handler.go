@@ -4,6 +4,7 @@ import (
 	"go-playground/internal/domain"
 	"go-playground/internal/middleware"
 	"go-playground/internal/util"
+	"log"
 	"net/http"
 	"strings"
 
@@ -53,7 +54,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /auth/verify [post ]
+// @Router /auth/verify [post]
 func (h *AuthHandler) Verify(c *gin.Context) {
 	var req domain.VerificationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -91,13 +92,16 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	log.Println("user name: ", authToken.UserName)
+
 	// Set secure cookie with session token and user ID
-	middleware.SetSecureCookie(c, authToken.TokenHash, authToken.UserID)
+	middleware.SetSecureCookie(c, authToken.TokenHash, authToken.UserID, authToken.UserName)
 
 	response := domain.LoginResponse{
 		Token:     authToken.TokenHash,
 		ExpiresAt: authToken.ExpiresAt,
 		UserID:    authToken.UserID,
+		UserName:  authToken.UserName,
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -146,6 +150,8 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		util.HandleError(c, err)
 		return
 	}
+
+	middleware.ClearSecureCookie(c)
 
 	c.JSON(http.StatusOK, gin.H{"message": "successfully logged out"})
 }

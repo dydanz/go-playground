@@ -23,8 +23,8 @@ func (r *TransactionRepository) Create(ctx context.Context, tx *domain.Transacti
 		INSERT INTO transactions (
 			transaction_id, merchant_id, customer_id, 
 			transaction_type, transaction_amount, transaction_date,
-			branch_id
-		) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6)
+			branch_id, status
+		) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7)
 		RETURNING transaction_date, created_at
 	`
 	return r.db.RW.QueryRowContext(
@@ -36,6 +36,7 @@ func (r *TransactionRepository) Create(ctx context.Context, tx *domain.Transacti
 		tx.TransactionType,
 		tx.TransactionAmount,
 		tx.BranchID,
+		tx.Status,
 	).Scan(
 		&tx.TransactionDate,
 		&tx.CreatedAt,
@@ -46,7 +47,7 @@ func (r *TransactionRepository) GetByID(ctx context.Context, transactionID uuid.
 	query := `
 		SELECT transaction_id, merchant_id, customer_id, 
 			   transaction_type, transaction_amount, transaction_date,
-			   branch_id, created_at
+			   branch_id, created_at, status
 		FROM transactions
 		WHERE transaction_id = $1
 	`
@@ -60,6 +61,7 @@ func (r *TransactionRepository) GetByID(ctx context.Context, transactionID uuid.
 		&tx.TransactionDate,
 		&tx.BranchID,
 		&tx.CreatedAt,
+		&tx.Status,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -68,17 +70,42 @@ func (r *TransactionRepository) GetByID(ctx context.Context, transactionID uuid.
 }
 
 func (r *TransactionRepository) GetByCustomerID(ctx context.Context, customerID uuid.UUID) ([]*domain.Transaction, error) {
+	transactions, _, err := r.GetByCustomerIDWithPagination(ctx, customerID, 0, -1)
+	if err != nil {
+		return nil, err
+	}
+	return transactions, nil
+}
+
+func (r *TransactionRepository) GetByCustomerIDWithPagination(ctx context.Context, customerID uuid.UUID, offset, limit int) ([]*domain.Transaction, int64, error) {
+	// Get total count
+	var total int64
+	countQuery := `SELECT COUNT(*) FROM transactions WHERE customer_id = $1`
+	err := r.db.RR.QueryRowContext(ctx, countQuery, customerID).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Build query with pagination
 	query := `
 		SELECT transaction_id, merchant_id, customer_id, 
 			   transaction_type, transaction_amount, transaction_date,
-			   branch_id, created_at
+			   branch_id, created_at, status
 		FROM transactions
 		WHERE customer_id = $1
 		ORDER BY transaction_date DESC
 	`
-	rows, err := r.db.RR.QueryContext(ctx, query, customerID)
+
+	var rows *sql.Rows
+	if limit > 0 {
+		query += ` LIMIT $2 OFFSET $3`
+		rows, err = r.db.RR.QueryContext(ctx, query, customerID, limit, offset)
+	} else {
+		rows, err = r.db.RR.QueryContext(ctx, query, customerID)
+	}
+
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -94,20 +121,21 @@ func (r *TransactionRepository) GetByCustomerID(ctx context.Context, customerID 
 			&tx.TransactionDate,
 			&tx.BranchID,
 			&tx.CreatedAt,
+			&tx.Status,
 		)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		transactions = append(transactions, tx)
 	}
-	return transactions, nil
+	return transactions, total, nil
 }
 
 func (r *TransactionRepository) GetByMerchantID(ctx context.Context, merchantID uuid.UUID) ([]*domain.Transaction, error) {
 	query := `
 		SELECT transaction_id, merchant_id, customer_id, 
 			   transaction_type, transaction_amount, transaction_date,
-			   branch_id, created_at
+			   branch_id, created_at, status
 		FROM transactions
 		WHERE merchant_id = $1
 		ORDER BY transaction_date DESC
@@ -130,6 +158,7 @@ func (r *TransactionRepository) GetByMerchantID(ctx context.Context, merchantID 
 			&tx.TransactionDate,
 			&tx.BranchID,
 			&tx.CreatedAt,
+			&tx.Status,
 		)
 		if err != nil {
 			return nil, err

@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	sessionCookieName = "session_token"
-	userIdCookieName  = "user_id"
+	sessionCookieName  = "session_token"
+	userIdCookieName   = "user_id"
+	userNameCookieName = "user_name"
 )
 
 // SetSecureCookie sets secure HTTP-only cookies for session management and CSRF protection.
@@ -24,7 +25,7 @@ const (
 // The function sets the following cookies:
 //   - Session cookie: HTTP-only, secure cookie containing the session token
 //   - CSRF cookie: Secure (not HTTP-only) cookie containing the CSRF token
-func SetSecureCookie(c *gin.Context, token string, userID string) {
+func SetSecureCookie(c *gin.Context, token string, userID string, userName string) {
 	c.SetCookie(
 		sessionCookieName,
 		token,
@@ -45,6 +46,19 @@ func SetSecureCookie(c *gin.Context, token string, userID string) {
 		true,
 		false, // not httpOnly so JS can read it
 	)
+
+	// Set user name cookie
+	if userName != "" {
+		c.SetCookie(
+			userNameCookieName,
+			userName,
+			int(24*time.Hour.Seconds()),
+			"/",
+			"",
+			true,
+			false, // not httpOnly so JS can read it
+		)
+	}
 
 	// Set CSRF token
 	csrfToken := GenerateCSRFToken()

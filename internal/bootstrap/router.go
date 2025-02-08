@@ -54,9 +54,10 @@ func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo red
 	r := gin.Default()
 
 	// Load HTML templates
-	r.LoadHTMLGlob("internal/static/*.html")
+	r.LoadHTMLGlob("internal/static/pages/*.html")
 	// Serve static files
-	r.Static("/static", "internal/static")
+	r.Static("/static/pages", "internal/static/pages")
+	r.Static("/static/assets", "internal/static/assets")
 
 	// Add latency middleware globally
 	r.Use(util.GinHandlerLatencyDecorator())
@@ -73,11 +74,12 @@ func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo red
 
 	// Public routes
 	r.GET("/ping", h.PingHandler.Ping)
-	r.GET("/login", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "login.html", nil)
+
+	r.GET("/sign-in", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "sign-in.html", nil)
 	})
-	r.GET("/register", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "register.html", nil)
+	r.GET("/sign-up", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "sign-up.html", nil)
 	})
 
 	// Public auth routes
@@ -175,13 +177,17 @@ func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo red
 	}
 
 	// Protected HTML routes
-	r.GET("/dashboard", middleware.AuthMiddleware(authRepo, sessionRepo), func(c *gin.Context) {
+	r.GET("/dashboard", middleware.AuthMiddleware(authRepo, sessionRepo), middleware.CSRFMiddleware(), func(c *gin.Context) {
 		c.HTML(http.StatusOK, "dashboard.html", nil)
 	})
-
-	// Add profile route
-	r.GET("/profile", middleware.AuthMiddleware(authRepo, sessionRepo), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "user-profile.html", nil)
+	r.GET("/profile", middleware.AuthMiddleware(authRepo, sessionRepo), middleware.CSRFMiddleware(), func(c *gin.Context) {
+		c.HTML(http.StatusOK, "profile.html", nil)
+	})
+	r.GET("/transactions", middleware.AuthMiddleware(authRepo, sessionRepo), middleware.CSRFMiddleware(), func(c *gin.Context) {
+		c.HTML(http.StatusOK, "tables.html", nil)
+	})
+	r.GET("/billing", middleware.AuthMiddleware(authRepo, sessionRepo), middleware.CSRFMiddleware(), func(c *gin.Context) {
+		c.HTML(http.StatusOK, "billing.html", nil)
 	})
 
 	// Add CSRF middleware

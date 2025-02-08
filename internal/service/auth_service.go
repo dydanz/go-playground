@@ -192,8 +192,11 @@ func (s *AuthService) Login(req *domain.LoginRequest) (*domain.AuthToken, error)
 	authToken := &domain.AuthToken{
 		UserID:    user.ID,
 		TokenHash: token,
+		UserName:  user.Name,
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
+
+	fmt.Println("user.Name ", user.Name)
 
 	if err := s.authRepo.CreateToken(authToken); err != nil {
 		return nil, domain.AuthenticationError{

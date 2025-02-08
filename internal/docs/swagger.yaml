@@ -15,6 +15,19 @@ definitions:
     - merchant_name
     - merchant_type
     type: object
+  domain.CreateProgramRequest:
+    properties:
+      merchant_id:
+        type: string
+      point_currency_name:
+        type: string
+      program_name:
+        type: string
+    required:
+    - merchant_id
+    - point_currency_name
+    - program_name
+    type: object
   domain.CreateProgramRuleRequest:
     properties:
       condition_type:
@@ -51,6 +64,13 @@ definitions:
         type: string
       merchant_id:
         type: string
+      status:
+        enum:
+        - pending
+        - completed
+        - failed
+        - cancelled
+        type: string
       transaction_amount:
         type: number
       transaction_type:
@@ -62,6 +82,7 @@ definitions:
     required:
     - customer_id
     - merchant_id
+    - status
     - transaction_amount
     - transaction_type
     type: object
@@ -82,6 +103,17 @@ definitions:
     - password
     - phone
     type: object
+  domain.EarnPointsRequest:
+    properties:
+      customer_id:
+        type: string
+      points:
+        type: integer
+      program_id:
+        type: string
+    required:
+    - points
+    type: object
   domain.LoginRequest:
     properties:
       email:
@@ -101,6 +133,8 @@ definitions:
         example: Bearer eyJhbGciOiJ...
         type: string
       user_id:
+        type: string
+      user_name:
         type: string
     type: object
   domain.Merchant:
@@ -145,6 +179,21 @@ definitions:
       transaction_id:
         type: string
     type: object
+  domain.Program:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      merchant_id:
+        type: string
+      point_currency_name:
+        type: string
+      program_name:
+        type: string
+      updated_at:
+        type: string
+    type: object
   domain.ProgramRule:
     properties:
       condition_type:
@@ -169,6 +218,17 @@ definitions:
         type: string
       updated_at:
         type: string
+    type: object
+  domain.RedeemPointsRequest:
+    properties:
+      customer_id:
+        type: string
+      points:
+        type: integer
+      program_id:
+        type: string
+    required:
+    - points
     type: object
   domain.Redemption:
     properties:
@@ -263,6 +323,13 @@ definitions:
     - merchant_name
     - merchant_type
     type: object
+  domain.UpdateProgramRequest:
+    properties:
+      point_currency_name:
+        type: string
+      program_name:
+        type: string
+    type: object
   domain.UpdateProgramRuleRequest:
     properties:
       condition_type:
@@ -330,62 +397,6 @@ definitions:
     required:
     - email
     - otp
-    type: object
-  handler.CreateProgramRequest:
-    properties:
-      merchant_id:
-        type: string
-      point_currency_name:
-        type: string
-      program_name:
-        type: string
-    required:
-    - merchant_id
-    - point_currency_name
-    - program_name
-    type: object
-  handler.EarnPointsRequest:
-    properties:
-      points:
-        type: integer
-      transaction_id:
-        type: string
-    required:
-    - points
-    type: object
-  handler.RedeemPointsRequest:
-    properties:
-      points:
-        type: integer
-      transaction_id:
-        type: string
-    required:
-    - points
-    type: object
-  handler.UpdateProgramRequest:
-    properties:
-      point_currency_name:
-        type: string
-      program_name:
-        type: string
-    required:
-    - point_currency_name
-    - program_name
-    type: object
-  postgres.Program:
-    properties:
-      createdAt:
-        type: string
-      merchantID:
-        type: string
-      pointCurrencyName:
-        type: string
-      programID:
-        type: string
-      programName:
-        type: string
-      updatedAt:
-        type: string
     type: object
 host: localhost:8080
 info:
@@ -535,7 +546,7 @@ paths:
             type: object
       summary: Get verification code for testing
       tags:
-      - test
+      - internal-load-testing
   /auth/test/random-user:
     get:
       consumes:
@@ -565,7 +576,7 @@ paths:
             type: object
       summary: Get random verified user
       tags:
-      - test
+      - internal-load-testing
   /auth/verify:
     post:
       consumes:
@@ -806,7 +817,7 @@ paths:
         name: points
         required: true
         schema:
-          $ref: '#/definitions/handler.EarnPointsRequest'
+          $ref: '#/definitions/domain.EarnPointsRequest'
       produces:
       - application/json
       responses:
@@ -898,7 +909,7 @@ paths:
         name: points
         required: true
         schema:
-          $ref: '#/definitions/handler.RedeemPointsRequest'
+          $ref: '#/definitions/domain.RedeemPointsRequest'
       produces:
       - application/json
       responses:
@@ -1147,14 +1158,14 @@ paths:
         name: program
         required: true
         schema:
-          $ref: '#/definitions/handler.CreateProgramRequest'
+          $ref: '#/definitions/domain.CreateProgramRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/postgres.Program'
+            $ref: '#/definitions/domain.Program'
         "400":
           description: Bad Request
           schema:
@@ -1245,7 +1256,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/postgres.Program'
+            $ref: '#/definitions/domain.Program'
         "400":
           description: Bad Request
           schema:
@@ -1293,14 +1304,14 @@ paths:
         name: program
         required: true
         schema:
-          $ref: '#/definitions/handler.UpdateProgramRequest'
+          $ref: '#/definitions/domain.UpdateProgramRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/postgres.Program'
+            $ref: '#/definitions/domain.Program'
         "400":
           description: Bad Request
           schema:
@@ -1351,7 +1362,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/postgres.Program'
+              $ref: '#/definitions/domain.Program'
             type: array
         "400":
           description: Bad Request
@@ -1744,22 +1755,29 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get all transactions for a specific customer
+      description: Get all transactions for a specific customer with pagination
       parameters:
       - description: Customer ID
         in: path
         name: customer_id
         required: true
         type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Number of items per page (default: 10)'
+        in: query
+        name: limit
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/domain.Transaction'
-            type: array
+            additionalProperties: true
+            type: object
         "400":
           description: Bad Request
           schema:
