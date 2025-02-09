@@ -36,27 +36,27 @@ func (s *PointsService) GetBalance(ctx context.Context, customerID, programID uu
 	return s.pointsRepo.GetCurrentBalance(ctx, customerID, programID)
 }
 
-func (s *PointsService) EarnPoints(ctx context.Context, customerID, programID uuid.UUID, points int, transactionID *uuid.UUID) error {
+func (s *PointsService) EarnPoints(ctx context.Context, merchantCustomerID uuid.UUID, programID uuid.UUID, points int, transactionID *uuid.UUID) error {
 	if points <= 0 {
 		return ErrInvalidPoints
 	}
 
 	return s.pointsRepo.Create(ctx, &domain.PointsLedger{
-		LedgerID:      uuid.New(),
-		CustomerID:    customerID,
-		ProgramID:     programID,
-		PointsEarned:  points,
-		TransactionID: transactionID,
-		CreatedAt:     time.Now(),
+		LedgerID:            uuid.New(),
+		MerchantCustomersID: merchantCustomerID,
+		ProgramID:           programID,
+		PointsEarned:        points,
+		TransactionID:       transactionID,
+		CreatedAt:           time.Now(),
 	})
 }
 
-func (s *PointsService) RedeemPoints(ctx context.Context, customerID, programID uuid.UUID, points int, transactionID *uuid.UUID) error {
+func (s *PointsService) RedeemPoints(ctx context.Context, merchantCustomerID uuid.UUID, programID uuid.UUID, points int, transactionID *uuid.UUID) error {
 	if points <= 0 {
 		return ErrInvalidPoints
 	}
 
-	currentBalance, err := s.pointsRepo.GetCurrentBalance(ctx, customerID, programID)
+	currentBalance, err := s.pointsRepo.GetCurrentBalance(ctx, merchantCustomerID, programID)
 	if err != nil {
 		return err
 	}
@@ -66,13 +66,13 @@ func (s *PointsService) RedeemPoints(ctx context.Context, customerID, programID 
 	}
 
 	return s.pointsRepo.Create(ctx, &domain.PointsLedger{
-		LedgerID:       uuid.New(),
-		CustomerID:     customerID,
-		ProgramID:      programID,
-		PointsEarned:   0,
-		PointsRedeemed: points,
-		PointsBalance:  currentBalance - points,
-		TransactionID:  transactionID,
+		LedgerID:            uuid.New(),
+		MerchantCustomersID: merchantCustomerID,
+		ProgramID:           programID,
+		PointsEarned:        0,
+		PointsRedeemed:      points,
+		PointsBalance:       currentBalance - points,
+		TransactionID:       transactionID,
 	})
 }
 

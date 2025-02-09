@@ -17,10 +17,11 @@ func NewPointsRepository(db *sql.DB) *PointsRepository {
 	return &PointsRepository{db: db}
 }
 
+// Create inserts a new points ledger entry into the database
 func (r *PointsRepository) Create(ctx context.Context, ledger *domain.PointsLedger) error {
 	/*
 		The CTE (last_balance) fetches the points_balance of the last transaction
-		for the same customer_id and program_id.
+		for the same merchant_customers_id and program_id.
 
 		If no previous record exists, COALESCE(..., 0) ensures we start from 0.
 
@@ -29,38 +30,45 @@ func (r *PointsRepository) Create(ctx context.Context, ledger *domain.PointsLedg
 
 		The record is atomically inserted into the points_ledger table.
 	*/
-	query := `
-		INSERT INTO points_ledger (
-			ledger_id, customer_id, program_id, 
-			points_earned, points_redeemed, points_balance, 
-			transaction_id
-		) VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING created_at
-	`
-
-	query = `WITH last_balance AS (
+	query := `WITH last_balance AS (
 			SELECT points_balance
 			FROM points_ledger
-			WHERE customer_id = $1
+			WHERE merchant_customers_id = $1
 			AND program_id = $2
 			ORDER BY created_at DESC
 			LIMIT 1
 		)
-		INSERT INTO points_ledger (customer_id, program_id, points_earned, points_redeemed, points_balance, transaction_id)
-		VALUES (
-			$1, -- customer_id
-			$2, -- program_id
-			$3, -- points_earned
-			$4, -- points_redeemed
-			COALESCE((SELECT points_balance FROM last_balance), 0) + $3 - $4, -- Calculate new balance
-			$5  -- transaction_id
+		INSERT INTO points_ledger (
+			ledger_id,
+			merchant_customers_id,
+			program_id,
+			points_earned,
+			points_redeemed,
+			points_balance,
+			transaction_id,
+			created_at
 		)
-		RETURNING created_at
-	`
+		VALUES (
+			$1,
+			$2,
+			$3,
+			$4,
+			$5,
+			COALESCE((SELECT points_balance FROM last_balance), 0) + $4 - $5,
+			$6,
+			CURRENT_TIMESTAMP
+		)
+		RETURNING created_at`
+
+	if ledger.LedgerID == uuid.Nil {
+		ledger.LedgerID = uuid.New()
+	}
+
 	return r.db.QueryRowContext(
 		ctx,
 		query,
-		ledger.CustomerID,
+		ledger.LedgerID,
+		ledger.MerchantCustomersID,
 		ledger.ProgramID,
 		ledger.PointsEarned,
 		ledger.PointsRedeemed,
@@ -68,16 +76,22 @@ func (r *PointsRepository) Create(ctx context.Context, ledger *domain.PointsLedg
 	).Scan(&ledger.CreatedAt)
 }
 
-func (r *PointsRepository) GetByCustomerAndProgram(ctx context.Context, customerID, programID uuid.UUID) ([]*domain.PointsLedger, error) {
+// GetByCustomerAndProgram retrieves all points ledger entries for a given customer and program
+func (r *PointsRepository) GetByCustomerAndProgram(ctx context.Context, merchantCustomersID, programID uuid.UUID) ([]*domain.PointsLedger, error) {
 	query := `
-		SELECT ledger_id, customer_id, program_id, 
-			   points_earned, points_redeemed, points_balance, 
-			   transaction_id, created_at
+		SELECT ledger_id,
+			   merchant_customers_id,
+			   program_id,
+			   points_earned,
+			   points_redeemed,
+			   points_balance,
+			   transaction_id,
+			   created_at
 		FROM points_ledger
-		WHERE customer_id = $1 AND program_id = $2
+		WHERE merchant_customers_id = $1 AND program_id = $2
 		ORDER BY created_at DESC
 	`
-	rows, err := r.db.QueryContext(ctx, query, customerID, programID)
+	rows, err := r.db.QueryContext(ctx, query, merchantCustomersID, programID)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +102,7 @@ func (r *PointsRepository) GetByCustomerAndProgram(ctx context.Context, customer
 		ledger := &domain.PointsLedger{}
 		err := rows.Scan(
 			&ledger.LedgerID,
-			&ledger.CustomerID,
+			&ledger.MerchantCustomersID,
 			&ledger.ProgramID,
 			&ledger.PointsEarned,
 			&ledger.PointsRedeemed,
@@ -104,34 +118,41 @@ func (r *PointsRepository) GetByCustomerAndProgram(ctx context.Context, customer
 	return ledgers, nil
 }
 
-func (r *PointsRepository) GetCurrentBalance(ctx context.Context, customerID, programID uuid.UUID) (int, error) {
+// GetCurrentBalance retrieves the current points balance for a given customer and program
+func (r *PointsRepository) GetCurrentBalance(ctx context.Context, merchantCustomersID, programID uuid.UUID) (int, error) {
 	query := `
 		SELECT points_balance
 		FROM points_ledger
-		WHERE customer_id = $1 AND program_id = $2
+		WHERE merchant_customers_id = $1 AND program_id = $2
 		ORDER BY created_at DESC
 		LIMIT 1
 	`
 	var balance int
-	err := r.db.QueryRowContext(ctx, query, customerID, programID).Scan(&balance)
+	err := r.db.QueryRowContext(ctx, query, merchantCustomersID, programID).Scan(&balance)
 	if err == sql.ErrNoRows {
 		return 0, nil
 	}
 	return balance, err
 }
 
+// GetByTransactionID retrieves a points ledger entry by its transaction ID
 func (r *PointsRepository) GetByTransactionID(ctx context.Context, transactionID uuid.UUID) (*domain.PointsLedger, error) {
 	query := `
-		SELECT ledger_id, customer_id, program_id, 
-			   points_earned, points_redeemed, points_balance, 
-			   transaction_id, created_at
+		SELECT ledger_id,
+			   merchant_customers_id,
+			   program_id,
+			   points_earned,
+			   points_redeemed,
+			   points_balance,
+			   transaction_id,
+			   created_at
 		FROM points_ledger
 		WHERE transaction_id = $1
 	`
 	ledger := &domain.PointsLedger{}
 	err := r.db.QueryRowContext(ctx, query, transactionID).Scan(
 		&ledger.LedgerID,
-		&ledger.CustomerID,
+		&ledger.MerchantCustomersID,
 		&ledger.ProgramID,
 		&ledger.PointsEarned,
 		&ledger.PointsRedeemed,

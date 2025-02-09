@@ -2,10 +2,11 @@ package postgres
 
 import (
 	"context"
-	"go-playground/internal/domain"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
+
+	"go-playground/internal/domain"
 )
 
 type MockPointsRepository struct {
@@ -27,10 +28,7 @@ func (m *MockPointsRepository) GetByCustomerAndProgram(ctx context.Context, cust
 
 func (m *MockPointsRepository) GetCurrentBalance(ctx context.Context, customerID, programID uuid.UUID) (int, error) {
 	args := m.Called(ctx, customerID, programID)
-	if v, ok := args.Get(0).(int64); ok {
-		return int(v), args.Error(1)
-	}
-	return args.Get(0).(int), args.Error(1)
+	return args.Int(0), args.Error(1)
 }
 
 func (m *MockPointsRepository) GetByTransactionID(ctx context.Context, transactionID uuid.UUID) (*domain.PointsLedger, error) {

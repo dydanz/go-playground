@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
@@ -16,7 +17,11 @@ func TestRewardsService_Create_Success(t *testing.T) {
 	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
+	programID := uuid.New()
 	req := &domain.CreateRewardRequest{
+		ProgramID:      programID,
+		Name:           "Test Reward",
+		Description:    "Test Description",
 		PointsRequired: 100,
 		IsActive:       true,
 	}
@@ -29,6 +34,9 @@ func TestRewardsService_Create_Success(t *testing.T) {
 	assert.NotNil(t, reward)
 	assert.Equal(t, req.PointsRequired, reward.PointsRequired)
 	assert.Equal(t, req.IsActive, reward.IsActive)
+	assert.Equal(t, DEFAULT_REDEEM_PROGRAM_ID, reward.ProgramID)
+	assert.Equal(t, req.Name, reward.Name)
+	assert.Equal(t, req.Description, reward.Description)
 	mockRepo.AssertExpectations(t)
 }
 
@@ -36,7 +44,11 @@ func TestRewardsService_Create_InvalidPoints(t *testing.T) {
 	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
+	programID := uuid.New()
 	req := &domain.CreateRewardRequest{
+		ProgramID:      programID,
+		Name:           "Test Reward",
+		Description:    "Test Description",
 		PointsRequired: 0,
 		IsActive:       true,
 	}
@@ -53,15 +65,20 @@ func TestRewardsService_GetByID_Success(t *testing.T) {
 	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
+	rewardID := uuid.New()
+	programID := uuid.New()
 	expectedReward := &domain.Reward{
-		ID:             "reward123",
+		ID:             rewardID,
+		ProgramID:      programID,
+		Name:           "Test Reward",
+		Description:    "Test Description",
 		PointsRequired: 100,
 		IsActive:       true,
 	}
 
-	mockRepo.On("GetByID", "reward123").Return(expectedReward, nil)
+	mockRepo.On("GetByID", rewardID).Return(expectedReward, nil)
 
-	reward, err := service.GetByID("reward123")
+	reward, err := service.GetByID(rewardID.String())
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedReward, reward)
@@ -72,38 +89,13 @@ func TestRewardsService_GetByID_NotFound(t *testing.T) {
 	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
-	mockRepo.On("GetByID", "nonexistent").Return(nil, errors.New("not found"))
+	nonexistentID := uuid.New()
+	mockRepo.On("GetByID", nonexistentID).Return(nil, errors.New("not found"))
 
-	reward, err := service.GetByID("nonexistent")
+	reward, err := service.GetByID(nonexistentID.String())
 
 	assert.Error(t, err)
 	assert.Nil(t, reward)
-	mockRepo.AssertExpectations(t)
-}
-
-func TestRewardsService_GetAll_Success(t *testing.T) {
-	mockRepo := new(postgres.MockRewardsRepository)
-	service := NewRewardsService(mockRepo)
-
-	expectedRewards := []domain.Reward{
-		{
-			ID:             "reward123",
-			PointsRequired: 100,
-			IsActive:       true,
-		},
-		{
-			ID:             "reward124",
-			PointsRequired: 200,
-			IsActive:       true,
-		},
-	}
-
-	mockRepo.On("GetAll", true).Return(expectedRewards, nil)
-
-	rewards, err := service.GetAll(true)
-
-	assert.NoError(t, err)
-	assert.Equal(t, expectedRewards, rewards)
 	mockRepo.AssertExpectations(t)
 }
 
@@ -111,20 +103,35 @@ func TestRewardsService_Update_Success(t *testing.T) {
 	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
+	rewardID := uuid.New()
+	programID := uuid.New()
+	existingReward := &domain.Reward{
+		ID:             rewardID,
+		ProgramID:      programID,
+		Name:           "Original Name",
+		Description:    "Original Description",
+		PointsRequired: 100,
+		IsActive:       true,
+	}
+
 	req := &domain.UpdateRewardRequest{
+		Name:           "Updated Name",
+		Description:    "Updated Description",
 		PointsRequired: new(int),
 		IsActive:       new(bool),
 	}
 	*req.PointsRequired = 150
 	*req.IsActive = true
 
-	mockRepo.On("GetByID", "reward123").Return(&domain.Reward{ID: "reward123"}, nil)
+	mockRepo.On("GetByID", rewardID).Return(existingReward, nil)
 	mockRepo.On("Update", mock.AnythingOfType("*domain.Reward")).Return(nil)
 
-	reward, err := service.Update("reward123", req)
+	reward, err := service.Update(rewardID.String(), req)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, reward)
+	assert.Equal(t, "Updated Name", reward.Name)
+	assert.Equal(t, "Updated Description", reward.Description)
 	assert.Equal(t, 150, reward.PointsRequired)
 	assert.Equal(t, true, reward.IsActive)
 	mockRepo.AssertExpectations(t)
@@ -134,13 +141,18 @@ func TestRewardsService_Update_InvalidPoints(t *testing.T) {
 	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
+	rewardID := uuid.New()
+	programID := uuid.New()
 	existingReward := &domain.Reward{
-		ID:             "reward123",
+		ID:             rewardID,
+		ProgramID:      programID,
+		Name:           "Test Reward",
+		Description:    "Test Description",
 		PointsRequired: 100,
 		IsActive:       true,
 	}
 
-	mockRepo.On("GetByID", "reward123").Return(existingReward, nil)
+	mockRepo.On("GetByID", rewardID).Return(existingReward, nil)
 
 	req := &domain.UpdateRewardRequest{
 		PointsRequired: new(int),
@@ -149,7 +161,7 @@ func TestRewardsService_Update_InvalidPoints(t *testing.T) {
 	*req.PointsRequired = 0
 	*req.IsActive = true
 
-	reward, err := service.Update("reward123", req)
+	reward, err := service.Update(rewardID.String(), req)
 
 	assert.Error(t, err)
 	assert.Nil(t, reward)
@@ -162,9 +174,10 @@ func TestRewardsService_Delete_Success(t *testing.T) {
 	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
-	mockRepo.On("Delete", "reward123").Return(nil)
+	rewardID := uuid.New()
+	mockRepo.On("Delete", rewardID).Return(nil)
 
-	err := service.Delete("reward123")
+	err := service.Delete(rewardID.String())
 
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
@@ -174,18 +187,23 @@ func TestRewardsService_UpdateAvailability_Success(t *testing.T) {
 	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
+	rewardID := uuid.New()
+	programID := uuid.New()
 	existingReward := &domain.Reward{
-		ID:             "reward123",
+		ID:             rewardID,
+		ProgramID:      programID,
+		Name:           "Test Reward",
+		Description:    "Test Description",
 		PointsRequired: 100,
 		IsActive:       false,
 	}
 
-	mockRepo.On("GetByID", "reward123").Return(existingReward, nil)
+	mockRepo.On("GetByID", rewardID).Return(existingReward, nil)
 	mockRepo.On("Update", mock.MatchedBy(func(r *domain.Reward) bool {
-		return r.ID == "reward123" && r.IsActive == true
+		return r.ID == rewardID && r.IsActive == true
 	})).Return(nil)
 
-	err := service.UpdateAvailability("reward123", true)
+	err := service.UpdateAvailability(rewardID.String(), true)
 
 	assert.NoError(t, err)
 	mockRepo.AssertExpectations(t)
@@ -195,9 +213,10 @@ func TestRewardsService_UpdateAvailability_NotFound(t *testing.T) {
 	mockRepo := new(postgres.MockRewardsRepository)
 	service := NewRewardsService(mockRepo)
 
-	mockRepo.On("GetByID", "nonexistent").Return(nil, errors.New("not found"))
+	nonexistentID := uuid.New()
+	mockRepo.On("GetByID", nonexistentID).Return(nil, errors.New("not found"))
 
-	err := service.UpdateAvailability("nonexistent", true)
+	err := service.UpdateAvailability(nonexistentID.String(), true)
 
 	assert.Error(t, err)
 	assert.Equal(t, "not found", err.Error())

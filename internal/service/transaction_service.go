@@ -29,15 +29,15 @@ func NewTransactionService(
 
 func (s *TransactionService) Create(req *domain.CreateTransactionRequest) (*domain.Transaction, error) {
 	tx := &domain.Transaction{
-		TransactionID:     uuid.New(),
-		MerchantID:        req.MerchantID,
-		CustomerID:        req.CustomerID,
-		ProgramID:         req.ProgramID,
-		BranchID:          req.BranchID,
-		TransactionType:   req.TransactionType,
-		TransactionAmount: req.TransactionAmount,
-		Status:            "pending",
-		CreatedAt:         time.Now(),
+		TransactionID:       uuid.New(),
+		MerchantID:          req.MerchantID,
+		MerchantCustomersID: req.MerchantCustomersID,
+		ProgramID:           req.ProgramID,
+		BranchID:            req.BranchID,
+		TransactionType:     req.TransactionType,
+		TransactionAmount:   req.TransactionAmount,
+		Status:              "pending",
+		CreatedAt:           time.Now(),
 	}
 
 	if err := s.transactionRepo.Create(context.Background(), tx); err != nil {
@@ -61,7 +61,7 @@ func (s *TransactionService) Create(req *domain.CreateTransactionRequest) (*doma
 	// TODO: Update points balance if applicable
 
 	if points != 0 {
-		if err := s.pointsService.EarnPoints(context.Background(), tx.CustomerID, tx.ProgramID, points, &tx.TransactionID); err != nil {
+		if err := s.pointsService.EarnPoints(context.Background(), tx.MerchantCustomersID, tx.ProgramID, points, &tx.TransactionID); err != nil {
 			return nil, err
 		}
 	}
@@ -70,7 +70,7 @@ func (s *TransactionService) Create(req *domain.CreateTransactionRequest) (*doma
 	txIDStr := tx.TransactionID.String()
 	event := &domain.EventLog{
 		EventType:   "transaction_created",
-		UserID:      tx.CustomerID.String(),
+		UserID:      tx.MerchantCustomersID.String(),
 		ReferenceID: &txIDStr,
 		Details: map[string]interface{}{
 			"merchant_id":        tx.MerchantID,

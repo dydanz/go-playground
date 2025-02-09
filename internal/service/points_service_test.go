@@ -26,12 +26,12 @@ func TestPointsService(t *testing.T) {
 
 	t.Run("GetLedger", func(t *testing.T) {
 		ledger := &domain.PointsLedger{
-			LedgerID:      uuid.New(),
-			CustomerID:    customerID,
-			ProgramID:     programID,
-			PointsEarned:  100,
-			TransactionID: &txID,
-			CreatedAt:     time.Now(),
+			LedgerID:            uuid.New(),
+			MerchantCustomersID: customerID,
+			ProgramID:           programID,
+			PointsEarned:        100,
+			TransactionID:       &txID,
+			CreatedAt:           time.Now(),
 		}
 
 		pointsRepo.On("GetByCustomerAndProgram", mock.Anything, customerID, programID).Return([]*domain.PointsLedger{ledger}, nil)
@@ -42,7 +42,7 @@ func TestPointsService(t *testing.T) {
 	})
 
 	t.Run("GetBalance", func(t *testing.T) {
-		pointsRepo.On("GetCurrentBalance", mock.Anything, customerID, programID).Return(int64(100), nil)
+		pointsRepo.On("GetCurrentBalance", mock.Anything, customerID, programID).Return(100, nil)
 
 		result, err := service.GetBalance(ctx, customerID, programID)
 		assert.NoError(t, err)
@@ -53,7 +53,7 @@ func TestPointsService(t *testing.T) {
 		pointsRepo := new(postgres.MockPointsRepository)
 		service := NewPointsService(pointsRepo, eventRepo)
 		expectedErr := errors.New("database error")
-		pointsRepo.On("GetCurrentBalance", mock.Anything, customerID, programID).Return(int64(0), expectedErr)
+		pointsRepo.On("GetCurrentBalance", mock.Anything, customerID, programID).Return(0, expectedErr)
 
 		result, err := service.GetBalance(ctx, customerID, programID)
 		assert.Equal(t, expectedErr, err)
@@ -74,7 +74,7 @@ func TestPointsService(t *testing.T) {
 	})
 
 	t.Run("RedeemPoints", func(t *testing.T) {
-		pointsRepo.On("GetCurrentBalance", mock.Anything, customerID, programID).Return(int64(200), nil)
+		pointsRepo.On("GetCurrentBalance", mock.Anything, customerID, programID).Return(200, nil)
 		pointsRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.PointsLedger")).Return(nil)
 
 		err := service.RedeemPoints(ctx, customerID, programID, 100, &txID)
@@ -85,7 +85,7 @@ func TestPointsService(t *testing.T) {
 		pointsRepo := new(postgres.MockPointsRepository)
 		service := NewPointsService(pointsRepo, eventRepo)
 
-		pointsRepo.On("GetCurrentBalance", mock.Anything, customerID, programID).Return(int64(50), nil)
+		pointsRepo.On("GetCurrentBalance", mock.Anything, customerID, programID).Return(50, nil)
 
 		err := service.RedeemPoints(ctx, customerID, programID, 100, &txID)
 		assert.Equal(t, ErrInsufficientPoints, err)

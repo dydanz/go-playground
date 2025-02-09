@@ -36,10 +36,9 @@ func (h *RedemptionHandler) Create(c *gin.Context) {
 	}
 
 	redemption := &domain.Redemption{
-		UserID:    req.UserID,
-		RewardID:  req.RewardID,
-		ProgramID: req.ProgramID,
-		Status:    "pending",
+		MerchantCustomersID: req.MerchantCustomersID,
+		RewardID:            req.RewardID,
+		Status:              "pending",
 	}
 
 	if err := h.redemptionService.Create(c.Request.Context(), redemption); err != nil {
@@ -138,7 +137,7 @@ func (h *RedemptionHandler) UpdateStatus(c *gin.Context) {
 		return
 	}
 
-	if err := h.redemptionService.UpdateStatus(c.Request.Context(), id, req.Status); err != nil {
+	if err := h.redemptionService.UpdateStatus(c.Request.Context(), id, string(req.Status)); err != nil {
 		util.HandleError(c, err)
 		return
 	}

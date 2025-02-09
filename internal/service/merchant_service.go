@@ -2,6 +2,8 @@ package service
 
 import (
 	"go-playground/internal/domain"
+
+	"github.com/google/uuid"
 )
 
 type MerchantService struct {
@@ -25,7 +27,7 @@ func (s *MerchantService) Create(req *domain.CreateMerchantRequest) (*domain.Mer
 	return merchant, nil
 }
 
-func (s *MerchantService) GetByID(id string) (*domain.Merchant, error) {
+func (s *MerchantService) GetByID(id uuid.UUID) (*domain.Merchant, error) {
 	return s.merchantRepo.GetByID(id)
 }
 
@@ -33,7 +35,7 @@ func (s *MerchantService) GetAll() ([]*domain.Merchant, error) {
 	return s.merchantRepo.GetAll()
 }
 
-func (s *MerchantService) Update(id string, req *domain.UpdateMerchantRequest) (*domain.Merchant, error) {
+func (s *MerchantService) Update(id uuid.UUID, req *domain.UpdateMerchantRequest) (*domain.Merchant, error) {
 	merchant, err := s.merchantRepo.GetByID(id)
 	if err != nil {
 		return nil, err
@@ -52,6 +54,6 @@ func (s *MerchantService) Update(id string, req *domain.UpdateMerchantRequest) (
 	return merchant, nil
 }
 
-func (s *MerchantService) Delete(id string) error {
+func (s *MerchantService) Delete(id uuid.UUID) error {
 	return s.merchantRepo.Delete(id)
 }

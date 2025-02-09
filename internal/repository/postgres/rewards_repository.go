@@ -3,6 +3,8 @@ package postgres
 import (
 	"database/sql"
 	"go-playground/internal/domain"
+
+	"github.com/google/uuid"
 )
 
 type RewardsRepository struct {
@@ -14,43 +16,54 @@ func NewRewardsRepository(db *sql.DB) *RewardsRepository {
 }
 
 func (r *RewardsRepository) Create(reward *domain.Reward) error {
+	if reward.ID == uuid.Nil {
+		reward.ID = uuid.New()
+	}
+
 	query := `
 		INSERT INTO rewards (
-			name, description, points_required, is_active, quantity
-		) VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, created_at, updated_at
+			id, program_id, name, description, points_required,
+			available_quantity, quantity, is_active,
+			created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		RETURNING created_at, updated_at
 	`
 	return r.db.QueryRow(
 		query,
+		reward.ID,
+		reward.ProgramID,
 		reward.Name,
 		reward.Description,
 		reward.PointsRequired,
-		reward.IsActive,
+		reward.AvailableQuantity,
 		reward.Quantity,
+		reward.IsActive,
 	).Scan(
-		&reward.ID,
 		&reward.CreatedAt,
 		&reward.UpdatedAt,
 	)
 }
 
-func (r *RewardsRepository) GetByID(id string) (*domain.Reward, error) {
+func (r *RewardsRepository) GetByID(id uuid.UUID) (*domain.Reward, error) {
 	reward := &domain.Reward{}
-	var quantity sql.NullInt32
+	var availableQuantity sql.NullInt32
 
 	query := `
-		SELECT id, name, description, points_required, is_active, 
-			   quantity, created_at, updated_at
+		SELECT id, program_id, name, description, points_required,
+			   available_quantity, quantity, is_active,
+			   created_at, updated_at
 		FROM rewards
 		WHERE id = $1
 	`
 	err := r.db.QueryRow(query, id).Scan(
 		&reward.ID,
+		&reward.ProgramID,
 		&reward.Name,
 		&reward.Description,
 		&reward.PointsRequired,
+		&availableQuantity,
+		&reward.Quantity,
 		&reward.IsActive,
-		&quantity,
 		&reward.CreatedAt,
 		&reward.UpdatedAt,
 	)
@@ -62,9 +75,9 @@ func (r *RewardsRepository) GetByID(id string) (*domain.Reward, error) {
 		return nil, err
 	}
 
-	if quantity.Valid {
-		q := int(quantity.Int32)
-		reward.Quantity = &q
+	if availableQuantity.Valid {
+		q := int(availableQuantity.Int32)
+		reward.AvailableQuantity = &q
 	}
 
 	return reward, nil
@@ -72,8 +85,9 @@ func (r *RewardsRepository) GetByID(id string) (*domain.Reward, error) {
 
 func (r *RewardsRepository) GetAll(activeOnly bool) ([]domain.Reward, error) {
 	query := `
-		SELECT id, name, description, points_required, is_active, 
-			   quantity, created_at, updated_at
+		SELECT id, program_id, name, description, points_required,
+			   available_quantity, quantity, is_active,
+			   created_at, updated_at
 		FROM rewards
 	`
 	if activeOnly {
@@ -90,15 +104,17 @@ func (r *RewardsRepository) GetAll(activeOnly bool) ([]domain.Reward, error) {
 	var rewards []domain.Reward
 	for rows.Next() {
 		var reward domain.Reward
-		var quantity sql.NullInt32
+		var availableQuantity sql.NullInt32
 
 		err := rows.Scan(
 			&reward.ID,
+			&reward.ProgramID,
 			&reward.Name,
 			&reward.Description,
 			&reward.PointsRequired,
+			&availableQuantity,
+			&reward.Quantity,
 			&reward.IsActive,
-			&quantity,
 			&reward.CreatedAt,
 			&reward.UpdatedAt,
 		)
@@ -106,9 +122,9 @@ func (r *RewardsRepository) GetAll(activeOnly bool) ([]domain.Reward, error) {
 			return nil, err
 		}
 
-		if quantity.Valid {
-			q := int(quantity.Int32)
-			reward.Quantity = &q
+		if availableQuantity.Valid {
+			q := int(availableQuantity.Int32)
+			reward.AvailableQuantity = &q
 		}
 
 		rewards = append(rewards, reward)
@@ -121,8 +137,9 @@ func (r *RewardsRepository) Update(reward *domain.Reward) error {
 	query := `
 		UPDATE rewards
 		SET name = $1, description = $2, points_required = $3,
-			is_active = $4, quantity = $5, updated_at = CURRENT_TIMESTAMP
-		WHERE id = $6
+			available_quantity = $4, quantity = $5, is_active = $6,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = $7
 		RETURNING updated_at
 	`
 	return r.db.QueryRow(
@@ -130,13 +147,14 @@ func (r *RewardsRepository) Update(reward *domain.Reward) error {
 		reward.Name,
 		reward.Description,
 		reward.PointsRequired,
-		reward.IsActive,
+		reward.AvailableQuantity,
 		reward.Quantity,
+		reward.IsActive,
 		reward.ID,
 	).Scan(&reward.UpdatedAt)
 }
 
-func (r *RewardsRepository) Delete(id string) error {
+func (r *RewardsRepository) Delete(id uuid.UUID) error {
 	query := `DELETE FROM rewards WHERE id = $1`
 	result, err := r.db.Exec(query, id)
 	if err != nil {
@@ -152,4 +170,52 @@ func (r *RewardsRepository) Delete(id string) error {
 	}
 
 	return nil
+}
+
+func (r *RewardsRepository) GetByProgramID(programID uuid.UUID) ([]*domain.Reward, error) {
+	query := `
+		SELECT id, program_id, name, description, points_required,
+			   available_quantity, quantity, is_active,
+			   created_at, updated_at
+		FROM rewards
+		WHERE program_id = $1
+		ORDER BY points_required ASC
+	`
+
+	rows, err := r.db.Query(query, programID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var rewards []*domain.Reward
+	for rows.Next() {
+		reward := &domain.Reward{}
+		var availableQuantity sql.NullInt32
+
+		err := rows.Scan(
+			&reward.ID,
+			&reward.ProgramID,
+			&reward.Name,
+			&reward.Description,
+			&reward.PointsRequired,
+			&availableQuantity,
+			&reward.Quantity,
+			&reward.IsActive,
+			&reward.CreatedAt,
+			&reward.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if availableQuantity.Valid {
+			q := int(availableQuantity.Int32)
+			reward.AvailableQuantity = &q
+		}
+
+		rewards = append(rewards, reward)
+	}
+
+	return rewards, nil
 }

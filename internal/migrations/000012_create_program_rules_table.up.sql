@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS program_rules (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     program_id UUID NOT NULL REFERENCES programs(program_id),
     rule_name VARCHAR(255) NOT NULL,
     condition_type VARCHAR(50) NOT NULL,

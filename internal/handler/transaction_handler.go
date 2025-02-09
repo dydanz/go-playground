@@ -91,9 +91,9 @@ func (h *TransactionHandler) GetByID(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
-// @Router /transactions/customer/{customer_id} [get]
+// @Router /transactions/user/{customer_id} [get]
 func (h *TransactionHandler) GetByCustomerID(c *gin.Context) {
-	customerID := c.Param("customer_id")
+	customerID := c.Param("user_id")
 	if customerID == "" {
 		util.HandleError(c, domain.ValidationError{
 			Field:   "customer_id",

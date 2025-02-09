@@ -1,11 +1,12 @@
 -- Create redemption status enum
 CREATE TYPE redemption_status AS ENUM ('completed', 'pending', 'failed');
 
+-- Redemptions refer to the process of redeeming points for rewards.
+-- Disperse points to rewards.
 CREATE TABLE IF NOT EXISTS redemptions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id),
-    program_id UUID NOT NULL REFERENCES programs(program_id) ON DELETE RESTRICT,
-    reward_id UUID NOT NULL REFERENCES rewards(id) ON DELETE RESTRICT,
+    merchant_customers_id UUID NOT NULL REFERENCES merchant_customers(id),
+    reward_id UUID NOT NULL REFERENCES rewards(id) ,
     points_used INTEGER NOT NULL CHECK (points_used > 0),
     redemption_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     status redemption_status NOT NULL DEFAULT 'pending',
@@ -14,7 +15,7 @@ CREATE TABLE IF NOT EXISTS redemptions (
 );
 
 -- Create indexes for frequent query patterns
-CREATE INDEX idx_redemptions_user_id ON redemptions(user_id);
+CREATE INDEX idx_redemptions_merchant_customers_id ON redemptions(merchant_customers_id);
 CREATE INDEX idx_redemptions_reward_id ON redemptions(reward_id);
 CREATE INDEX idx_redemptions_status ON redemptions(status);
 CREATE INDEX idx_redemptions_date ON redemptions(redemption_date);

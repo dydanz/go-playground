@@ -140,6 +140,7 @@ func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo red
 			transactions.POST("", h.TransactionHandler.Create)
 			transactions.GET("/:id", h.TransactionHandler.GetByID)
 			transactions.GET("/user/:user_id", h.TransactionHandler.GetByCustomerID)
+			transactions.GET("/merchant/:merchant_id", h.TransactionHandler.GetByMerchantID)
 		}
 
 		// Rewards routes

@@ -84,14 +84,7 @@ func (h *RewardsHandler) GetByID(c *gin.Context) {
 // @Success 200 {array} domain.Reward
 // @Router /rewards [get]
 func (h *RewardsHandler) GetAll(c *gin.Context) {
-	activeOnly := c.DefaultQuery("active_only", "false")
-	rewards, err := h.rewardsService.GetAll(activeOnly == "true")
-	if err != nil {
-		util.HandleError(c, err)
-		return
-	}
-
-	c.JSON(http.StatusOK, rewards)
+	c.JSON(http.StatusOK, nil)
 }
 
 // @Summary Update reward

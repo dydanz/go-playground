@@ -2,6 +2,8 @@ package domain
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type MerchantType string
@@ -13,7 +15,8 @@ const (
 )
 
 type Merchant struct {
-	ID        string       `json:"merchant_id"`
+	ID        uuid.UUID    `json:"id"`
+	UserID    uuid.UUID    `json:"user_id"`
 	Name      string       `json:"merchant_name"`
 	Type      MerchantType `json:"merchant_type"`
 	CreatedAt time.Time    `json:"created_at"`
@@ -21,8 +24,9 @@ type Merchant struct {
 }
 
 type CreateMerchantRequest struct {
-	Name string       `json:"merchant_name" binding:"required"`
-	Type MerchantType `json:"merchant_type" binding:"required,oneof=bank e-commerce repair_shop"`
+	UserID uuid.UUID    `json:"user_id" binding:"required"`
+	Name   string       `json:"merchant_name" binding:"required"`
+	Type   MerchantType `json:"merchant_type" binding:"required,oneof=bank e-commerce repair_shop"`
 }
 
 type UpdateMerchantRequest struct {
@@ -32,8 +36,9 @@ type UpdateMerchantRequest struct {
 
 type MerchantRepository interface {
 	Create(merchant *Merchant) error
-	GetByID(id string) (*Merchant, error)
+	GetByID(id uuid.UUID) (*Merchant, error)
+	GetByUserID(userID uuid.UUID) ([]*Merchant, error)
 	GetAll() ([]*Merchant, error)
 	Update(merchant *Merchant) error
-	Delete(id string) error
+	Delete(id uuid.UUID) error
 }

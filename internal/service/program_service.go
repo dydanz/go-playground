@@ -24,7 +24,6 @@ func NewProgramService(programRepo domain.ProgramRepository) *ProgramService {
 
 func (s *ProgramService) Create(req *domain.CreateProgramRequest) (*domain.Program, error) {
 	program := &domain.Program{
-		ID:                uuid.New().String(),
 		MerchantID:        req.MerchantID,
 		ProgramName:       req.ProgramName,
 		PointCurrencyName: req.PointCurrencyName,
@@ -82,8 +81,7 @@ func (s *ProgramService) CreateProgram(ctx context.Context, merchantID uuid.UUID
 	}
 
 	program := &domain.Program{
-		ID:                uuid.New().String(),
-		MerchantID:        merchantID.String(),
+		MerchantID:        merchantID,
 		ProgramName:       programName,
 		PointCurrencyName: pointCurrencyName,
 	}
@@ -93,7 +91,7 @@ func (s *ProgramService) CreateProgram(ctx context.Context, merchantID uuid.UUID
 	}
 
 	response := &domain.CreateProgramResponse{
-		ProgramID:         uuid.MustParse(program.ID),
+		ProgramID:         program.ID,
 		MerchantID:        merchantID,
 		ProgramName:       program.ProgramName,
 		PointCurrencyName: program.PointCurrencyName,
