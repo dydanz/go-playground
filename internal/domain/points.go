@@ -7,14 +7,14 @@ import (
 )
 
 type PointsLedger struct {
-	LedgerID            uuid.UUID  `json:"ledger_id"`
-	MerchantCustomersID uuid.UUID  `json:"merchant_customers_id"`
-	ProgramID           uuid.UUID  `json:"program_id"`
-	PointsEarned        int        `json:"points_earned"`
-	PointsRedeemed      int        `json:"points_redeemed"`
-	PointsBalance       int        `json:"points_balance"`
-	TransactionID       *uuid.UUID `json:"transaction_id,omitempty"`
-	CreatedAt           time.Time  `json:"created_at"`
+	LedgerID            uuid.UUID `json:"ledger_id"`
+	MerchantCustomersID uuid.UUID `json:"merchant_customers_id"`
+	ProgramID           uuid.UUID `json:"program_id"`
+	PointsEarned        int       `json:"points_earned"`
+	PointsRedeemed      int       `json:"points_redeemed"`
+	PointsBalance       int       `json:"points_balance"`
+	TransactionID       uuid.UUID `json:"transaction_id,omitempty"`
+	CreatedAt           time.Time `json:"created_at"`
 }
 
 type Reward struct {
@@ -85,7 +85,6 @@ type CreateRedemptionRequest struct {
 type UpdateRedemptionRequest struct {
 	Status RedemptionStatus `json:"status" binding:"required,oneof=completed pending failed"`
 }
-
 
 type CreateRewardRequest struct {
 	ProgramID         uuid.UUID `json:"program_id" binding:"required"`

@@ -36,7 +36,7 @@ func (h *TransactionHandler) Create(c *gin.Context) {
 		return
 	}
 
-	transaction, err := h.transactionService.Create(&req)
+	transaction, err := h.transactionService.Create(c.Request.Context(), &req)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -68,7 +68,7 @@ func (h *TransactionHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	transaction, err := h.transactionService.GetByID(id)
+	transaction, err := h.transactionService.GetByID(c.Request.Context(), id)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -119,7 +119,7 @@ func (h *TransactionHandler) GetByCustomerID(c *gin.Context) {
 	// Calculate offset
 	offset := (page - 1) * limit
 
-	transactions, total, err := h.transactionService.GetByCustomerIDWithPagination(customerID, offset, limit)
+	transactions, total, err := h.transactionService.GetByCustomerIDWithPagination(c.Request.Context(), customerID, offset, limit)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -165,7 +165,7 @@ func (h *TransactionHandler) GetByMerchantID(c *gin.Context) {
 		return
 	}
 
-	transactions, err := h.transactionService.GetByMerchantID(merchantID)
+	transactions, err := h.transactionService.GetByMerchantID(c.Request.Context(), merchantID)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -190,7 +190,7 @@ func (h *TransactionHandler) UpdateStatus(c *gin.Context) {
 		return
 	}
 
-	if err := h.transactionService.UpdateStatus(id, req.Status); err != nil {
+	if err := h.transactionService.UpdateStatus(c.Request.Context(), id, req.Status); err != nil {
 		util.HandleError(c, err)
 		return
 	}

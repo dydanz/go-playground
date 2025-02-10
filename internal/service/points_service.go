@@ -36,7 +36,7 @@ func (s *PointsService) GetBalance(ctx context.Context, customerID, programID uu
 	return s.pointsRepo.GetCurrentBalance(ctx, customerID, programID)
 }
 
-func (s *PointsService) EarnPoints(ctx context.Context, merchantCustomerID uuid.UUID, programID uuid.UUID, points int, transactionID *uuid.UUID) error {
+func (s *PointsService) EarnPoints(ctx context.Context, merchantCustomerID uuid.UUID, programID uuid.UUID, points int, transactionID uuid.UUID) error {
 	if points <= 0 {
 		return ErrInvalidPoints
 	}
@@ -51,7 +51,7 @@ func (s *PointsService) EarnPoints(ctx context.Context, merchantCustomerID uuid.
 	})
 }
 
-func (s *PointsService) RedeemPoints(ctx context.Context, merchantCustomerID uuid.UUID, programID uuid.UUID, points int, transactionID *uuid.UUID) error {
+func (s *PointsService) RedeemPoints(ctx context.Context, merchantCustomerID uuid.UUID, programID uuid.UUID, points int, transactionID uuid.UUID) error {
 	if points <= 0 {
 		return ErrInvalidPoints
 	}
@@ -139,7 +139,7 @@ func (s *LegacyPointsService) EarnPoints(req *domain.EarnPointsRequest) (*domain
 	}
 
 	txID := uuid.New()
-	if err := s.service.EarnPoints(context.Background(), customerID, programID, req.Points, &txID); err != nil {
+	if err := s.service.EarnPoints(context.Background(), customerID, programID, req.Points, txID); err != nil {
 		return nil, err
 	}
 
@@ -165,7 +165,7 @@ func (s *LegacyPointsService) RedeemPoints(req *domain.RedeemPointsRequest) (*do
 	}
 
 	txID := uuid.New()
-	if err := s.service.RedeemPoints(context.Background(), customerID, programID, req.Points, &txID); err != nil {
+	if err := s.service.RedeemPoints(context.Background(), customerID, programID, req.Points, txID); err != nil {
 		return nil, err
 	}
 

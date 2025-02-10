@@ -34,7 +34,7 @@ func TestRewardsService_Create_Success(t *testing.T) {
 	assert.NotNil(t, reward)
 	assert.Equal(t, req.PointsRequired, reward.PointsRequired)
 	assert.Equal(t, req.IsActive, reward.IsActive)
-	assert.Equal(t, DEFAULT_REDEEM_PROGRAM_ID, reward.ProgramID)
+	assert.Equal(t, programID, reward.ProgramID)
 	assert.Equal(t, req.Name, reward.Name)
 	assert.Equal(t, req.Description, reward.Description)
 	mockRepo.AssertExpectations(t)

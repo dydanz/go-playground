@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS points_ledger (
     points_redeemed INTEGER NOT NULL DEFAULT 0,
     points_balance INTEGER NOT NULL DEFAULT 0,
     transaction_id UUID REFERENCES transactions(transaction_id),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 ); 
 
 CREATE INDEX idx_points_ledger_merchant_customers_id ON points_ledger(merchant_customers_id);

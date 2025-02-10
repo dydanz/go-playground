@@ -1,4 +1,4 @@
-package handler
+ package handler
 
 import (
 	"go-playground/internal/domain"

@@ -61,16 +61,16 @@ type PointsRepository interface {
 
 // TransactionRepository handles transaction operations
 type TransactionService interface {
-	Create(req *CreateTransactionRequest) (*Transaction, error)
-	GetByID(id string) (*Transaction, error)
-	GetByCustomerID(customerID string) ([]*Transaction, error)
-	GetByCustomerIDWithPagination(customerID string, offset, limit int) ([]*Transaction, int64, error)
-	GetByMerchantID(merchantID string) ([]*Transaction, error)
-	UpdateStatus(id string, status string) error
+	Create(ctx context.Context, req *CreateTransactionRequest) (*Transaction, error)
+	GetByID(ctx context.Context, id string) (*Transaction, error)
+	GetByCustomerID(ctx context.Context, customerID string) ([]*Transaction, error)
+	GetByCustomerIDWithPagination(ctx context.Context, customerID string, offset, limit int) ([]*Transaction, int64, error)
+	GetByMerchantID(ctx context.Context, merchantID string) ([]*Transaction, error)
+	UpdateStatus(ctx context.Context, id string, status string) error
 }
 
 type TransactionRepository interface {
-	Create(ctx context.Context, transaction *Transaction) error
+	Create(ctx context.Context, transaction *Transaction) (*Transaction, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*Transaction, error)
 	GetByCustomerID(ctx context.Context, customerID uuid.UUID) ([]*Transaction, error)
 	GetByCustomerIDWithPagination(ctx context.Context, customerID uuid.UUID, offset, limit int) ([]*Transaction, int64, error)
@@ -88,7 +88,7 @@ type RewardsRepository interface {
 
 // RedemptionRepository handles redemption operations
 type RedemptionRepository interface {
-	Create(ctx context.Context, redemption *Redemption) error
+	Create(ctx context.Context, redemption *Redemption) ([]*Redemption, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*Redemption, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*Redemption, error)
 	Update(ctx context.Context, redemption *Redemption) error
@@ -97,8 +97,8 @@ type RedemptionRepository interface {
 type PointsServiceInterface interface {
 	GetLedger(ctx context.Context, customerID, programID uuid.UUID) ([]*PointsLedger, error)
 	GetBalance(ctx context.Context, customerID, programID uuid.UUID) (int, error)
-	EarnPoints(ctx context.Context, customerID, programID uuid.UUID, points int, transactionID *uuid.UUID) error
-	RedeemPoints(ctx context.Context, customerID, programID uuid.UUID, points int, transactionID *uuid.UUID) error
+	EarnPoints(ctx context.Context, customerID, programID uuid.UUID, points int, transactionID uuid.UUID) error
+	RedeemPoints(ctx context.Context, customerID, programID uuid.UUID, points int, transactionID uuid.UUID) error
 }
 
 type ProgramRuleRepository interface {

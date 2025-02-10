@@ -25,6 +25,7 @@ func (s *RewardsService) Create(req *domain.CreateRewardRequest) (*domain.Reward
 
 	reward := &domain.Reward{
 		Name:           req.Name,
+		ProgramID:      req.ProgramID,
 		Description:    req.Description,
 		PointsRequired: req.PointsRequired,
 		IsActive:       req.IsActive,

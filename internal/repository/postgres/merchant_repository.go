@@ -18,14 +18,10 @@ func NewMerchantRepository(db *sql.DB) *MerchantRepository {
 
 func (r *MerchantRepository) Create(merchant *domain.Merchant) error {
 	query := `
-		INSERT INTO merchants (id, user_id, merchant_name, merchant_type, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO merchants (user_id, merchant_name, merchant_type, created_at, updated_at)
+		VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		RETURNING id, created_at, updated_at
 	`
-
-	if merchant.ID == uuid.Nil {
-		merchant.ID = uuid.New()
-	}
 
 	now := time.Now().UTC()
 	merchant.CreatedAt = now
@@ -33,12 +29,9 @@ func (r *MerchantRepository) Create(merchant *domain.Merchant) error {
 
 	return r.db.QueryRow(
 		query,
-		merchant.ID,
 		merchant.UserID,
 		merchant.Name,
 		merchant.Type,
-		merchant.CreatedAt,
-		merchant.UpdatedAt,
 	).Scan(&merchant.ID, &merchant.CreatedAt, &merchant.UpdatedAt)
 }
 

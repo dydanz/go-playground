@@ -18,7 +18,7 @@ CREATE TABLE transactions (
     transaction_date TIMESTAMP WITH TIME ZONE NOT NULL,
     branch_id UUID,
     status VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create indexes

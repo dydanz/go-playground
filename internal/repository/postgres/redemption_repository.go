@@ -16,31 +16,31 @@ func NewRedemptionRepository(db *sql.DB) *RedemptionRepository {
 	return &RedemptionRepository{db: db}
 }
 
-func (r *RedemptionRepository) Create(ctx context.Context, redemption *domain.Redemption) error {
-	if redemption.ID == uuid.Nil {
-		redemption.ID = uuid.New()
-	}
-
+func (r *RedemptionRepository) Create(ctx context.Context, redemption *domain.Redemption) ([]*domain.Redemption, error) {
 	query := `
 		INSERT INTO redemptions (
-			id, merchant_customers_id, reward_id, points_used,
+			merchant_customers_id, reward_id, points_used,
 			redemption_date, status, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-		RETURNING redemption_date, created_at, updated_at
+		) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		RETURNING id, redemption_date, created_at, updated_at
 	`
-	return r.db.QueryRowContext(
+	err := r.db.QueryRowContext(
 		ctx,
 		query,
-		redemption.ID,
 		redemption.MerchantCustomersID,
 		redemption.RewardID,
 		redemption.PointsUsed,
 		redemption.Status,
 	).Scan(
+		&redemption.ID,
 		&redemption.RedemptionDate,
 		&redemption.CreatedAt,
 		&redemption.UpdatedAt,
 	)
+	if err != nil {
+		return nil, err
+	}
+	return []*domain.Redemption{redemption}, nil
 }
 
 func (r *RedemptionRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*domain.Redemption, error) {

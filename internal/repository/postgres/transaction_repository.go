@@ -19,19 +19,19 @@ func NewTransactionRepository(db config.DbConnection) *TransactionRepository {
 	return &TransactionRepository{db: db}
 }
 
-func (r *TransactionRepository) Create(ctx context.Context, tx *domain.Transaction) error {
+func (r *TransactionRepository) Create(ctx context.Context, tx *domain.Transaction) (*domain.Transaction, error) {
 	query := `
 		INSERT INTO transactions (
-			transaction_id, merchant_id, merchant_customers_id, program_id,
+			merchant_id, merchant_customers_id, program_id,
 			transaction_type, transaction_amount, transaction_date,
 			branch_id, status, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, $7, $8, CURRENT_TIMESTAMP)
-		RETURNING transaction_date, created_at
+		) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7, CURRENT_TIMESTAMP)
+		RETURNING transaction_id, transaction_date, created_at
 	`
-	return r.db.RW.QueryRowContext(
+	createdTx := &domain.Transaction{}
+	err := r.db.RW.QueryRowContext(
 		ctx,
 		query,
-		tx.TransactionID,
 		tx.MerchantID,
 		tx.MerchantCustomersID,
 		tx.ProgramID,
@@ -40,9 +40,15 @@ func (r *TransactionRepository) Create(ctx context.Context, tx *domain.Transacti
 		tx.BranchID,
 		tx.Status,
 	).Scan(
-		&tx.TransactionDate,
-		&tx.CreatedAt,
+		&createdTx.TransactionID,
+		&createdTx.TransactionDate,
+		&createdTx.CreatedAt,
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	return createdTx, nil
 }
 
 func (r *TransactionRepository) GetByID(ctx context.Context, transactionID uuid.UUID) (*domain.Transaction, error) {

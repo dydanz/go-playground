@@ -22,15 +22,14 @@ func (r *RewardsRepository) Create(reward *domain.Reward) error {
 
 	query := `
 		INSERT INTO rewards (
-			id, program_id, name, description, points_required,
+			program_id, name, description, points_required,
 			available_quantity, quantity, is_active,
 			created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-		RETURNING created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		RETURNING id, points_required, created_at, updated_at
 	`
 	return r.db.QueryRow(
 		query,
-		reward.ID,
 		reward.ProgramID,
 		reward.Name,
 		reward.Description,
@@ -39,6 +38,8 @@ func (r *RewardsRepository) Create(reward *domain.Reward) error {
 		reward.Quantity,
 		reward.IsActive,
 	).Scan(
+		&reward.ID,
+		&reward.PointsRequired,
 		&reward.CreatedAt,
 		&reward.UpdatedAt,
 	)

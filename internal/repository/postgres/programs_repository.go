@@ -16,21 +16,20 @@ func NewProgramsRepository(db *sql.DB) *ProgramsRepository {
 }
 
 func (r *ProgramsRepository) Create(program *domain.Program) error {
-	programID := program.ID.String()
 	merchantID := program.MerchantID.String()
 
 	query := `
-		INSERT INTO programs (program_id, merchant_id, program_name, point_currency_name)
+		INSERT INTO programs (merchant_id, user_id, program_name, point_currency_name)
 		VALUES ($1, $2, $3, $4)
-		RETURNING created_at, updated_at`
+		RETURNING program_id, created_at, updated_at`
 
 	return r.db.QueryRow(
 		query,
-		programID,
 		merchantID,
+		program.UserID,
 		program.ProgramName,
 		program.PointCurrencyName,
-	).Scan(&program.CreatedAt, &program.UpdatedAt)
+	).Scan(&program.ID, &program.CreatedAt, &program.UpdatedAt)
 }
 
 func (r *ProgramsRepository) GetByID(id string) (*domain.Program, error) {

@@ -21,15 +21,14 @@ func NewProgramRuleRepository(db config.DbConnection) *ProgramRuleRepository {
 func (r *ProgramRuleRepository) Create(ctx context.Context, rule *domain.ProgramRule) error {
 	query := `
 		INSERT INTO program_rules (
-			id, program_id, rule_name, condition_type, condition_value,
+			program_id, rule_name, condition_type, condition_value,
 			multiplier, points_awarded, effective_from, effective_to
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING created_at, updated_at
 	`
 	return r.db.RW.QueryRowContext(
 		ctx,
 		query,
-		rule.ID,
 		rule.ProgramID,
 		rule.RuleName,
 		rule.ConditionType,

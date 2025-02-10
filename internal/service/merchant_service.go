@@ -16,8 +16,9 @@ func NewMerchantService(merchantRepo domain.MerchantRepository) *MerchantService
 
 func (s *MerchantService) Create(req *domain.CreateMerchantRequest) (*domain.Merchant, error) {
 	merchant := &domain.Merchant{
-		Name: req.Name,
-		Type: req.Type,
+		Name:   req.Name,
+		Type:   req.Type,
+		UserID: req.UserID,
 	}
 
 	if err := s.merchantRepo.Create(merchant); err != nil {

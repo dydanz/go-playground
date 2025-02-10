@@ -39,7 +39,6 @@ func (r *PointsRepository) Create(ctx context.Context, ledger *domain.PointsLedg
 			LIMIT 1
 		)
 		INSERT INTO points_ledger (
-			ledger_id,
 			merchant_customers_id,
 			program_id,
 			points_earned,
@@ -53,21 +52,15 @@ func (r *PointsRepository) Create(ctx context.Context, ledger *domain.PointsLedg
 			$2,
 			$3,
 			$4,
+			COALESCE((SELECT points_balance FROM last_balance), 0) + $3 - $4,
 			$5,
-			COALESCE((SELECT points_balance FROM last_balance), 0) + $4 - $5,
-			$6,
 			CURRENT_TIMESTAMP
 		)
 		RETURNING created_at`
 
-	if ledger.LedgerID == uuid.Nil {
-		ledger.LedgerID = uuid.New()
-	}
-
 	return r.db.QueryRowContext(
 		ctx,
 		query,
-		ledger.LedgerID,
 		ledger.MerchantCustomersID,
 		ledger.ProgramID,
 		ledger.PointsEarned,

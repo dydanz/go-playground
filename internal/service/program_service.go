@@ -27,6 +27,7 @@ func (s *ProgramService) Create(req *domain.CreateProgramRequest) (*domain.Progr
 		MerchantID:        req.MerchantID,
 		ProgramName:       req.ProgramName,
 		PointCurrencyName: req.PointCurrencyName,
+		UserID:            req.UserID,
 		CreatedAt:         time.Now(),
 		UpdatedAt:         time.Now(),
 	}

@@ -27,9 +27,8 @@ func NewTransactionService(
 	}
 }
 
-func (s *TransactionService) Create(req *domain.CreateTransactionRequest) (*domain.Transaction, error) {
+func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTransactionRequest) (*domain.Transaction, error) {
 	tx := &domain.Transaction{
-		TransactionID:       uuid.New(),
 		MerchantID:          req.MerchantID,
 		MerchantCustomersID: req.MerchantCustomersID,
 		ProgramID:           req.ProgramID,
@@ -40,7 +39,8 @@ func (s *TransactionService) Create(req *domain.CreateTransactionRequest) (*doma
 		CreatedAt:           time.Now(),
 	}
 
-	if err := s.transactionRepo.Create(context.Background(), tx); err != nil {
+	createdTx, err := s.transactionRepo.Create(ctx, tx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -53,6 +53,8 @@ func (s *TransactionService) Create(req *domain.CreateTransactionRequest) (*doma
 		points = -int(tx.TransactionAmount)
 	case "bonus":
 		points = int(tx.TransactionAmount * 2) // Example: Double points for bonus
+	case "redemption":
+		points = int(tx.TransactionAmount * -1)
 	}
 
 	// TODO: Check if the transaction is valid for the program, branch/merchant
@@ -61,7 +63,7 @@ func (s *TransactionService) Create(req *domain.CreateTransactionRequest) (*doma
 	// TODO: Update points balance if applicable
 
 	if points != 0 {
-		if err := s.pointsService.EarnPoints(context.Background(), tx.MerchantCustomersID, tx.ProgramID, points, &tx.TransactionID); err != nil {
+		if err := s.pointsService.EarnPoints(ctx, tx.MerchantCustomersID, tx.ProgramID, points, createdTx.TransactionID); err != nil {
 			return nil, err
 		}
 	}
@@ -70,7 +72,7 @@ func (s *TransactionService) Create(req *domain.CreateTransactionRequest) (*doma
 	txIDStr := tx.TransactionID.String()
 	event := &domain.EventLog{
 		EventType:   "transaction_created",
-		UserID:      tx.MerchantCustomersID.String(),
+		UserID:      req.MerchantCustomersID.String(),
 		ReferenceID: &txIDStr,
 		Details: map[string]interface{}{
 			"merchant_id":        tx.MerchantID,
@@ -80,52 +82,51 @@ func (s *TransactionService) Create(req *domain.CreateTransactionRequest) (*doma
 			"branch_id":          tx.BranchID,
 		},
 	}
-	if err := s.eventRepo.Create(event); err != nil {
-		return nil, err
-	}
 
-	return tx, nil
+	go s.eventRepo.Create(ctx, event)
+
+	return createdTx, nil
 }
 
-func (s *TransactionService) GetByID(id string) (*domain.Transaction, error) {
+func (s *TransactionService) GetByID(ctx context.Context, id string) (*domain.Transaction, error) {
 	txID, err := uuid.Parse(id)
 	if err != nil {
 		return nil, err
 	}
-	return s.transactionRepo.GetByID(context.Background(), txID)
+	return s.transactionRepo.GetByID(ctx, txID)
 }
 
-func (s *TransactionService) GetByCustomerID(customerID string) ([]*domain.Transaction, error) {
+func (s *TransactionService) GetByCustomerID(ctx context.Context, customerID string) ([]*domain.Transaction, error) {
 	custID, err := uuid.Parse(customerID)
 	if err != nil {
 		return nil, err
 	}
-	txs, _, err := s.transactionRepo.GetByCustomerIDWithPagination(context.Background(), custID, 0, -1)
+	txs, _, err := s.transactionRepo.GetByCustomerIDWithPagination(ctx, custID, 0, -1)
 	return txs, err
 }
 
-func (s *TransactionService) GetByCustomerIDWithPagination(customerID string, offset, limit int) ([]*domain.Transaction, int64, error) {
+func (s *TransactionService) GetByCustomerIDWithPagination(ctx context.Context, customerID string, offset, limit int) ([]*domain.Transaction, int64, error) {
 	custID, err := uuid.Parse(customerID)
 	if err != nil {
 		return nil, 0, err
 	}
-	return s.transactionRepo.GetByCustomerIDWithPagination(context.Background(), custID, offset, limit)
+	return s.transactionRepo.GetByCustomerIDWithPagination(ctx, custID, offset, limit)
 }
 
-func (s *TransactionService) GetByMerchantID(merchantID string) ([]*domain.Transaction, error) {
+func (s *TransactionService) GetByMerchantID(ctx context.Context, merchantID string) ([]*domain.Transaction, error) {
 	merchID, err := uuid.Parse(merchantID)
 	if err != nil {
 		return nil, err
 	}
-	return s.transactionRepo.GetByMerchantID(context.Background(), merchID)
+	return s.transactionRepo.GetByMerchantID(ctx, merchID)
 }
 
-func (s *TransactionService) UpdateStatus(id string, status string) error {
+func (s *TransactionService) UpdateStatus(ctx context.Context, id string, status string) error {
 	txID, err := uuid.Parse(id)
 	if err != nil {
 		return err
 	}
-	return s.transactionRepo.UpdateStatus(context.Background(), txID, status)
+	return s.transactionRepo.UpdateStatus(ctx, txID, status)
 }
 
 func (s *TransactionService) SetPointsService(pointsService domain.PointsServiceInterface) {
