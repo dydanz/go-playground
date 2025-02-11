@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type PointsHandler struct {
@@ -41,7 +42,7 @@ func (h *PointsHandler) GetLedger(c *gin.Context) {
 		return
 	}
 
-	ledger, err := h.pointsService.GetLedger(customerID, programID)
+	ledger, err := h.pointsService.GetLedger(c.Request.Context(), uuid.MustParse(customerID), uuid.MustParse(programID))
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -75,7 +76,7 @@ func (h *PointsHandler) GetBalance(c *gin.Context) {
 		return
 	}
 
-	balance, err := h.pointsService.GetBalance(customerID, programID)
+	balance, err := h.pointsService.GetBalance(c.Request.Context(), uuid.MustParse(customerID), uuid.MustParse(programID))
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -119,7 +120,12 @@ func (h *PointsHandler) EarnPoints(c *gin.Context) {
 	req.CustomerID = customerID
 	req.ProgramID = programID
 
-	result, err := h.pointsService.EarnPoints(&req)
+	result, err := h.pointsService.EarnPoints(c.Request.Context(), &domain.PointsTransaction{
+		CustomerID:    customerID,
+		ProgramID:     programID,
+		Points:        req.Points,
+		TransactionID: "",
+	})
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -163,7 +169,12 @@ func (h *PointsHandler) RedeemPoints(c *gin.Context) {
 	req.CustomerID = customerID
 	req.ProgramID = programID
 
-	result, err := h.pointsService.RedeemPoints(&req)
+	result, err := h.pointsService.RedeemPoints(c.Request.Context(), &domain.PointsTransaction{
+		CustomerID:    customerID,
+		ProgramID:     programID,
+		Points:        req.Points,
+		TransactionID: "",
+	})
 	if err != nil {
 		util.HandleError(c, err)
 		return

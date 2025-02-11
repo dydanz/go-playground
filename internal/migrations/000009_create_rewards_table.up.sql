@@ -1,5 +1,8 @@
+-- Rewards refer to items that can be redeemed using accumulated points. 
+-- These items may include goods, services, or other benefits.
 CREATE TABLE IF NOT EXISTS rewards (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    program_id UUID NOT NULL REFERENCES programs(program_id),
     name VARCHAR(255) NOT NULL,
     description TEXT,
     points_required INTEGER NOT NULL CHECK (points_required > 0),

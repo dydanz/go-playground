@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"go-playground/internal/domain"
@@ -18,7 +19,8 @@ func NewEventLogRepository(db *sql.DB) *EventLogRepository {
 }
 
 // Create inserts a new event log entry
-func (r *EventLogRepository) Create(eventLog *domain.EventLog) error {
+func (r *EventLogRepository) Create(ctx context.Context, eventLog *domain.EventLog) error {
+
 	jsonDetails, err := json.Marshal(eventLog.Details)
 	if err != nil {
 		return err

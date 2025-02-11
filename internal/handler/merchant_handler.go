@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type MerchantHandler struct {
@@ -59,7 +60,7 @@ func (h *MerchantHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	merchant, err := h.merchantService.GetByID(id)
+	merchant, err := h.merchantService.GetByID(uuid.MustParse(id))
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -110,7 +111,7 @@ func (h *MerchantHandler) Update(c *gin.Context) {
 		return
 	}
 
-	merchant, err := h.merchantService.Update(id, &req)
+	merchant, err := h.merchantService.Update(uuid.MustParse(id), &req)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -137,7 +138,7 @@ func (h *MerchantHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.merchantService.Delete(id); err != nil {
+	if err := h.merchantService.Delete(uuid.MustParse(id)); err != nil {
 		util.HandleError(c, err)
 		return
 	}

@@ -16,35 +16,24 @@ func NewProgramsRepository(db *sql.DB) *ProgramsRepository {
 }
 
 func (r *ProgramsRepository) Create(program *domain.Program) error {
-	programID, err := uuid.Parse(program.ID)
-	if err != nil {
-		return err
-	}
-
-	merchantID, err := uuid.Parse(program.MerchantID)
-	if err != nil {
-		return err
-	}
+	merchantID := program.MerchantID.String()
 
 	query := `
-		INSERT INTO programs (program_id, merchant_id, program_name, point_currency_name)
+		INSERT INTO programs (merchant_id, user_id, program_name, point_currency_name)
 		VALUES ($1, $2, $3, $4)
-		RETURNING created_at, updated_at`
+		RETURNING program_id, created_at, updated_at`
 
 	return r.db.QueryRow(
 		query,
-		programID,
 		merchantID,
+		program.UserID,
 		program.ProgramName,
 		program.PointCurrencyName,
-	).Scan(&program.CreatedAt, &program.UpdatedAt)
+	).Scan(&program.ID, &program.CreatedAt, &program.UpdatedAt)
 }
 
 func (r *ProgramsRepository) GetByID(id string) (*domain.Program, error) {
-	programID, err := uuid.Parse(id)
-	if err != nil {
-		return nil, err
-	}
+	programID := id
 
 	query := `
 		SELECT program_id, merchant_id, program_name, point_currency_name, created_at, updated_at
@@ -53,7 +42,7 @@ func (r *ProgramsRepository) GetByID(id string) (*domain.Program, error) {
 
 	var program domain.Program
 	var pID, mID uuid.UUID
-	err = r.db.QueryRow(query, programID).Scan(
+	err := r.db.QueryRow(query, programID).Scan(
 		&pID,
 		&mID,
 		&program.ProgramName,
@@ -67,8 +56,8 @@ func (r *ProgramsRepository) GetByID(id string) (*domain.Program, error) {
 		}
 		return nil, err
 	}
-	program.ID = pID.String()
-	program.MerchantID = mID.String()
+	program.ID = pID
+	program.MerchantID = mID
 	return &program, nil
 }
 
@@ -98,18 +87,15 @@ func (r *ProgramsRepository) GetAll() ([]*domain.Program, error) {
 		if err != nil {
 			return nil, err
 		}
-		program.ID = pID.String()
-		program.MerchantID = mID.String()
+		program.ID = pID
+		program.MerchantID = mID
 		programs = append(programs, &program)
 	}
 	return programs, nil
 }
 
 func (r *ProgramsRepository) Update(program *domain.Program) error {
-	programID, err := uuid.Parse(program.ID)
-	if err != nil {
-		return err
-	}
+	programID := program.ID.String()
 
 	query := `
 		UPDATE programs
@@ -126,10 +112,7 @@ func (r *ProgramsRepository) Update(program *domain.Program) error {
 }
 
 func (r *ProgramsRepository) Delete(id string) error {
-	programID, err := uuid.Parse(id)
-	if err != nil {
-		return err
-	}
+	programID := id
 
 	query := `DELETE FROM programs WHERE program_id = $1`
 	result, err := r.db.Exec(query, programID)
@@ -148,10 +131,7 @@ func (r *ProgramsRepository) Delete(id string) error {
 }
 
 func (r *ProgramsRepository) GetByMerchantID(merchantID string) ([]*domain.Program, error) {
-	mID, err := uuid.Parse(merchantID)
-	if err != nil {
-		return nil, err
-	}
+	mID := merchantID
 
 	query := `
 		SELECT program_id, merchant_id, program_name, point_currency_name, created_at, updated_at
@@ -179,8 +159,8 @@ func (r *ProgramsRepository) GetByMerchantID(merchantID string) ([]*domain.Progr
 		if err != nil {
 			return nil, err
 		}
-		program.ID = pID.String()
-		program.MerchantID = mID.String()
+		program.ID = pID
+		program.MerchantID = mID
 		programs = append(programs, &program)
 	}
 	return programs, nil

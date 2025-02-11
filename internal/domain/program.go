@@ -51,8 +51,9 @@ type CreateProgramResponse struct {
 }
 
 type Program struct {
-	ID                string    `json:"id"`
-	MerchantID        string    `json:"merchant_id"`
+	ID                uuid.UUID `json:"program_id"`
+	MerchantID        uuid.UUID `json:"merchant_id"`
+	UserID            uuid.UUID `json:"user_id"`
 	ProgramName       string    `json:"program_name"`
 	PointCurrencyName string    `json:"point_currency_name"`
 	CreatedAt         time.Time `json:"created_at"`
@@ -60,9 +61,10 @@ type Program struct {
 }
 
 type CreateProgramRequest struct {
-	MerchantID        string `json:"merchant_id" binding:"required"`
-	ProgramName       string `json:"program_name" binding:"required"`
-	PointCurrencyName string `json:"point_currency_name" binding:"required"`
+	MerchantID        uuid.UUID `json:"merchant_id" binding:"required"`
+	UserID            uuid.UUID `json:"user_id" binding:"required"`
+	ProgramName       string    `json:"program_name" binding:"required"`
+	PointCurrencyName string    `json:"point_currency_name" binding:"required"`
 }
 
 type UpdateProgramRequest struct {

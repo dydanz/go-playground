@@ -1,5 +1,25 @@
 basePath: /api
 definitions:
+  domain.CreateMerchantCustomerRequest:
+    properties:
+      email:
+        type: string
+      merchant_id:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      phone:
+        type: string
+    required:
+    - email
+    - merchant_id
+    - name
+    - password
+    - phone
+    type: object
   domain.CreateMerchantRequest:
     properties:
       merchant_name:
@@ -11,9 +31,12 @@ definitions:
         - bank
         - e-commerce
         - repair_shop
+      user_id:
+        type: string
     required:
     - merchant_name
     - merchant_type
+    - user_id
     type: object
   domain.CreateProgramRequest:
     properties:
@@ -23,10 +46,13 @@ definitions:
         type: string
       program_name:
         type: string
+      user_id:
+        type: string
     required:
     - merchant_id
     - point_currency_name
     - program_name
+    - user_id
     type: object
   domain.CreateProgramRuleRequest:
     properties:
@@ -60,7 +86,7 @@ definitions:
     properties:
       branch_id:
         type: string
-      customer_id:
+      merchant_customers_id:
         type: string
       merchant_id:
         type: string
@@ -82,7 +108,7 @@ definitions:
         - bonus
         type: string
     required:
-    - customer_id
+    - merchant_customers_id
     - merchant_id
     - program_id
     - status
@@ -105,6 +131,16 @@ definitions:
     - name
     - password
     - phone
+    type: object
+  domain.CustomerLoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
     type: object
   domain.EarnPointsRequest:
     properties:
@@ -144,13 +180,34 @@ definitions:
     properties:
       created_at:
         type: string
-      merchant_id:
+      id:
         type: string
       merchant_name:
         type: string
       merchant_type:
         $ref: '#/definitions/domain.MerchantType'
       updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  domain.MerchantCustomer:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      merchantID:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+      phone:
+        type: string
+      updatedAt:
         type: string
     type: object
   domain.MerchantType:
@@ -167,9 +224,9 @@ definitions:
     properties:
       created_at:
         type: string
-      customer_id:
-        type: string
       ledger_id:
+        type: string
+      merchant_customers_id:
         type: string
       points_balance:
         type: integer
@@ -186,15 +243,17 @@ definitions:
     properties:
       created_at:
         type: string
-      id:
-        type: string
       merchant_id:
         type: string
       point_currency_name:
         type: string
+      program_id:
+        type: string
       program_name:
         type: string
       updated_at:
+        type: string
+      user_id:
         type: string
     type: object
   domain.ProgramRule:
@@ -239,20 +298,29 @@ definitions:
         type: string
       id:
         type: string
-      program_id:
+      merchant_customers_id:
         type: string
-      redeemed_at:
+      points_used:
+        type: integer
+      redemption_date:
         type: string
       reward_id:
         type: string
       status:
-        description: '"completed", "pending", "failed", "canceled"'
-        type: string
+        $ref: '#/definitions/domain.RedemptionStatus'
       updated_at:
         type: string
-      user_id:
-        type: string
     type: object
+  domain.RedemptionStatus:
+    enum:
+    - completed
+    - pending
+    - failed
+    type: string
+    x-enum-varnames:
+    - RedemptionStatusCompleted
+    - RedemptionStatusPending
+    - RedemptionStatusFailed
   domain.RegistrationRequest:
     properties:
       email:
@@ -272,6 +340,8 @@ definitions:
     type: object
   domain.Reward:
     properties:
+      available_quantity:
+        type: integer
       created_at:
         type: string
       description:
@@ -284,6 +354,8 @@ definitions:
         type: string
       points_required:
         type: integer
+      program_id:
+        type: string
       quantity:
         type: integer
       updated_at:
@@ -295,7 +367,7 @@ definitions:
         type: string
       created_at:
         type: string
-      customer_id:
+      merchant_customers_id:
         type: string
       merchant_id:
         type: string
@@ -311,6 +383,18 @@ definitions:
         type: string
       transaction_type:
         description: purchase, refund, bonus
+        type: string
+    type: object
+  domain.UpdateMerchantCustomerRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      phone:
         type: string
     type: object
   domain.UpdateMerchantRequest:
@@ -618,6 +702,252 @@ paths:
       summary: Verify user registration
       tags:
       - auth
+  /merchant-customers:
+    post:
+      consumes:
+      - application/json
+      description: Create a new merchant customer
+      parameters:
+      - description: Customer details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CreateMerchantCustomerRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.MerchantCustomer'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Create merchant customer
+      tags:
+      - merchant-customers
+  /merchant-customers/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a merchant customer
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Delete merchant customer
+      tags:
+      - merchant-customers
+    get:
+      consumes:
+      - application/json
+      description: Get merchant customer details by ID
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.MerchantCustomer'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Get merchant customer by ID
+      tags:
+      - merchant-customers
+    put:
+      consumes:
+      - application/json
+      description: Update merchant customer details
+      parameters:
+      - description: Customer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Customer details to update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.UpdateMerchantCustomerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.MerchantCustomer'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Update merchant customer
+      tags:
+      - merchant-customers
+  /merchant-customers/login:
+    post:
+      consumes:
+      - application/json
+      description: Validate merchant customer login credentials
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/domain.CustomerLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.MerchantCustomer'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Validate customer credentials
+      tags:
+      - merchant-customers
+  /merchant-customers/merchant/{merchant_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get all customers for a specific merchant
+      parameters:
+      - description: Merchant ID
+        in: path
+        name: merchant_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.MerchantCustomer'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Get merchant customers by merchant ID
+      tags:
+      - merchant-customers
   /merchants:
     get:
       description: Get all merchants
@@ -1756,7 +2086,45 @@ paths:
       summary: Get transaction by ID
       tags:
       - transactions
-  /transactions/customer/{customer_id}:
+  /transactions/merchant/{merchant_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get all transactions for a specific merchant
+      parameters:
+      - description: Merchant ID
+        in: path
+        name: merchant_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Transaction'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Get merchant transactions
+      tags:
+      - transactions
+  /transactions/user/{customer_id}:
     get:
       consumes:
       - application/json
@@ -1799,44 +2167,6 @@ paths:
       - BearerAuth: []
       - UserIdAuth: []
       summary: Get customer transactions
-      tags:
-      - transactions
-  /transactions/merchant/{merchant_id}:
-    get:
-      consumes:
-      - application/json
-      description: Get all transactions for a specific merchant
-      parameters:
-      - description: Merchant ID
-        in: path
-        name: merchant_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/domain.Transaction'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      - UserIdAuth: []
-      summary: Get merchant transactions
       tags:
       - transactions
   /users:

@@ -61,16 +61,16 @@ type PointsRepository interface {
 
 // TransactionRepository handles transaction operations
 type TransactionService interface {
-	Create(req *CreateTransactionRequest) (*Transaction, error)
-	GetByID(id string) (*Transaction, error)
-	GetByCustomerID(customerID string) ([]*Transaction, error)
-	GetByCustomerIDWithPagination(customerID string, offset, limit int) ([]*Transaction, int64, error)
-	GetByMerchantID(merchantID string) ([]*Transaction, error)
-	UpdateStatus(id string, status string) error
+	Create(ctx context.Context, req *CreateTransactionRequest) (*Transaction, error)
+	GetByID(ctx context.Context, id string) (*Transaction, error)
+	GetByCustomerID(ctx context.Context, customerID string) ([]*Transaction, error)
+	GetByCustomerIDWithPagination(ctx context.Context, customerID string, offset, limit int) ([]*Transaction, int64, error)
+	GetByMerchantID(ctx context.Context, merchantID string) ([]*Transaction, error)
+	UpdateStatus(ctx context.Context, id string, status string) error
 }
 
 type TransactionRepository interface {
-	Create(ctx context.Context, transaction *Transaction) error
+	Create(ctx context.Context, transaction *Transaction) (*Transaction, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*Transaction, error)
 	GetByCustomerID(ctx context.Context, customerID uuid.UUID) ([]*Transaction, error)
 	GetByCustomerIDWithPagination(ctx context.Context, customerID uuid.UUID, offset, limit int) ([]*Transaction, int64, error)
@@ -81,25 +81,17 @@ type TransactionRepository interface {
 // RewardsRepository handles rewards operations
 type RewardsRepository interface {
 	Create(reward *Reward) error
-	GetByID(id string) (*Reward, error)
-	GetAll(activeOnly bool) ([]Reward, error)
+	GetByID(id uuid.UUID) (*Reward, error)
 	Update(reward *Reward) error
-	Delete(id string) error
+	Delete(id uuid.UUID) error
 }
 
 // RedemptionRepository handles redemption operations
 type RedemptionRepository interface {
-	Create(redemption *Redemption) error
-	GetByID(id string) (*Redemption, error)
-	GetByUserID(userID string) ([]Redemption, error)
-	Update(redemption *Redemption) error
-}
-
-type PointsServiceInterface interface {
-	GetLedger(ctx context.Context, customerID, programID uuid.UUID) ([]*PointsLedger, error)
-	GetBalance(ctx context.Context, customerID, programID uuid.UUID) (int, error)
-	EarnPoints(ctx context.Context, customerID, programID uuid.UUID, points int, transactionID *uuid.UUID) error
-	RedeemPoints(ctx context.Context, customerID, programID uuid.UUID, points int, transactionID *uuid.UUID) error
+	Create(ctx context.Context, redemption *Redemption) ([]*Redemption, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*Redemption, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*Redemption, error)
+	Update(ctx context.Context, redemption *Redemption) error
 }
 
 type ProgramRuleRepository interface {
@@ -120,10 +112,10 @@ type UserService interface {
 }
 
 type PointsService interface {
-	GetLedger(customerID string, programID string) (*PointsLedger, error)
-	GetBalance(customerID string, programID string) (*PointsBalance, error)
-	EarnPoints(req *EarnPointsRequest) (*PointsTransaction, error)
-	RedeemPoints(req *RedeemPointsRequest) (*PointsTransaction, error)
+	GetLedger(ctx context.Context, customerID uuid.UUID, programID uuid.UUID) ([]*PointsLedger, error)
+	GetBalance(ctx context.Context, customerID uuid.UUID, programID uuid.UUID) (*PointsBalance, error)
+	EarnPoints(ctx context.Context, req *PointsTransaction) (*PointsTransaction, error)
+	RedeemPoints(ctx context.Context, req *PointsTransaction) (*PointsTransaction, error)
 }
 
 type ProgramService interface {
@@ -137,10 +129,10 @@ type ProgramService interface {
 
 type MerchantService interface {
 	Create(req *CreateMerchantRequest) (*Merchant, error)
-	GetByID(id string) (*Merchant, error)
+	GetByID(id uuid.UUID) (*Merchant, error)
 	GetAll() ([]*Merchant, error)
-	Update(id string, req *UpdateMerchantRequest) (*Merchant, error)
-	Delete(id string) error
+	Update(id uuid.UUID, req *UpdateMerchantRequest) (*Merchant, error)
+	Delete(id uuid.UUID) error
 }
 
 type ProgramRulesService interface {
@@ -159,4 +151,18 @@ type ProgramRepository interface {
 	Update(program *Program) error
 	Delete(id string) error
 	GetByMerchantID(merchantID string) ([]*Program, error)
+}
+
+type RewardsService interface {
+	Create(req *CreateRewardRequest) (*Reward, error)
+	GetByID(id string) (*Reward, error)
+	Update(id string, req *UpdateRewardRequest) (*Reward, error)
+	Delete(id string) error
+}
+
+type RedemptionService interface {
+	Create(req *CreateRedemptionRequest) (*Redemption, error)
+	GetByID(id string) (*Redemption, error)
+	GetByUserID(userID string) ([]Redemption, error)
+	Update(id string, req *UpdateRedemptionRequest) (*Redemption, error)
 }

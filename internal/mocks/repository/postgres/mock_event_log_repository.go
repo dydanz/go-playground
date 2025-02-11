@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"go-playground/internal/domain"
 
 	"github.com/stretchr/testify/mock"
@@ -10,7 +11,7 @@ type MockEventLogRepository struct {
 	mock.Mock
 }
 
-func (m *MockEventLogRepository) Create(event *domain.EventLog) error {
+func (m *MockEventLogRepository) Create(ctx context.Context, event *domain.EventLog) error {
 	args := m.Called(event)
 	return args.Error(0)
 }

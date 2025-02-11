@@ -332,6 +332,399 @@ const docTemplate = `{
                 }
             }
         },
+        "/merchant-customers": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "UserIdAuth": []
+                    }
+                ],
+                "description": "Create a new merchant customer",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "merchant-customers"
+                ],
+                "summary": "Create merchant customer",
+                "parameters": [
+                    {
+                        "description": "Customer details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.CreateMerchantCustomerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/domain.MerchantCustomer"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/merchant-customers/login": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "UserIdAuth": []
+                    }
+                ],
+                "description": "Validate merchant customer login credentials",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "merchant-customers"
+                ],
+                "summary": "Validate customer credentials",
+                "parameters": [
+                    {
+                        "description": "Login credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.CustomerLoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.MerchantCustomer"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/merchant-customers/merchant/{merchant_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "UserIdAuth": []
+                    }
+                ],
+                "description": "Get all customers for a specific merchant",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "merchant-customers"
+                ],
+                "summary": "Get merchant customers by merchant ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Merchant ID",
+                        "name": "merchant_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.MerchantCustomer"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/merchant-customers/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "UserIdAuth": []
+                    }
+                ],
+                "description": "Get merchant customer details by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "merchant-customers"
+                ],
+                "summary": "Get merchant customer by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Customer ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.MerchantCustomer"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "UserIdAuth": []
+                    }
+                ],
+                "description": "Update merchant customer details",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "merchant-customers"
+                ],
+                "summary": "Update merchant customer",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Customer ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Customer details to update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.UpdateMerchantCustomerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.MerchantCustomer"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "UserIdAuth": []
+                    }
+                ],
+                "description": "Delete a merchant customer",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "merchant-customers"
+                ],
+                "summary": "Delete merchant customer",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Customer ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/merchants": {
             "get": {
                 "description": "Get all merchants",
@@ -2062,7 +2455,68 @@ const docTemplate = `{
                 }
             }
         },
-        "/transactions/customer/{customer_id}": {
+        "/transactions/merchant/{merchant_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "UserIdAuth": []
+                    }
+                ],
+                "description": "Get all transactions for a specific merchant",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transactions"
+                ],
+                "summary": "Get merchant transactions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Merchant ID",
+                        "name": "merchant_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.Transaction"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/transactions/user/{customer_id}": {
             "get": {
                 "security": [
                     {
@@ -2110,67 +2564,6 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/transactions/merchant/{merchant_id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "UserIdAuth": []
-                    }
-                ],
-                "description": "Get all transactions for a specific merchant",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "transactions"
-                ],
-                "summary": "Get merchant transactions",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Merchant ID",
-                        "name": "merchant_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.Transaction"
-                            }
                         }
                     },
                     "400": {
@@ -2548,11 +2941,40 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "domain.CreateMerchantCustomerRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "merchant_id",
+                "name",
+                "password",
+                "phone"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "merchant_id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "phone": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.CreateMerchantRequest": {
             "type": "object",
             "required": [
                 "merchant_name",
-                "merchant_type"
+                "merchant_type",
+                "user_id"
             ],
             "properties": {
                 "merchant_name": {
@@ -2569,6 +2991,9 @@ const docTemplate = `{
                             "$ref": "#/definitions/domain.MerchantType"
                         }
                     ]
+                },
+                "user_id": {
+                    "type": "string"
                 }
             }
         },
@@ -2577,7 +3002,8 @@ const docTemplate = `{
             "required": [
                 "merchant_id",
                 "point_currency_name",
-                "program_name"
+                "program_name",
+                "user_id"
             ],
             "properties": {
                 "merchant_id": {
@@ -2587,6 +3013,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "program_name": {
+                    "type": "string"
+                },
+                "user_id": {
                     "type": "string"
                 }
             }
@@ -2633,7 +3062,7 @@ const docTemplate = `{
         "domain.CreateTransactionRequest": {
             "type": "object",
             "required": [
-                "customer_id",
+                "merchant_customers_id",
                 "merchant_id",
                 "program_id",
                 "status",
@@ -2644,7 +3073,7 @@ const docTemplate = `{
                 "branch_id": {
                     "type": "string"
                 },
-                "customer_id": {
+                "merchant_customers_id": {
                     "type": "string"
                 },
                 "merchant_id": {
@@ -2695,6 +3124,21 @@ const docTemplate = `{
                     "minLength": 6
                 },
                 "phone": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.CustomerLoginRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
                     "type": "string"
                 }
             }
@@ -2756,7 +3200,7 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
-                "merchant_id": {
+                "id": {
                     "type": "string"
                 },
                 "merchant_name": {
@@ -2766,6 +3210,38 @@ const docTemplate = `{
                     "$ref": "#/definitions/domain.MerchantType"
                 },
                 "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.MerchantCustomer": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "merchantID": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "updatedAt": {
                     "type": "string"
                 }
             }
@@ -2789,10 +3265,10 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
-                "customer_id": {
+                "ledger_id": {
                     "type": "string"
                 },
-                "ledger_id": {
+                "merchant_customers_id": {
                     "type": "string"
                 },
                 "points_balance": {
@@ -2818,19 +3294,22 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
-                "id": {
-                    "type": "string"
-                },
                 "merchant_id": {
                     "type": "string"
                 },
                 "point_currency_name": {
                     "type": "string"
                 },
+                "program_id": {
+                    "type": "string"
+                },
                 "program_name": {
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
                     "type": "string"
                 }
             }
@@ -2899,26 +3378,38 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "program_id": {
+                "merchant_customers_id": {
                     "type": "string"
                 },
-                "redeemed_at": {
+                "points_used": {
+                    "type": "integer"
+                },
+                "redemption_date": {
                     "type": "string"
                 },
                 "reward_id": {
                     "type": "string"
                 },
                 "status": {
-                    "description": "\"completed\", \"pending\", \"failed\", \"canceled\"",
-                    "type": "string"
+                    "$ref": "#/definitions/domain.RedemptionStatus"
                 },
                 "updated_at": {
                     "type": "string"
-                },
-                "user_id": {
-                    "type": "string"
                 }
             }
+        },
+        "domain.RedemptionStatus": {
+            "type": "string",
+            "enum": [
+                "completed",
+                "pending",
+                "failed"
+            ],
+            "x-enum-varnames": [
+                "RedemptionStatusCompleted",
+                "RedemptionStatusPending",
+                "RedemptionStatusFailed"
+            ]
         },
         "domain.RegistrationRequest": {
             "type": "object",
@@ -2947,6 +3438,9 @@ const docTemplate = `{
         "domain.Reward": {
             "type": "object",
             "properties": {
+                "available_quantity": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2965,6 +3459,9 @@ const docTemplate = `{
                 "points_required": {
                     "type": "integer"
                 },
+                "program_id": {
+                    "type": "string"
+                },
                 "quantity": {
                     "type": "integer"
                 },
@@ -2982,7 +3479,7 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
-                "customer_id": {
+                "merchant_customers_id": {
                     "type": "string"
                 },
                 "merchant_id": {
@@ -3005,6 +3502,24 @@ const docTemplate = `{
                 },
                 "transaction_type": {
                     "description": "purchase, refund, bonus",
+                    "type": "string"
+                }
+            }
+        },
+        "domain.UpdateMerchantCustomerRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "phone": {
                     "type": "string"
                 }
             }

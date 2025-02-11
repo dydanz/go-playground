@@ -19,33 +19,35 @@ import (
 
 // Handlers holds all handler instances
 type Handlers struct {
-	UserHandler             *handler.UserHandler
-	AuthHandler             *handler.AuthHandler
-	PointsHandler           *handler.PointsHandler
-	TransactionHandler      *handler.TransactionHandler
-	RewardsHandler          *handler.RewardsHandler
-	RedemptionHandler       *handler.RedemptionHandler
-	PingHandler             *handler.PingHandler
-	InternalLoadTestHandler *handler.InternalLoadTestHandler
-	MerchantHandler         *handler.MerchantHandler
-	ProgramHandler          *handler.ProgramHandler
-	ProgramRulesHandler     *handler.ProgramRulesHandler
+	UserHandler              *handler.UserHandler
+	AuthHandler              *handler.AuthHandler
+	PointsHandler            *handler.PointsHandler
+	TransactionHandler       *handler.TransactionHandler
+	RewardsHandler           *handler.RewardsHandler
+	RedemptionHandler        *handler.RedemptionHandler
+	PingHandler              *handler.PingHandler
+	InternalLoadTestHandler  *handler.InternalLoadTestHandler
+	MerchantHandler          *handler.MerchantHandler
+	MerchantCustomersHandler *handler.MerchantCustomersHandler
+	ProgramHandler           *handler.ProgramHandler
+	ProgramRulesHandler      *handler.ProgramRulesHandler
 }
 
 // InitializeHandlers initializes all handlers
 func InitializeHandlers(services *Services, db *sql.DB, dbReplication *sql.DB, rdb *redislib.Client) *Handlers {
 	return &Handlers{
-		UserHandler:             handler.NewUserHandler(services.UserService),
-		AuthHandler:             handler.NewAuthHandler(services.AuthService),
-		PointsHandler:           handler.NewPointsHandler(services.PointsService),
-		TransactionHandler:      handler.NewTransactionHandler(services.TransactionService),
-		RewardsHandler:          handler.NewRewardsHandler(services.RewardsService),
-		RedemptionHandler:       handler.NewRedemptionHandler(services.RedemptionService),
-		PingHandler:             handler.NewPingHandler(db, dbReplication, rdb),
-		InternalLoadTestHandler: handler.NewInternalLoadTestHandler(services.AuthService),
-		MerchantHandler:         handler.NewMerchantHandler(services.MerchantService),
-		ProgramHandler:          handler.NewProgramHandler(services.ProgramService),
-		ProgramRulesHandler:     handler.NewProgramRulesHandler(services.ProgramRuleService),
+		UserHandler:              handler.NewUserHandler(services.UserService),
+		AuthHandler:              handler.NewAuthHandler(services.AuthService),
+		PointsHandler:            handler.NewPointsHandler(services.PointsService),
+		TransactionHandler:       handler.NewTransactionHandler(services.TransactionService),
+		RewardsHandler:           handler.NewRewardsHandler(services.RewardsService),
+		RedemptionHandler:        handler.NewRedemptionHandler(services.RedemptionService),
+		PingHandler:              handler.NewPingHandler(db, dbReplication, rdb),
+		InternalLoadTestHandler:  handler.NewInternalLoadTestHandler(services.AuthService),
+		MerchantHandler:          handler.NewMerchantHandler(services.MerchantService),
+		MerchantCustomersHandler: handler.NewMerchantCustomersHandler(services.MerchantCustomersService),
+		ProgramHandler:           handler.NewProgramHandler(services.ProgramService),
+		ProgramRulesHandler:      handler.NewProgramRulesHandler(services.ProgramRuleService),
 	}
 }
 
@@ -140,6 +142,7 @@ func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo red
 			transactions.POST("", h.TransactionHandler.Create)
 			transactions.GET("/:id", h.TransactionHandler.GetByID)
 			transactions.GET("/user/:user_id", h.TransactionHandler.GetByCustomerID)
+			transactions.GET("/merchant/:merchant_id", h.TransactionHandler.GetByMerchantID)
 		}
 
 		// Rewards routes
@@ -169,6 +172,17 @@ func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo red
 			merchants.GET("/:id", h.MerchantHandler.GetByID)
 			merchants.PUT("/:id", h.MerchantHandler.Update)
 			merchants.DELETE("/:id", h.MerchantHandler.Delete)
+		}
+
+		// Merchant Customers routes
+		merchantCustomers := api.Group("/merchant-customers")
+		{
+			merchantCustomers.POST("", h.MerchantCustomersHandler.Create)
+			merchantCustomers.GET("/:id", h.MerchantCustomersHandler.GetByID)
+			merchantCustomers.GET("/merchant/:merchant_id", h.MerchantCustomersHandler.GetByMerchantID)
+			merchantCustomers.PUT("/:id", h.MerchantCustomersHandler.Update)
+			merchantCustomers.DELETE("/:id", h.MerchantCustomersHandler.Delete)
+			merchantCustomers.POST("/login", h.MerchantCustomersHandler.ValidateCredentials)
 		}
 
 		// Programs routes

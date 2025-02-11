@@ -24,8 +24,8 @@ func (s *RewardsService) Create(req *domain.CreateRewardRequest) (*domain.Reward
 	}
 
 	reward := &domain.Reward{
-		ID:             uuid.New().String(),
 		Name:           req.Name,
+		ProgramID:      req.ProgramID,
 		Description:    req.Description,
 		PointsRequired: req.PointsRequired,
 		IsActive:       req.IsActive,
@@ -42,15 +42,11 @@ func (s *RewardsService) Create(req *domain.CreateRewardRequest) (*domain.Reward
 }
 
 func (s *RewardsService) GetByID(id string) (*domain.Reward, error) {
-	return s.rewardsRepo.GetByID(id)
-}
-
-func (s *RewardsService) GetAll(activeOnly bool) ([]domain.Reward, error) {
-	return s.rewardsRepo.GetAll(activeOnly)
+	return s.rewardsRepo.GetByID(uuid.MustParse(id))
 }
 
 func (s *RewardsService) Update(id string, req *domain.UpdateRewardRequest) (*domain.Reward, error) {
-	reward, err := s.rewardsRepo.GetByID(id)
+	reward, err := s.rewardsRepo.GetByID(uuid.MustParse(id))
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +67,7 @@ func (s *RewardsService) Update(id string, req *domain.UpdateRewardRequest) (*do
 		reward.IsActive = *req.IsActive
 	}
 	if req.Quantity != nil {
-		reward.Quantity = req.Quantity
+		reward.Quantity = *req.Quantity
 	}
 	reward.UpdatedAt = time.Now()
 
@@ -83,11 +79,11 @@ func (s *RewardsService) Update(id string, req *domain.UpdateRewardRequest) (*do
 }
 
 func (s *RewardsService) Delete(id string) error {
-	return s.rewardsRepo.Delete(id)
+	return s.rewardsRepo.Delete(uuid.MustParse(id))
 }
 
 func (s *RewardsService) UpdateAvailability(id string, available bool) error {
-	reward, err := s.rewardsRepo.GetByID(id)
+	reward, err := s.rewardsRepo.GetByID(uuid.MustParse(id))
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 )
 
@@ -14,4 +15,13 @@ type EventLog struct {
 	CreatedAt      time.Time              `json:"created_at"`
 	UpdatedAt      time.Time              `json:"updated_at"`
 	ReferenceID    *string                `json:"reference_id,omitempty"`
+}
+
+type EventLogRepository interface {
+	Create(ctx context.Context, eventLog *EventLog) error
+	GetByID(id string) (*EventLog, error)
+	GetByUserID(userID string) ([]EventLog, error)
+	Update(eventLog *EventLog) error
+	Delete(id string) error
+	GetByReferenceID(referenceID string) (*EventLog, error)
 }
