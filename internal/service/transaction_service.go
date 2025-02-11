@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"time"
 
 	"go-playground/internal/domain"
 
@@ -12,14 +11,14 @@ import (
 
 type TransactionService struct {
 	transactionRepo      domain.TransactionRepository
-	pointsService        domain.PointsServiceInterface
+	pointsService        domain.PointsService
 	eventRepo            domain.EventLogRepository
 	merchantCustomerRepo domain.MerchantCustomersRepository
 }
 
 func NewTransactionService(
 	transactionRepo domain.TransactionRepository,
-	pointsService domain.PointsServiceInterface,
+	pointsService domain.PointsService,
 	eventRepo domain.EventLogRepository,
 	merchantCustomerRepo domain.MerchantCustomersRepository,
 ) *TransactionService {
@@ -61,7 +60,6 @@ func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTrans
 		TransactionType:     req.TransactionType,
 		TransactionAmount:   req.TransactionAmount,
 		Status:              "pending",
-		CreatedAt:           time.Now(),
 	}
 
 	createdTx, err := s.transactionRepo.Create(ctx, tx)
@@ -88,7 +86,12 @@ func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTrans
 	// TODO: Update points balance if applicable
 
 	if points != 0 {
-		if err := s.pointsService.EarnPoints(ctx, tx.MerchantCustomersID, tx.ProgramID, points, createdTx.TransactionID); err != nil {
+		if _, err := s.pointsService.EarnPoints(ctx, &domain.PointsTransaction{
+			CustomerID:    tx.MerchantCustomersID.String(),
+			ProgramID:     tx.ProgramID.String(),
+			Points:        points,
+			TransactionID: createdTx.TransactionID.String(),
+		}); err != nil {
 			return nil, err
 		}
 	}
@@ -154,6 +157,6 @@ func (s *TransactionService) UpdateStatus(ctx context.Context, id string, status
 	return s.transactionRepo.UpdateStatus(ctx, txID, status)
 }
 
-func (s *TransactionService) SetPointsService(pointsService domain.PointsServiceInterface) {
+func (s *TransactionService) SetPointsService(pointsService domain.PointsService) {
 	s.pointsService = pointsService
 }

@@ -20,106 +20,71 @@ type PointsService struct {
 	eventRepo  domain.EventLogRepository
 }
 
-func NewPointsService(pointsRepo domain.PointsRepository, eventRepo domain.EventLogRepository) domain.PointsServiceInterface {
+func NewPointsService(pointsRepo domain.PointsRepository, eventRepo domain.EventLogRepository) *PointsService {
 	return &PointsService{
 		pointsRepo: pointsRepo,
 		eventRepo:  eventRepo,
 	}
 }
 
-// Implementation of domain.PointsServiceInterface
-func (s *PointsService) GetLedger(ctx context.Context, customerID, programID uuid.UUID) ([]*domain.PointsLedger, error) {
-	return s.pointsRepo.GetByCustomerAndProgram(ctx, customerID, programID)
-}
-
-func (s *PointsService) GetBalance(ctx context.Context, customerID, programID uuid.UUID) (int, error) {
-	return s.pointsRepo.GetCurrentBalance(ctx, customerID, programID)
-}
-
-func (s *PointsService) EarnPoints(ctx context.Context, merchantCustomerID uuid.UUID, programID uuid.UUID, points int, transactionID uuid.UUID) error {
-	return s.pointsRepo.Create(ctx, &domain.PointsLedger{
-		LedgerID:            uuid.New(),
-		MerchantCustomersID: merchantCustomerID,
-		ProgramID:           programID,
-		PointsEarned:        points,
-		TransactionID:       transactionID,
-		CreatedAt:           time.Now(),
-	})
-}
-
-func (s *PointsService) RedeemPoints(ctx context.Context, merchantCustomerID uuid.UUID, programID uuid.UUID, points int, transactionID uuid.UUID) error {
-	currentBalance, err := s.pointsRepo.GetCurrentBalance(ctx, merchantCustomerID, programID)
+func (s *PointsService) RedeemPoints(ctx context.Context, req *domain.PointsTransaction) (*domain.PointsTransaction, error) {
+	currentBalance, err := s.pointsRepo.GetCurrentBalance(ctx, uuid.MustParse(req.CustomerID), uuid.MustParse(req.ProgramID))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if currentBalance < points {
-		return ErrInsufficientPoints
+	if currentBalance < req.Points {
+		return nil, ErrInsufficientPoints
 	}
 
-	return s.pointsRepo.Create(ctx, &domain.PointsLedger{
+	err = s.pointsRepo.Create(ctx, &domain.PointsLedger{
 		LedgerID:            uuid.New(),
-		MerchantCustomersID: merchantCustomerID,
-		ProgramID:           programID,
+		MerchantCustomersID: uuid.MustParse(req.CustomerID),
+		ProgramID:           uuid.MustParse(req.ProgramID),
 		PointsEarned:        0,
-		PointsRedeemed:      points,
-		PointsBalance:       currentBalance - points,
-		TransactionID:       transactionID,
+		PointsRedeemed:      req.Points,
+		PointsBalance:       currentBalance - req.Points,
+		TransactionID:       uuid.MustParse(req.TransactionID),
 	})
-}
-
-// LegacyPointsService adapts the new interface to the old one
-type LegacyPointsService struct {
-	service domain.PointsServiceInterface
-}
-
-func NewLegacyPointsService(service domain.PointsServiceInterface) domain.PointsService {
-	return &LegacyPointsService{service: service}
-}
-
-func (s *LegacyPointsService) GetLedger(customerID string, programID string) (*domain.PointsLedger, error) {
-	custID, err := uuid.Parse(customerID)
-	if err != nil {
-		return nil, err
-	}
-	progID, err := uuid.Parse(programID)
 	if err != nil {
 		return nil, err
 	}
 
-	ledgers, err := s.service.GetLedger(context.Background(), custID, progID)
+	return &domain.PointsTransaction{
+		TransactionID: req.TransactionID,
+		CustomerID:    req.CustomerID,
+		ProgramID:     req.ProgramID,
+		Points:        req.Points,
+		Type:          "redeem",
+	}, nil
+}
+
+func (s *PointsService) GetLedger(ctx context.Context, customerID uuid.UUID, programID uuid.UUID) ([]*domain.PointsLedger, error) {
+
+	ledgers, err := s.pointsRepo.GetByCustomerAndProgram(context.Background(), customerID, programID)
 	if err != nil {
 		return nil, err
 	}
 	if len(ledgers) == 0 {
 		return nil, nil
 	}
-	return ledgers[len(ledgers)-1], nil
+	return ledgers, nil
 }
 
-func (s *LegacyPointsService) GetBalance(customerID string, programID string) (*domain.PointsBalance, error) {
-	custID, err := uuid.Parse(customerID)
-	if err != nil {
-		return nil, err
-	}
-	progID, err := uuid.Parse(programID)
-	if err != nil {
-		return nil, err
-	}
-
-	balance, err := s.service.GetBalance(context.Background(), custID, progID)
+func (s *PointsService) GetBalance(ctx context.Context, customerID uuid.UUID, programID uuid.UUID) (*domain.PointsBalance, error) {
+	balance, err := s.pointsRepo.GetCurrentBalance(context.Background(), customerID, programID)
 	if err != nil {
 		return nil, err
 	}
 
 	return &domain.PointsBalance{
-		CustomerID: customerID,
-		ProgramID:  programID,
+		CustomerID: customerID.String(),
+		ProgramID:  programID.String(),
 		Balance:    balance,
 	}, nil
 }
 
-func (s *LegacyPointsService) EarnPoints(req *domain.EarnPointsRequest) (*domain.PointsTransaction, error) {
+func (s *PointsService) EarnPoints(ctx context.Context, req *domain.PointsTransaction) (*domain.PointsTransaction, error) {
 	customerID, err := uuid.Parse(req.CustomerID)
 	if err != nil {
 		return nil, err
@@ -130,43 +95,21 @@ func (s *LegacyPointsService) EarnPoints(req *domain.EarnPointsRequest) (*domain
 		return nil, err
 	}
 
-	txID := uuid.New()
-	if err := s.service.EarnPoints(context.Background(), customerID, programID, req.Points, txID); err != nil {
-		return nil, err
-	}
+	s.pointsRepo.Create(ctx, &domain.PointsLedger{
+		LedgerID:            uuid.New(),
+		MerchantCustomersID: customerID,
+		ProgramID:           programID,
+		PointsEarned:        req.Points,
+		TransactionID:       uuid.MustParse(req.TransactionID),
+		CreatedAt:           time.Now(),
+	})
 
 	return &domain.PointsTransaction{
-		TransactionID: txID.String(),
+		TransactionID: req.TransactionID,
 		CustomerID:    req.CustomerID,
 		ProgramID:     req.ProgramID,
 		Points:        req.Points,
 		Type:          "earn",
-		CreatedAt:     time.Now(),
-	}, nil
-}
-
-func (s *LegacyPointsService) RedeemPoints(req *domain.RedeemPointsRequest) (*domain.PointsTransaction, error) {
-	customerID, err := uuid.Parse(req.CustomerID)
-	if err != nil {
-		return nil, err
-	}
-
-	programID, err := uuid.Parse(req.ProgramID)
-	if err != nil {
-		return nil, err
-	}
-
-	txID := uuid.New()
-	if err := s.service.RedeemPoints(context.Background(), customerID, programID, req.Points, txID); err != nil {
-		return nil, err
-	}
-
-	return &domain.PointsTransaction{
-		TransactionID: txID.String(),
-		CustomerID:    req.CustomerID,
-		ProgramID:     req.ProgramID,
-		Points:        req.Points,
-		Type:          "redeem",
 		CreatedAt:     time.Now(),
 	}, nil
 }

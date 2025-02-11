@@ -94,13 +94,6 @@ type RedemptionRepository interface {
 	Update(ctx context.Context, redemption *Redemption) error
 }
 
-type PointsServiceInterface interface {
-	GetLedger(ctx context.Context, customerID, programID uuid.UUID) ([]*PointsLedger, error)
-	GetBalance(ctx context.Context, customerID, programID uuid.UUID) (int, error)
-	EarnPoints(ctx context.Context, customerID, programID uuid.UUID, points int, transactionID uuid.UUID) error
-	RedeemPoints(ctx context.Context, customerID, programID uuid.UUID, points int, transactionID uuid.UUID) error
-}
-
 type ProgramRuleRepository interface {
 	Create(ctx context.Context, rule *ProgramRule) error
 	GetByID(ctx context.Context, id uuid.UUID) (*ProgramRule, error)
@@ -119,10 +112,10 @@ type UserService interface {
 }
 
 type PointsService interface {
-	GetLedger(customerID string, programID string) (*PointsLedger, error)
-	GetBalance(customerID string, programID string) (*PointsBalance, error)
-	EarnPoints(req *EarnPointsRequest) (*PointsTransaction, error)
-	RedeemPoints(req *RedeemPointsRequest) (*PointsTransaction, error)
+	GetLedger(ctx context.Context, customerID uuid.UUID, programID uuid.UUID) ([]*PointsLedger, error)
+	GetBalance(ctx context.Context, customerID uuid.UUID, programID uuid.UUID) (*PointsBalance, error)
+	EarnPoints(ctx context.Context, req *PointsTransaction) (*PointsTransaction, error)
+	RedeemPoints(ctx context.Context, req *PointsTransaction) (*PointsTransaction, error)
 }
 
 type ProgramService interface {

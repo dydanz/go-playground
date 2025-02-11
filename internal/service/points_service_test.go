@@ -46,7 +46,11 @@ func TestPointsService(t *testing.T) {
 
 		result, err := service.GetBalance(ctx, customerID, programID)
 		assert.NoError(t, err)
-		assert.Equal(t, 100, result)
+		assert.Equal(t, &domain.PointsBalance{
+			CustomerID: customerID.String(),
+			ProgramID:  programID.String(),
+			Balance:    100,
+		}, result)
 	})
 
 	t.Run("GetBalance - Error", func(t *testing.T) {
@@ -57,28 +61,48 @@ func TestPointsService(t *testing.T) {
 
 		result, err := service.GetBalance(ctx, customerID, programID)
 		assert.Equal(t, expectedErr, err)
-		assert.Equal(t, 0, result)
+		assert.Nil(t, result)
 	})
 
 	t.Run("EarnPoints", func(t *testing.T) {
 		pointsRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.PointsLedger")).Return(nil)
 
-		err := service.EarnPoints(ctx, customerID, programID, 100, txID)
-		assert.NoError(t, err)
-	})
+		req := &domain.PointsTransaction{
+			CustomerID:    customerID.String(),
+			ProgramID:     programID.String(),
+			Points:        100,
+			Type:          "earn",
+			TransactionID: txID.String(),
+		}
 
-	t.Run("EarnPoints - Invalid Points", func(t *testing.T) {
-		err := service.EarnPoints(ctx, customerID, programID, 0, txID)
-		assert.Error(t, err)
-		assert.Equal(t, ErrInvalidPoints, err)
+		result, err := service.EarnPoints(ctx, req)
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, req.Points, result.Points)
+		assert.Equal(t, req.CustomerID, result.CustomerID)
+		assert.Equal(t, req.ProgramID, result.ProgramID)
+		assert.Equal(t, "earn", result.Type)
 	})
 
 	t.Run("RedeemPoints", func(t *testing.T) {
 		pointsRepo.On("GetCurrentBalance", mock.Anything, customerID, programID).Return(200, nil)
 		pointsRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.PointsLedger")).Return(nil)
 
-		err := service.RedeemPoints(ctx, customerID, programID, 100, txID)
+		req := &domain.PointsTransaction{
+			CustomerID:    customerID.String(),
+			ProgramID:     programID.String(),
+			Points:        100,
+			Type:          "redeem",
+			TransactionID: txID.String(),
+		}
+
+		result, err := service.RedeemPoints(ctx, req)
 		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, req.Points, result.Points)
+		assert.Equal(t, req.CustomerID, result.CustomerID)
+		assert.Equal(t, req.ProgramID, result.ProgramID)
+		assert.Equal(t, "redeem", result.Type)
 	})
 
 	t.Run("RedeemPoints - Insufficient Balance", func(t *testing.T) {
@@ -87,8 +111,17 @@ func TestPointsService(t *testing.T) {
 
 		pointsRepo.On("GetCurrentBalance", mock.Anything, customerID, programID).Return(50, nil)
 
-		err := service.RedeemPoints(ctx, customerID, programID, 100, txID)
+		req := &domain.PointsTransaction{
+			CustomerID:    customerID.String(),
+			ProgramID:     programID.String(),
+			Points:        100,
+			Type:          "redeem",
+			TransactionID: txID.String(),
+		}
+
+		result, err := service.RedeemPoints(ctx, req)
 		assert.Equal(t, ErrInsufficientPoints, err)
+		assert.Nil(t, result)
 		pointsRepo.AssertExpectations(t)
 	})
 }

@@ -83,7 +83,7 @@ type CreateRedemptionRequest struct {
 }
 
 type UpdateRedemptionRequest struct {
-	Status RedemptionStatus `json:"status" binding:"required,oneof=completed pending failed"`
+	Status string `json:"status"`
 }
 
 type CreateRewardRequest struct {

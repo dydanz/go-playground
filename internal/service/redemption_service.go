@@ -13,7 +13,7 @@ import (
 type RedemptionService struct {
 	redemptionRepo     domain.RedemptionRepository
 	rewardsRepo        domain.RewardsRepository
-	pointsService      domain.PointsServiceInterface
+	pointsService      domain.PointsService
 	transactionService domain.TransactionService
 	eventRepo          domain.EventLogRepository
 }
@@ -21,7 +21,7 @@ type RedemptionService struct {
 func NewRedemptionService(
 	redemptionRepo domain.RedemptionRepository,
 	rewardsRepo domain.RewardsRepository,
-	pointsService domain.PointsServiceInterface,
+	pointsService domain.PointsService,
 	transactionService domain.TransactionService,
 	eventRepo domain.EventLogRepository,
 ) *RedemptionService {
@@ -33,8 +33,6 @@ func NewRedemptionService(
 		eventRepo:          eventRepo,
 	}
 }
-
-var DEFAULT_REDEEM_PROGRAM_ID = uuid.MustParse("00000000-0000-0000-0000-000000000000")
 
 func (s *RedemptionService) Create(ctx context.Context, redemption *domain.Redemption) error {
 	// Check if reward exists and is active
@@ -56,7 +54,7 @@ func (s *RedemptionService) Create(ctx context.Context, redemption *domain.Redem
 	if err != nil {
 		return err
 	}
-	if balance < reward.PointsRequired {
+	if balance.Balance < reward.PointsRequired {
 		return errors.New("insufficient points")
 	}
 
@@ -73,7 +71,7 @@ func (s *RedemptionService) Create(ctx context.Context, redemption *domain.Redem
 	// Deduct points by creating a redemption transaction
 	transaction, err := s.transactionService.Create(ctx, &domain.CreateTransactionRequest{
 		MerchantCustomersID: redemption.MerchantCustomersID,
-		MerchantID:          uuid.Nil,
+		MerchantID:          uuid.Nil, // filled in by the transaction service
 		ProgramID:           reward.ProgramID,
 		TransactionType:     "redemption",
 		TransactionAmount:   float64(reward.PointsRequired),
@@ -132,7 +130,14 @@ func (s *RedemptionService) UpdateStatus(ctx context.Context, id string, status 
 		}
 
 		refundID := uuid.New()
-		if err := s.pointsService.EarnPoints(ctx, customerID, reward.ProgramID, reward.PointsRequired, refundID); err != nil {
+		_, err = s.pointsService.EarnPoints(ctx, &domain.PointsTransaction{
+			CustomerID:    customerID.String(),
+			ProgramID:     reward.ProgramID.String(),
+			Points:        reward.PointsRequired,
+			Type:          "refund",
+			TransactionID: refundID.String(),
+		})
+		if err != nil {
 			return err
 		}
 	}
@@ -140,6 +145,6 @@ func (s *RedemptionService) UpdateStatus(ctx context.Context, id string, status 
 	return s.redemptionRepo.Update(ctx, redemption)
 }
 
-func (s *RedemptionService) SetPointsService(pointsService domain.PointsServiceInterface) {
+func (s *RedemptionService) SetPointsService(pointsService domain.PointsService) {
 	s.pointsService = pointsService
 }

@@ -1,7 +1,6 @@
 package bootstrap
 
 import (
-	"go-playground/internal/domain"
 	"go-playground/internal/service"
 )
 
@@ -9,7 +8,7 @@ import (
 type Services struct {
 	UserService              *service.UserService
 	AuthService              *service.AuthService
-	PointsService            domain.PointsService
+	PointsService            *service.PointsService
 	TransactionService       *service.TransactionService
 	RewardsService           *service.RewardsService
 	RedemptionService        *service.RedemptionService
@@ -21,8 +20,7 @@ type Services struct {
 
 // InitializeServices initializes all services
 func InitializeServices(repos *Repositories) *Services {
-	pointsService := service.NewPointsService(repos.PointsRepo, repos.EventRepo)
-	legacyPointsService := service.NewLegacyPointsService(pointsService)
+	pointsService := service.NewPointsService(repos.PointsRepo, repos.EventRepo)	
 	merchantService := service.NewMerchantService(repos.MerchantRepo)
 	transactionService := service.NewTransactionService(
 		repos.TransactionRepo,
@@ -34,7 +32,7 @@ func InitializeServices(repos *Repositories) *Services {
 	return &Services{
 		UserService:        service.NewUserService(repos.UserRepo, repos.CacheRepo),
 		AuthService:        service.NewAuthService(repos.UserRepo, repos.AuthRepo, repos.SessionRepo),
-		PointsService:      legacyPointsService,
+		PointsService:      pointsService,
 		TransactionService: transactionService,
 		RewardsService:     service.NewRewardsService(repos.RewardsRepo),
 		RedemptionService: service.NewRedemptionService(
