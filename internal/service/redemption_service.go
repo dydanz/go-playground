@@ -77,7 +77,7 @@ func (s *RedemptionService) Create(ctx context.Context, redemption *domain.Redem
 		TransactionAmount:   float64(reward.PointsRequired),
 	})
 	if err != nil {
-		log.Fatal("error creating redemption transaction for redemption id: ", redemption.ID, "error: ", err)
+		log.Printf("error creating redemption transaction for redemption id: ", redemption.ID, "error: ", err)
 		return err
 	}
 
