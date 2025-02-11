@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"go-playground/internal/domain"
@@ -10,24 +11,48 @@ import (
 )
 
 type TransactionService struct {
-	transactionRepo domain.TransactionRepository
-	pointsService   domain.PointsServiceInterface
-	eventRepo       domain.EventLogRepository
+	transactionRepo      domain.TransactionRepository
+	pointsService        domain.PointsServiceInterface
+	eventRepo            domain.EventLogRepository
+	merchantCustomerRepo domain.MerchantCustomersRepository
 }
 
 func NewTransactionService(
 	transactionRepo domain.TransactionRepository,
 	pointsService domain.PointsServiceInterface,
 	eventRepo domain.EventLogRepository,
+	merchantCustomerRepo domain.MerchantCustomersRepository,
 ) *TransactionService {
 	return &TransactionService{
-		transactionRepo: transactionRepo,
-		pointsService:   pointsService,
-		eventRepo:       eventRepo,
+		transactionRepo:      transactionRepo,
+		pointsService:        pointsService,
+		eventRepo:            eventRepo,
+		merchantCustomerRepo: merchantCustomerRepo,
 	}
 }
 
+func (s *TransactionService) getMerchantIDByCustomerID(ctx context.Context, customerID uuid.UUID) (uuid.UUID, error) {
+	customer, err := s.merchantCustomerRepo.GetByID(ctx, customerID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if customer == nil {
+		return uuid.Nil, errors.New("merchant customer not found")
+	}
+	return customer.MerchantID, nil
+}
+
 func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTransactionRequest) (*domain.Transaction, error) {
+
+	if req.MerchantID == uuid.Nil {
+		// Get merchant ID from customer ID
+		merchantID, err := s.getMerchantIDByCustomerID(ctx, req.MerchantCustomersID)
+		if err != nil {
+			return nil, err
+		}
+		req.MerchantID = merchantID
+	}
+
 	tx := &domain.Transaction{
 		MerchantID:          req.MerchantID,
 		MerchantCustomersID: req.MerchantCustomersID,

@@ -37,10 +37,6 @@ func (s *PointsService) GetBalance(ctx context.Context, customerID, programID uu
 }
 
 func (s *PointsService) EarnPoints(ctx context.Context, merchantCustomerID uuid.UUID, programID uuid.UUID, points int, transactionID uuid.UUID) error {
-	if points <= 0 {
-		return ErrInvalidPoints
-	}
-
 	return s.pointsRepo.Create(ctx, &domain.PointsLedger{
 		LedgerID:            uuid.New(),
 		MerchantCustomersID: merchantCustomerID,
@@ -52,10 +48,6 @@ func (s *PointsService) EarnPoints(ctx context.Context, merchantCustomerID uuid.
 }
 
 func (s *PointsService) RedeemPoints(ctx context.Context, merchantCustomerID uuid.UUID, programID uuid.UUID, points int, transactionID uuid.UUID) error {
-	if points <= 0 {
-		return ErrInvalidPoints
-	}
-
 	currentBalance, err := s.pointsRepo.GetCurrentBalance(ctx, merchantCustomerID, programID)
 	if err != nil {
 		return err

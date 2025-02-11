@@ -23,21 +23,28 @@ type Services struct {
 func InitializeServices(repos *Repositories) *Services {
 	pointsService := service.NewPointsService(repos.PointsRepo, repos.EventRepo)
 	legacyPointsService := service.NewLegacyPointsService(pointsService)
+	merchantService := service.NewMerchantService(repos.MerchantRepo)
+	transactionService := service.NewTransactionService(
+		repos.TransactionRepo,
+		pointsService,
+		repos.EventRepo,
+		repos.MerchantCustomersRepo,
+	)
 
 	return &Services{
 		UserService:        service.NewUserService(repos.UserRepo, repos.CacheRepo),
 		AuthService:        service.NewAuthService(repos.UserRepo, repos.AuthRepo, repos.SessionRepo),
 		PointsService:      legacyPointsService,
-		TransactionService: service.NewTransactionService(repos.TransactionRepo, pointsService, repos.EventRepo),
+		TransactionService: transactionService,
 		RewardsService:     service.NewRewardsService(repos.RewardsRepo),
 		RedemptionService: service.NewRedemptionService(
 			repos.RedemptionRepo,
 			repos.RewardsRepo,
 			pointsService,
-			service.NewTransactionService(repos.TransactionRepo, pointsService, repos.EventRepo),
+			transactionService,
 			repos.EventRepo,
 		),
-		MerchantService:          service.NewMerchantService(repos.MerchantRepo),
+		MerchantService:          merchantService,
 		MerchantCustomersService: service.NewMerchantCustomersService(repos.MerchantCustomersRepo),
 		ProgramService:           service.NewProgramService(repos.ProgramRepo),
 		ProgramRuleService:       service.NewProgramRulesService(repos.ProgramRuleRepo),

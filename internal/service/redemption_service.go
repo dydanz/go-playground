@@ -73,6 +73,7 @@ func (s *RedemptionService) Create(ctx context.Context, redemption *domain.Redem
 	// Deduct points by creating a redemption transaction
 	transaction, err := s.transactionService.Create(ctx, &domain.CreateTransactionRequest{
 		MerchantCustomersID: redemption.MerchantCustomersID,
+		MerchantID:          uuid.Nil,
 		ProgramID:           reward.ProgramID,
 		TransactionType:     "redemption",
 		TransactionAmount:   float64(reward.PointsRequired),
