@@ -97,11 +97,11 @@ func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTrans
 	}
 
 	// Log the transaction event, make async
-	txIDStr := tx.TransactionID.String()
 	event := &domain.EventLog{
-		EventType:   "transaction_created",
-		UserID:      req.MerchantCustomersID.String(),
-		ReferenceID: &txIDStr,
+		EventType:   string(domain.TransactionCreated),
+		ActorID:     req.MerchantCustomersID.String(),
+		ActorType:   string(domain.MerchantUserActorType),
+		ReferenceID: func() *string { s := createdTx.TransactionID.String(); return &s }(),
 		Details: map[string]interface{}{
 			"merchant_id":        tx.MerchantID,
 			"transaction_type":   tx.TransactionType,

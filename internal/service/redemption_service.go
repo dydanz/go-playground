@@ -85,8 +85,9 @@ func (s *RedemptionService) Create(ctx context.Context, redemption *domain.Redem
 
 	// Log the redemption event
 	event := &domain.EventLog{
-		EventType:   "reward_redeemed",
-		UserID:      redemption.MerchantCustomersID.String(),
+		EventType:   string(domain.RewardRedeemed),
+		ActorID:     redemption.MerchantCustomersID.String(),
+		ActorType:   string(domain.MerchantUserActorType),
 		ReferenceID: func() *string { s := redemption.ID.String(); return &s }(),
 		Details: map[string]interface{}{
 			"reward_id":     redemption.RewardID,
