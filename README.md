@@ -3,7 +3,7 @@
 [![Go Build](https://github.com/dydanz/go-playground/actions/workflows/go.yml/badge.svg)](https://github.com/dydanz/go-playground/actions/workflows/go.yml) [![Docker](https://github.com/dydanz/go-playground/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/dydanz/go-playground/actions/workflows/docker-publish.yml) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/00bb0e4faf7c4cd493b14ff5d587ea68)](https://app.codacy.com/gh/dydanz/go-playground/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Jekyll / GitHub Pages](https://github.com/dydanz/go-playground/actions/workflows/jekyll-gh-pages.yml/badge.svg)](https://github.com/dydanz/go-playground/actions/workflows/jekyll-gh-pages.yml)
 
-A (playground) RESTful API service built with Go (Gin framework) that handles user management with PostgreSQL for data persistence and Redis for caching.
+A (playground) RESTful API service, built with Go (Gin framework) that handles Loyalty Points management with PostgreSQL for data persistence and Redis for caching.
 
 #### Disclaimer
 As designated for my personal research AI-generated code, most of the code are less-caffeinated-machine-generated
@@ -33,14 +33,19 @@ Tech stack:
 ## Prerequisites
 
 Before you begin, ensure you have installed:
-- Go 1.16 or later
+- Go 1.16 or later (1.21 is recommended)
 - Docker and Docker Compose
 - Git
+- Python 3.10 or later
 - A good PC/laptop is needed because Docker will be hungry!
 
 ## Getting Started
 
 ### 1. Clone the Repository
+
+```bash
+git clone https://github.com/dydanz/go-playground.git
+```
 
 ### 2. Set Up Environment Variables
 
@@ -107,42 +112,9 @@ The API will be available at `http://localhost:8080`
 
 ## API Endpoints
 
-### Create User
-```bash
-curl -X POST http://localhost:8080/api/users \
--H "Content-Type: application/json" \
--d '{
-    "email": "john@example.com",
-    "password": "password123",
-    "name": "John Doe",
-    "phone": "1234567890"
-}'
-```
+You can find the API endpoints in the Swagger UI at [Swagger URL](http://localhost:8080/swagger/index.html)
 
-### Get All Users
-```bash
-curl http://localhost:8080/api/users
-```
-
-### Get User by ID
-```bash
-curl http://localhost:8080/api/users/{user_id}
-```
-
-### Update User
-```bash
-curl -X PUT http://localhost:8080/api/users/{user_id} \
--H "Content-Type: application/json" \
--d '{
-    "name": "John Updated",
-    "phone": "0987654321"
-}'
-```
-
-### Delete User
-```bash
-curl -X DELETE http://localhost:8080/api/users/{user_id}
-```
+or run it with `$ python3 test.py` to see the end-to-end tests result.
 
 ## Project Structure
 ```
@@ -182,7 +154,7 @@ go-playground/
 │   │   ├── 000002_add_auth_tables.up.sql
 │   │   ├── 000003_add_auth_token_unique_constraint.up.sql
 │   │   └── ... (more migration files)
-│   ├── mocks/
+│   ├── mocks/ # Mock files for testing
 │   │   ├── repository/
 │   │   └── service/
 │   ├── repository/
@@ -301,7 +273,7 @@ go install github.com/swaggo/swag/cmd/swag@latest
 swag init -g cmd/api/main.go -o internal/docs
 ```
 
-3. Access the documentation at http://localhost:8080/swagger/index.html after starting the server
+3. Access the documentation at [Swagger URL](http://localhost:8080/swagger/index.html) after starting the server
 
 ### Swagger Annotations
 
