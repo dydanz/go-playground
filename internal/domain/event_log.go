@@ -22,13 +22,13 @@ type EventLog struct {
 type EventLogType string
 
 const (
-	TransactionCreated   EventLogType = "transaction_created"    // Initial state after registration
-	ProgramIDCreated     EventLogType = "program_id_created"     // Email verified, can login
-	ProgramRuleCreated   EventLogType = "program_rule_created"   // Account locked due to violations
-	PointsEarned         EventLogType = "points_earned"          // Account banned by admin
-	PointsRedeemed       EventLogType = "points_redeemed"        // Account banned by admin
-	PointsBalanceUpdated EventLogType = "points_balance_updated" // Account banned by admin
-	RewardRedeemed       EventLogType = "reward_redeemed"        // Account banned by admin
+	TransactionCreated   EventLogType = "transaction_created"
+	ProgramIDCreated     EventLogType = "program_id_created"
+	ProgramRuleCreated   EventLogType = "program_rule_created"
+	PointsEarned         EventLogType = "points_earned"
+	PointsRedeemed       EventLogType = "points_redeemed"
+	PointsBalanceUpdated EventLogType = "points_balance_updated"
+	RewardRedeemed       EventLogType = "reward_redeemed"
 )
 
 // Reference : ~/internal/migrations/000007_create_event_log_table.up.sql

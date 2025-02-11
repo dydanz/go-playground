@@ -40,6 +40,7 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 			authHeader := c.GetHeader("Authorization")
 
 			if authHeader == "" {
+				log.Fatal("no authorization header")
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 				c.Abort()
 				return
@@ -47,6 +48,7 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 
 			parts := strings.Split(authHeader, " ")
 			if len(parts) != 2 || parts[0] != "Bearer" {
+				log.Fatal("invalid authorization format")
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization format"})
 				c.Abort()
 				return
@@ -66,6 +68,7 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 		}
 
 		if userID == "" {
+			log.Fatal("User-ID is required")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User-ID is required"})
 			c.Abort()
 			return
@@ -74,7 +77,7 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 		// Check session in Redis cache first
 		session, err := sessionRepo.GetSession(c.Request.Context(), userID)
 		if err != nil {
-			log.Printf("Error getting session from Redis: %v\n", err)
+			log.Fatalf("Error getting session from Redis: %v\n", err)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "session validation failed"})
 			c.Abort()
 			return
@@ -94,29 +97,28 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 
 			c.Set("user_id", session.UserID)
 			c.Next()
-			log.Printf("Session found in cache %s", tokenCookie)
 			return
 		}
 
-		log.Println("Continue to find Session data in database")
 		// If session not found in cache, check database
 		token, err := authRepo.GetTokenByHash(tokenCookie)
 		if err != nil {
+			log.Fatalf("Error getting token from database: %v\n", err)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token validation failed"})
-			log.Printf("Error getting token from database: %v\n", err)
 			c.Abort()
 			return
 		}
 
 		if token == nil {
+			log.Fatal("Token not found or expired")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token not found or expired"})
-			log.Printf("Token not found or expired")
 			c.Abort()
 			return
 		}
 
 		// Validate User-ID matches token
 		if token.UserID != userID {
+			log.Fatal("User-ID mismatch")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User-ID mismatch"})
 			c.Abort()
 			return

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"go-playground/internal/domain"
 	"go-playground/internal/util"
 
@@ -225,9 +226,7 @@ func (s *MerchantCustomersService) ValidateCredentials(ctx context.Context, emai
 
 	result := decoratedFn()
 	if result == nil {
-		return nil, domain.InvalidInputError{
-			Message: "invalid credentials",
-		}
+		return nil, errors.New("invalid credentials")
 	}
 	return result, nil
 }

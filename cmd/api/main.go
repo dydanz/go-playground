@@ -85,6 +85,7 @@ func main() {
 		}
 	}()
 
+	log.Println("Starting Go Loyalty API server on port 8080")
 	// Start server
 	r.Run(":8080")
 }
