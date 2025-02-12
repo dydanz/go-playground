@@ -70,7 +70,7 @@ func (r *MerchantCustomersRepository) GetByID(ctx context.Context, id uuid.UUID)
 		return nil, errors.New("merchant customer not found")
 	}
 	if err != nil {
-		log.Printf("error getting merchant customer by id", err)
+		log.Println("error getting merchant customer by id", err)
 		return nil, err
 	}
 
@@ -97,11 +97,11 @@ func (r *MerchantCustomersRepository) GetByEmail(ctx context.Context, email stri
 	)
 
 	if err == sql.ErrNoRows {
-		log.Printf("error getting merchant customer by email", err)
+		log.Println("error getting merchant customer by email", err)
 		return nil, errors.New("merchant customer not found")
 	}
 	if err != nil {
-		log.Printf("error getting merchant customer by email", err)
+		log.Println("error getting merchant customer by email", err)
 		return nil, err
 	}
 
@@ -128,11 +128,11 @@ func (r *MerchantCustomersRepository) GetByPhone(ctx context.Context, phone stri
 	)
 
 	if err == sql.ErrNoRows {
-		log.Printf("error getting merchant customer by phone", err)
+		log.Println("error getting merchant customer by phone", err)
 		return nil, errors.New("merchant customer not found")
 	}
 	if err != nil {
-		log.Printf("error getting merchant customer by phone", err)
+		log.Println("error getting merchant customer by phone", err)
 		return nil, err
 	}
 
@@ -166,14 +166,14 @@ func (r *MerchantCustomersRepository) GetByMerchantID(ctx context.Context, merch
 			&customer.UpdatedAt,
 		)
 		if err != nil {
-			log.Printf("error getting merchant customer by merchant id", err)
+			log.Println("error getting merchant customer by merchant id", err)
 			return nil, err
 		}
 		customers = append(customers, customer)
 	}
 
 	if err = rows.Err(); err != nil {
-		log.Printf("error getting merchant customer by merchant id", err)
+		log.Println("error getting merchant customer by merchant id", err)
 		return nil, err
 	}
 
@@ -201,7 +201,7 @@ func (r *MerchantCustomersRepository) Update(ctx context.Context, customer *doma
 	).Scan(&customer.UpdatedAt)
 
 	if err == sql.ErrNoRows {
-		log.Printf("error updating merchant customer", err)
+		log.Println("error updating merchant customer", err)
 		return errors.New("merchant customer not found")
 	}
 	if err != nil {
