@@ -26,16 +26,19 @@ func (r *EventLogRepository) Create(ctx context.Context, eventLog *domain.EventL
 		return err
 	}
 
+	log.Println("eventLog: ", eventLog)
+
 	query := `
-		INSERT INTO event_log (event_type, user_id, details, reference_id, event_timestamp)
-		VALUES ($1::event_type, $2, $3::jsonb, $4, CURRENT_TIMESTAMP)
+		INSERT INTO event_log (event_type, actor_id, actor_type, details, reference_id, event_timestamp)
+		VALUES ($1::event_type, $2, $3, $4::jsonb, $5, CURRENT_TIMESTAMP)
 		RETURNING id, event_timestamp, created_at
 	`
 
 	err = r.db.QueryRow(
 		query,
 		eventLog.EventType,
-		eventLog.UserID,
+		eventLog.ActorID,
+		eventLog.ActorType,
 		jsonDetails, // Pass marshaled JSON instead of map
 		eventLog.ReferenceID,
 	).Scan(&eventLog.ID, &eventLog.EventTimestamp, &eventLog.CreatedAt)
@@ -52,15 +55,17 @@ func (r *EventLogRepository) Create(ctx context.Context, eventLog *domain.EventL
 func (r *EventLogRepository) GetByID(id string) (*domain.EventLog, error) {
 	eventLog := &domain.EventLog{}
 	query := `
-		SELECT id, event_type, user_id, details, event_timestamp, created_at
+		SELECT id, event_type, actor_id, actor_type, details, reference_id, event_timestamp, created_at
 		FROM event_log
 		WHERE id = $1
 	`
 	err := r.db.QueryRow(query, id).Scan(
 		&eventLog.ID,
 		&eventLog.EventType,
-		&eventLog.UserID,
+		&eventLog.ActorID,
+		&eventLog.ActorType,
 		&eventLog.Details,
+		&eventLog.ReferenceID,
 		&eventLog.EventTimestamp,
 		&eventLog.CreatedAt,
 	)
@@ -73,9 +78,9 @@ func (r *EventLogRepository) GetByID(id string) (*domain.EventLog, error) {
 // GetByUserID retrieves all event logs for a specific user
 func (r *EventLogRepository) GetByUserID(userID string) ([]domain.EventLog, error) {
 	query := `
-		SELECT id, event_type, user_id, details, event_timestamp, created_at
+		SELECT id, event_type, actor_id, actor_type, details, reference_id, event_timestamp, created_at
 		FROM event_log
-		WHERE user_id = $1
+		WHERE actor_id = $1
 		ORDER BY event_timestamp DESC
 	`
 	rows, err := r.db.Query(query, userID)
@@ -90,8 +95,10 @@ func (r *EventLogRepository) GetByUserID(userID string) ([]domain.EventLog, erro
 		err := rows.Scan(
 			&eventLog.ID,
 			&eventLog.EventType,
-			&eventLog.UserID,
+			&eventLog.ActorID,
+			&eventLog.ActorType,
 			&eventLog.Details,
+			&eventLog.ReferenceID,
 			&eventLog.EventTimestamp,
 			&eventLog.CreatedAt,
 		)
@@ -103,49 +110,21 @@ func (r *EventLogRepository) GetByUserID(userID string) ([]domain.EventLog, erro
 	return eventLogs, nil
 }
 
-// Update modifies an existing event log entry
-func (r *EventLogRepository) Update(eventLog *domain.EventLog) error {
-	query := `
-		UPDATE event_log
-		SET event_type = $1, details = $2, reference_id = $3
-		WHERE id = $4
-		RETURNING updated_at
-	`
-	return r.db.QueryRow(query, eventLog.EventType, eventLog.Details, eventLog.ReferenceID, eventLog.ID).Scan(&eventLog.UpdatedAt)
-}
-
-// Delete removes an event log entry by its ID
-func (r *EventLogRepository) Delete(id string) error {
-	query := `DELETE FROM event_log WHERE id = $1`
-	result, err := r.db.Exec(query, id)
-	if err != nil {
-		return err
-	}
-
-	count, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if count == 0 {
-		return sql.ErrNoRows
-	}
-
-	return nil
-}
-
 // GetByReferenceID retrieves an event log entry by its reference ID
 func (r *EventLogRepository) GetByReferenceID(referenceID string) (*domain.EventLog, error) {
 	eventLog := &domain.EventLog{}
 	query := `
-		SELECT id, event_type, user_id, details, event_timestamp, created_at
+		SELECT id, event_type, actor_id, actor_type, details, reference_id, event_timestamp, created_at
 		FROM event_log
 		WHERE reference_id = $1
 	`
 	err := r.db.QueryRow(query, referenceID).Scan(
 		&eventLog.ID,
 		&eventLog.EventType,
-		&eventLog.UserID,
+		&eventLog.ActorID,
+		&eventLog.ActorType,
 		&eventLog.Details,
+		&eventLog.ReferenceID,
 		&eventLog.EventTimestamp,
 		&eventLog.CreatedAt,
 	)

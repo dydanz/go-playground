@@ -40,6 +40,7 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 			authHeader := c.GetHeader("Authorization")
 
 			if authHeader == "" {
+				log.Printf("no authorization header")
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 				c.Abort()
 				return
@@ -47,6 +48,7 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 
 			parts := strings.Split(authHeader, " ")
 			if len(parts) != 2 || parts[0] != "Bearer" {
+				log.Printf("invalid authorization format")
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization format"})
 				c.Abort()
 				return
@@ -66,6 +68,7 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 		}
 
 		if userID == "" {
+			log.Printf("User-ID is required")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User-ID is required"})
 			c.Abort()
 			return
@@ -94,29 +97,28 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 
 			c.Set("user_id", session.UserID)
 			c.Next()
-			log.Printf("Session found in cache %s", tokenCookie)
 			return
 		}
 
-		log.Println("Continue to find Session data in database")
 		// If session not found in cache, check database
 		token, err := authRepo.GetTokenByHash(tokenCookie)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "token validation failed"})
 			log.Printf("Error getting token from database: %v\n", err)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token validation failed"})
 			c.Abort()
 			return
 		}
 
 		if token == nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "token not found or expired"})
 			log.Printf("Token not found or expired")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token not found or expired"})
 			c.Abort()
 			return
 		}
 
 		// Validate User-ID matches token
 		if token.UserID != userID {
+			log.Printf("User-ID mismatch")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User-ID mismatch"})
 			c.Abort()
 			return

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"go-playground/internal/domain"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,9 +26,7 @@ func (r *MerchantCustomersRepository) Create(ctx context.Context, customer *doma
 		VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		RETURNING id`
 
-	now := time.Now().UTC()
-	customer.CreatedAt = now
-	customer.UpdatedAt = now
+	log.Println("Creating merchant customer:", customer)
 
 	err := r.db.QueryRowContext(ctx, query,
 		customer.MerchantID,
@@ -38,6 +37,7 @@ func (r *MerchantCustomersRepository) Create(ctx context.Context, customer *doma
 	).Scan(&customer.ID)
 
 	if err != nil {
+		log.Println("error creating merchant customer", err)
 		return err
 	}
 
@@ -50,6 +50,8 @@ func (r *MerchantCustomersRepository) GetByID(ctx context.Context, id uuid.UUID)
 		SELECT id, merchant_id, email, password, name, phone, created_at, updated_at
 		FROM merchant_customers
 		WHERE id = $1`
+
+	log.Println("Getting merchant customer by id:", id)
 
 	customer := &domain.MerchantCustomer{}
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
@@ -64,9 +66,11 @@ func (r *MerchantCustomersRepository) GetByID(ctx context.Context, id uuid.UUID)
 	)
 
 	if err == sql.ErrNoRows {
+		log.Println("error getting merchant customer by id", err)
 		return nil, errors.New("merchant customer not found")
 	}
 	if err != nil {
+		log.Println("error getting merchant customer by id", err)
 		return nil, err
 	}
 
@@ -93,9 +97,11 @@ func (r *MerchantCustomersRepository) GetByEmail(ctx context.Context, email stri
 	)
 
 	if err == sql.ErrNoRows {
+		log.Println("error getting merchant customer by email", err)
 		return nil, errors.New("merchant customer not found")
 	}
 	if err != nil {
+		log.Println("error getting merchant customer by email", err)
 		return nil, err
 	}
 
@@ -122,9 +128,11 @@ func (r *MerchantCustomersRepository) GetByPhone(ctx context.Context, phone stri
 	)
 
 	if err == sql.ErrNoRows {
+		log.Println("error getting merchant customer by phone", err)
 		return nil, errors.New("merchant customer not found")
 	}
 	if err != nil {
+		log.Println("error getting merchant customer by phone", err)
 		return nil, err
 	}
 
@@ -158,12 +166,14 @@ func (r *MerchantCustomersRepository) GetByMerchantID(ctx context.Context, merch
 			&customer.UpdatedAt,
 		)
 		if err != nil {
+			log.Println("error getting merchant customer by merchant id", err)
 			return nil, err
 		}
 		customers = append(customers, customer)
 	}
 
 	if err = rows.Err(); err != nil {
+		log.Println("error getting merchant customer by merchant id", err)
 		return nil, err
 	}
 
@@ -191,6 +201,7 @@ func (r *MerchantCustomersRepository) Update(ctx context.Context, customer *doma
 	).Scan(&customer.UpdatedAt)
 
 	if err == sql.ErrNoRows {
+		log.Println("error updating merchant customer", err)
 		return errors.New("merchant customer not found")
 	}
 	if err != nil {

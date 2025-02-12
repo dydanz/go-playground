@@ -77,7 +77,7 @@ func (s *RedemptionService) Create(ctx context.Context, redemption *domain.Redem
 		TransactionAmount:   float64(reward.PointsRequired),
 	})
 	if err != nil {
-		log.Fatal("error creating redemption transaction for redemption id: ", redemption.ID, "error: ", err)
+		log.Printf("error creating redemption transaction for redemption id: %s, error: %v", redemption.ID, err)
 		return err
 	}
 
@@ -85,8 +85,9 @@ func (s *RedemptionService) Create(ctx context.Context, redemption *domain.Redem
 
 	// Log the redemption event
 	event := &domain.EventLog{
-		EventType:   "reward_redeemed",
-		UserID:      redemption.MerchantCustomersID.String(),
+		EventType:   string(domain.RewardRedeemed),
+		ActorID:     redemption.MerchantCustomersID.String(),
+		ActorType:   string(domain.MerchantUserActorType),
 		ReferenceID: func() *string { s := redemption.ID.String(); return &s }(),
 		Details: map[string]interface{}{
 			"reward_id":     redemption.RewardID,

@@ -67,7 +67,7 @@ func main() {
 	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName)
 	if err := database.RunMigrations(dbURL); err != nil {
-		log.Fatalf("Failed to run migrations: %v", err)
+		log.Printf("Failed to run migrations: %v", err)
 	}
 
 	// Start Cleanup User Session

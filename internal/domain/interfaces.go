@@ -166,3 +166,10 @@ type RedemptionService interface {
 	GetByUserID(userID string) ([]Redemption, error)
 	Update(id string, req *UpdateRedemptionRequest) (*Redemption, error)
 }
+
+type EventLogRepository interface {
+	Create(ctx context.Context, eventLog *EventLog) error
+	GetByID(id string) (*EventLog, error)
+	GetByUserID(userID string) ([]EventLog, error)
+	GetByReferenceID(referenceID string) (*EventLog, error)
+}
