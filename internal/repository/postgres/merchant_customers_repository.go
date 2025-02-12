@@ -210,24 +210,3 @@ func (r *MerchantCustomersRepository) Update(ctx context.Context, customer *doma
 
 	return nil
 }
-
-// Delete removes a merchant customer from the database
-func (r *MerchantCustomersRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	query := `DELETE FROM merchant_customers WHERE id = $1`
-
-	result, err := r.db.ExecContext(ctx, query, id)
-	if err != nil {
-		return err
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if rowsAffected == 0 {
-		return errors.New("merchant customer not found")
-	}
-
-	return nil
-}

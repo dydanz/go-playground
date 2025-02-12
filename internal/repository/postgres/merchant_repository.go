@@ -16,32 +16,44 @@ func NewMerchantRepository(db *sql.DB) *MerchantRepository {
 	return &MerchantRepository{db: db}
 }
 
-func (r *MerchantRepository) Create(merchant *domain.Merchant) error {
-	query := `
-		INSERT INTO merchants (user_id, merchant_name, merchant_type, created_at, updated_at)
-		VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-		RETURNING id, created_at, updated_at
-	`
+func (r *MerchantRepository) Create(merchant *domain.Merchant) (*domain.Merchant, error) {
+	query := `INSERT INTO merchants (user_id, name, type, created_at, updated_at) 
+			  VALUES ($1, $2, $3, $4, $5)`
 
-	now := time.Now().UTC()
-	merchant.CreatedAt = now
-	merchant.UpdatedAt = now
-
-	return r.db.QueryRow(
-		query,
+	result, err := r.db.Exec(query,
 		merchant.UserID,
 		merchant.Name,
 		merchant.Type,
-	).Scan(&merchant.ID, &merchant.CreatedAt, &merchant.UpdatedAt)
+		merchant.CreatedAt,
+		merchant.UpdatedAt,
+	)
+
+	if err != nil {
+		// Check for unique constraint violation
+		if isPgUniqueViolation(err) {
+			return nil, domain.NewResourceConflictError("merchant", "merchant with this name already exists")
+		}
+		// Wrap database errors as system errors
+		return nil, domain.NewSystemError("MerchantRepository.Create", err, "failed to create merchant")
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return nil, domain.NewSystemError("MerchantRepository.Create", err, "failed to get affected rows")
+	}
+
+	if affected == 0 {
+		return nil, domain.NewSystemError("MerchantRepository.Create", nil, "no rows affected")
+	}
+
+	return merchant, nil
 }
 
 func (r *MerchantRepository) GetByID(id uuid.UUID) (*domain.Merchant, error) {
+	query := `SELECT id, user_id, name, type, created_at, updated_at 
+			  FROM merchants WHERE id = $1`
+
 	merchant := &domain.Merchant{}
-	query := `
-		SELECT id, user_id, merchant_name, merchant_type, created_at, updated_at
-		FROM merchants
-		WHERE id = $1
-	`
 	err := r.db.QueryRow(query, id).Scan(
 		&merchant.ID,
 		&merchant.UserID,
@@ -50,22 +62,24 @@ func (r *MerchantRepository) GetByID(id uuid.UUID) (*domain.Merchant, error) {
 		&merchant.CreatedAt,
 		&merchant.UpdatedAt,
 	)
-	if err == sql.ErrNoRows {
-		return nil, nil
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, domain.NewResourceNotFoundError("merchant", id.String(), "merchant not found")
+		}
+		return nil, domain.NewSystemError("MerchantRepository.GetByID", err, "failed to get merchant")
 	}
-	return merchant, err
+
+	return merchant, nil
 }
 
 func (r *MerchantRepository) GetByUserID(userID uuid.UUID) ([]*domain.Merchant, error) {
-	query := `
-		SELECT id, user_id, merchant_name, merchant_type, created_at, updated_at
-		FROM merchants
-		WHERE user_id = $1
-		ORDER BY merchant_name
-	`
+	query := `SELECT id, user_id, name, type, created_at, updated_at 
+			  FROM merchants WHERE user_id = $1`
+
 	rows, err := r.db.Query(query, userID)
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("MerchantRepository.GetByUserID", err, "failed to query merchants")
 	}
 	defer rows.Close()
 
@@ -81,10 +95,15 @@ func (r *MerchantRepository) GetByUserID(userID uuid.UUID) ([]*domain.Merchant, 
 			&merchant.UpdatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewSystemError("MerchantRepository.GetByUserID", err, "failed to scan merchant")
 		}
 		merchants = append(merchants, merchant)
 	}
+
+	if err = rows.Err(); err != nil {
+		return nil, domain.NewSystemError("MerchantRepository.GetByUserID", err, "error iterating merchants")
+	}
+
 	return merchants, nil
 }
 
@@ -152,4 +171,11 @@ func (r *MerchantRepository) Delete(id uuid.UUID) error {
 		return sql.ErrNoRows
 	}
 	return nil
+}
+
+// Helper function to check for PostgreSQL unique constraint violations
+func isPgUniqueViolation(err error) bool {
+	// Implement PostgreSQL specific error checking
+	// Example: check for error code 23505 (unique_violation)
+	return false // TODO: implement actual check
 }

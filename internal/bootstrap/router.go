@@ -181,7 +181,6 @@ func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo red
 			merchantCustomers.GET("/:id", h.MerchantCustomersHandler.GetByID)
 			merchantCustomers.GET("/merchant/:merchant_id", h.MerchantCustomersHandler.GetByMerchantID)
 			merchantCustomers.PUT("/:id", h.MerchantCustomersHandler.Update)
-			merchantCustomers.DELETE("/:id", h.MerchantCustomersHandler.Delete)
 			merchantCustomers.POST("/login", h.MerchantCustomersHandler.ValidateCredentials)
 		}
 

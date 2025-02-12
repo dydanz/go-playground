@@ -24,14 +24,25 @@ func NewMerchantHandler(merchantService domain.MerchantService) *MerchantHandler
 // @Produce json
 // @Param merchant body domain.CreateMerchantRequest true "Merchant details"
 // @Success 201 {object} domain.Merchant
-// @Failure 400 {object} map[string]string
+// @Failure 400 {object} util.ErrorResponse
+// @Failure 401 {object} util.ErrorResponse
+// @Failure 409 {object} util.ErrorResponse
+// @Failure 500 {object} util.ErrorResponse
 // @Router /merchants [post]
 func (h *MerchantHandler) Create(c *gin.Context) {
 	var req domain.CreateMerchantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		util.HandleError(c, domain.ValidationError{Message: err.Error()})
+		util.HandleError(c, domain.NewValidationError("request", "invalid request format"))
 		return
 	}
+
+	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get("user_id")
+	if !exists {
+		util.HandleError(c, domain.NewAuthenticationError("user not authenticated"))
+		return
+	}
+	req.UserID = userID.(uuid.UUID)
 
 	merchant, err := h.merchantService.Create(&req)
 	if err != nil {
@@ -48,19 +59,18 @@ func (h *MerchantHandler) Create(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Merchant ID"
 // @Success 200 {object} domain.Merchant
-// @Failure 404 {object} map[string]string
+// @Failure 400 {object} util.ErrorResponse
+// @Failure 404 {object} util.ErrorResponse
+// @Failure 500 {object} util.ErrorResponse
 // @Router /merchants/{id} [get]
 func (h *MerchantHandler) GetByID(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		util.HandleError(c, domain.ValidationError{
-			Field:   "id",
-			Message: "invalid merchant ID",
-		})
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		util.HandleError(c, domain.NewValidationError("id", "invalid merchant ID format"))
 		return
 	}
 
-	merchant, err := h.merchantService.GetByID(uuid.MustParse(id))
+	merchant, err := h.merchantService.GetByID(id)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -74,11 +84,17 @@ func (h *MerchantHandler) GetByID(c *gin.Context) {
 // @Tags merchants
 // @Produce json
 // @Success 200 {array} domain.Merchant
+// @Failure 500 {object} util.ErrorResponse
 // @Router /merchants [get]
 func (h *MerchantHandler) GetAll(c *gin.Context) {
 	merchants, err := h.merchantService.GetAll()
 	if err != nil {
 		util.HandleError(c, err)
+		return
+	}
+
+	if len(merchants) == 0 {
+		util.EmptyResponse(c)
 		return
 	}
 
@@ -93,25 +109,30 @@ func (h *MerchantHandler) GetAll(c *gin.Context) {
 // @Param id path string true "Merchant ID"
 // @Param merchant body domain.UpdateMerchantRequest true "Merchant details"
 // @Success 200 {object} domain.Merchant
-// @Failure 404 {object} map[string]string
+// @Failure 400 {object} util.ErrorResponse
+// @Failure 404 {object} util.ErrorResponse
+// @Failure 500 {object} util.ErrorResponse
 // @Router /merchants/{id} [put]
 func (h *MerchantHandler) Update(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		util.HandleError(c, domain.ValidationError{
-			Field:   "id",
-			Message: "invalid merchant ID",
-		})
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		util.HandleError(c, domain.NewValidationError("id", "invalid merchant ID format"))
 		return
 	}
 
 	var req domain.UpdateMerchantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		util.HandleError(c, domain.ValidationError{Message: err.Error()})
+		util.HandleError(c, domain.NewValidationError("request", "invalid request format"))
 		return
 	}
 
-	merchant, err := h.merchantService.Update(uuid.MustParse(id), &req)
+	// Verify user has permission to update this merchant
+	if err := h.verifyMerchantAccess(c, id); err != nil {
+		util.HandleError(c, err)
+		return
+	}
+
+	merchant, err := h.merchantService.Update(id, &req)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -126,22 +147,46 @@ func (h *MerchantHandler) Update(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Merchant ID"
 // @Success 204 "No Content"
-// @Failure 404 {object} map[string]string
+// @Failure 400 {object} util.ErrorResponse
+// @Failure 404 {object} util.ErrorResponse
+// @Failure 500 {object} util.ErrorResponse
 // @Router /merchants/{id} [delete]
 func (h *MerchantHandler) Delete(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		util.HandleError(c, domain.ValidationError{
-			Field:   "id",
-			Message: "invalid merchant ID",
-		})
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		util.HandleError(c, domain.NewValidationError("id", "invalid merchant ID format"))
 		return
 	}
 
-	if err := h.merchantService.Delete(uuid.MustParse(id)); err != nil {
+	// Verify user has permission to delete this merchant
+	if err := h.verifyMerchantAccess(c, id); err != nil {
 		util.HandleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Merchant deleted successfully"})
+	if err := h.merchantService.Delete(id); err != nil {
+		util.HandleError(c, err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+// Helper function to verify merchant access
+func (h *MerchantHandler) verifyMerchantAccess(c *gin.Context, merchantID uuid.UUID) error {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		return domain.NewAuthenticationError("user not authenticated")
+	}
+
+	merchant, err := h.merchantService.GetByID(merchantID)
+	if err != nil {
+		return err
+	}
+
+	if merchant.UserID != userID.(uuid.UUID) {
+		return domain.NewAuthorizationError("user does not have permission to access this merchant")
+	}
+
+	return nil
 }

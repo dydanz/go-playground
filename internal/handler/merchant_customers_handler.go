@@ -142,35 +142,6 @@ func (h *MerchantCustomersHandler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, customer)
 }
 
-// Delete godoc
-// @Summary Delete merchant customer
-// @Description Delete a merchant customer
-// @Tags merchant-customers
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Security UserIdAuth
-// @Param id path string true "Customer ID"
-// @Success 204 "No Content"
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Router /merchant-customers/{id} [delete]
-func (h *MerchantCustomersHandler) Delete(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		util.HandleError(c, domain.ValidationError{Message: "invalid customer ID format"})
-		return
-	}
-
-	if err := h.customerService.Delete(c.Request.Context(), id); err != nil {
-		util.HandleError(c, err)
-		return
-	}
-
-	c.Status(http.StatusNoContent)
-}
-
 // ValidateCredentials godoc
 // @Summary Validate customer credentials
 // @Description Validate merchant customer login credentials

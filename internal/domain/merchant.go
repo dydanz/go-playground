@@ -35,7 +35,7 @@ type UpdateMerchantRequest struct {
 }
 
 type MerchantRepository interface {
-	Create(merchant *Merchant) error
+	Create(merchant *Merchant) (*Merchant, error)
 	GetByID(id uuid.UUID) (*Merchant, error)
 	GetByUserID(userID uuid.UUID) ([]*Merchant, error)
 	GetAll() ([]*Merchant, error)

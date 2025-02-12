@@ -139,9 +139,11 @@ func (s *MerchantCustomersService) GetByMerchantID(ctx context.Context, merchant
 }
 
 func (s *MerchantCustomersService) Update(ctx context.Context, id uuid.UUID, req *domain.UpdateMerchantCustomerRequest) (*domain.MerchantCustomer, error) {
+	var updateErr error
 	decoratedFn := util.ServiceLatencyDecorator("MerchantCustomersService.Update", func() *domain.MerchantCustomer {
 		customer, err := s.customerRepo.GetByID(ctx, id)
 		if err != nil || customer == nil {
+			updateErr = err
 			return nil
 		}
 
@@ -149,6 +151,7 @@ func (s *MerchantCustomersService) Update(ctx context.Context, id uuid.UUID, req
 		if req.Email != "" && req.Email != customer.Email {
 			existingByEmail, _ := s.customerRepo.GetByEmail(ctx, req.Email)
 			if existingByEmail != nil {
+				updateErr = domain.NewResourceConflictError("merchant customer", "email already exists")
 				return nil
 			}
 			customer.Email = req.Email
@@ -158,6 +161,7 @@ func (s *MerchantCustomersService) Update(ctx context.Context, id uuid.UUID, req
 		if req.Phone != "" && req.Phone != customer.Phone {
 			existingByPhone, _ := s.customerRepo.GetByPhone(ctx, req.Phone)
 			if existingByPhone != nil {
+				updateErr = domain.NewResourceConflictError("merchant customer", "phone already exists")
 				return nil
 			}
 			customer.Phone = req.Phone
@@ -172,12 +176,14 @@ func (s *MerchantCustomersService) Update(ctx context.Context, id uuid.UUID, req
 		if req.Password != "" {
 			hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 			if err != nil {
+				updateErr = domain.NewSystemError("MerchantCustomersService.Update", err, "failed to hash password")
 				return nil
 			}
 			customer.Password = string(hashedPassword)
 		}
 
 		if err := s.customerRepo.Update(ctx, customer); err != nil {
+			updateErr = domain.NewSystemError("MerchantCustomersService.Update", err, "failed to update customer")
 			return nil
 		}
 
@@ -186,27 +192,12 @@ func (s *MerchantCustomersService) Update(ctx context.Context, id uuid.UUID, req
 
 	result := decoratedFn()
 	if result == nil {
-		return nil, domain.InvalidInputError{
-			Message: "failed to update merchant customer",
+		if updateErr == nil {
+			updateErr = domain.NewResourceNotFoundError("merchant customer", id.String(), "customer not found")
 		}
+		return nil, updateErr
 	}
 	return result, nil
-}
-
-func (s *MerchantCustomersService) Delete(ctx context.Context, id uuid.UUID) error {
-	decoratedFn := util.ServiceLatencyDecorator("MerchantCustomersService.Delete", func() bool {
-		if err := s.customerRepo.Delete(ctx, id); err != nil {
-			return false
-		}
-		return true
-	})
-
-	if !decoratedFn() {
-		return domain.InvalidInputError{
-			Message: "failed to delete merchant customer",
-		}
-	}
-	return nil
 }
 
 func (s *MerchantCustomersService) ValidateCredentials(ctx context.Context, email, password string) (*domain.MerchantCustomer, error) {
