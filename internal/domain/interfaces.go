@@ -39,6 +39,7 @@ type AuthRepository interface {
 
 type TxManager interface {
 	BeginTx(ctx context.Context) (*sql.Tx, error)
+	Commit(ctx context.Context, tx *sql.Tx) error
 }
 
 type AuthService interface {

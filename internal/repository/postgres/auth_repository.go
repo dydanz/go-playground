@@ -274,6 +274,10 @@ func (r *AuthRepository) BeginTx(ctx context.Context) (*sql.Tx, error) {
 	return tx, nil
 }
 
+func (r *AuthRepository) Commit(ctx context.Context, tx *sql.Tx) error {
+	return tx.Commit()
+}
+
 func (r *AuthRepository) MarkVerificationUsedTx(ctx context.Context, tx *sql.Tx, id string) error {
 	query := `
 		UPDATE registration_verifications

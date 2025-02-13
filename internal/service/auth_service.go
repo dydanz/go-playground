@@ -7,6 +7,7 @@ import (
 	"go-playground/internal/domain"
 	"go-playground/internal/repository/redis"
 	"math/big"
+	"strings"
 	"time"
 
 	"context"
@@ -30,6 +31,22 @@ func NewAuthService(userRepo domain.UserRepository, authRepo domain.AuthReposito
 }
 
 func (s *AuthService) Register(ctx context.Context, req *domain.RegistrationRequest) (*domain.User, error) {
+	// Validate input
+	if req.Email == "" {
+		return nil, domain.ValidationError{
+			Field:   "email",
+			Message: "Email is required",
+		}
+	}
+
+	// Basic email format validation
+	if !isValidEmail(req.Email) {
+		return nil, domain.ValidationError{
+			Field:   "email",
+			Message: "Invalid email format",
+		}
+	}
+
 	// Check if email already exists
 	existingUser, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
@@ -48,7 +65,11 @@ func (s *AuthService) Register(ctx context.Context, req *domain.RegistrationRequ
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, fmt.Errorf("error hashing password: %v", err)
+		return nil, domain.SystemError{
+			Op:      fmt.Sprintf("error hashing password: %v", err),
+			Err:     err,
+			Message: "Error hashing password",
+		}
 	}
 
 	// Create user
@@ -61,7 +82,11 @@ func (s *AuthService) Register(ctx context.Context, req *domain.RegistrationRequ
 
 	user, err := s.userRepo.Create(ctx, createReq)
 	if err != nil {
-		return nil, fmt.Errorf("error creating user: %v", err)
+		return nil, domain.SystemError{
+			Op:      fmt.Sprintf("error creating user: %v", err),
+			Err:     err,
+			Message: "Error creating user",
+		}
 	}
 
 	// Generate and store OTP
@@ -73,13 +98,31 @@ func (s *AuthService) Register(ctx context.Context, req *domain.RegistrationRequ
 	}
 
 	if err := s.authRepo.CreateVerification(ctx, verification); err != nil {
-		return nil, fmt.Errorf("error creating verification: %v", err)
+		return nil, domain.SystemError{
+			Op:      fmt.Sprintf("error creating verification: %v", err),
+			Err:     err,
+			Message: "Error creating verification",
+		}
 	}
 
 	// TODO: Send OTP via email
 	log.Printf("OTP for %s: %s", user.Email, otp)
 
 	return user, nil
+}
+
+// isValidEmail performs a basic email format validation
+func isValidEmail(email string) bool {
+	// Basic email format check
+	// This is a simple check, you might want to use a more comprehensive validation
+	if len(email) < 3 || !strings.Contains(email, "@") || !strings.Contains(email, ".") {
+		return false
+	}
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return false
+	}
+	return true
 }
 
 func (s *AuthService) VerifyRegistration(ctx context.Context, req *domain.VerificationRequest) error {
@@ -115,22 +158,53 @@ func (s *AuthService) VerifyRegistration(ctx context.Context, req *domain.Verifi
 	// Start transaction
 	tx, err := s.authRepo.BeginTx(ctx)
 	if err != nil {
-		return fmt.Errorf("transaction error: %v", err)
+		return domain.SystemError{
+			Op:      fmt.Sprintf("error beginning transaction: %v", err),
+			Err:     err,
+			Message: "Error beginning transaction",
+		}
 	}
-	defer tx.Rollback()
+
+	var txErr error
+	defer func() {
+		if tx != nil {
+			if txErr != nil {
+				tx.Rollback()
+			}
+		}
+	}()
 
 	// Mark verification as used
 	if err := s.authRepo.MarkVerificationUsedTx(ctx, tx, verification.ID); err != nil {
-		return fmt.Errorf("error marking verification used: %v", err)
+		txErr = err
+		return domain.SystemError{
+			Op:      fmt.Sprintf("error marking verification as used: %v", err),
+			Err:     err,
+			Message: "Error marking verification as used",
+		}
 	}
 
 	// Update user status
 	user.Status = domain.UserStatusActive
 	if err := s.userRepo.UpdateTx(ctx, tx, user); err != nil {
-		return fmt.Errorf("error updating user status: %v", err)
+		txErr = err
+		return domain.SystemError{
+			Op:      fmt.Sprintf("error updating user: %v", err),
+			Err:     err,
+			Message: "Error updating user",
+		}
 	}
 
-	return tx.Commit()
+	if err := s.authRepo.Commit(ctx, tx); err != nil {
+		txErr = err
+		return domain.SystemError{
+			Op:      fmt.Sprintf("error committing transaction: %v", err),
+			Err:     err,
+			Message: "Error committing transaction",
+		}
+	}
+
+	return nil
 }
 
 func (s *AuthService) Login(ctx context.Context, req *domain.LoginRequest) (*domain.AuthToken, error) {
@@ -142,7 +216,7 @@ func (s *AuthService) Login(ctx context.Context, req *domain.LoginRequest) (*dom
 		}
 	}
 
-	if attempt.LockedUntil.After(time.Now()) {
+	if attempt != nil && attempt.LockedUntil.After(time.Now()) {
 		return nil, domain.AuthenticationError{
 			Message: fmt.Sprintf("account temporarily locked. Try again after %v", attempt.LockedUntil),
 		}
@@ -150,8 +224,10 @@ func (s *AuthService) Login(ctx context.Context, req *domain.LoginRequest) (*dom
 
 	user, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
-		return nil, domain.AuthenticationError{
-			Message: "invalid credentials",
+		return nil, domain.SystemError{
+			Op:      "GetByEmail",
+			Message: fmt.Sprintf("error getting user: %v", err),
+			Err:     err,
 		}
 	}
 	if user == nil {
@@ -167,6 +243,14 @@ func (s *AuthService) Login(ctx context.Context, req *domain.LoginRequest) (*dom
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		// Reset login attempts on successful login
+		if _, err := s.authRepo.UpdateLoginAttempts(ctx, req.Email, true); err != nil {
+			return nil, domain.SystemError{
+				Op:      "UpdateLoginAttempts",
+				Message: fmt.Sprintf("error updating login attempts: %v", err),
+				Err:     err,
+			}
+		}
 		return nil, domain.AuthenticationError{
 			Message: "invalid credentials",
 		}
@@ -174,16 +258,20 @@ func (s *AuthService) Login(ctx context.Context, req *domain.LoginRequest) (*dom
 
 	// Reset login attempts on successful login
 	if _, err := s.authRepo.UpdateLoginAttempts(ctx, req.Email, false); err != nil {
-		return nil, domain.AuthenticationError{
+		return nil, domain.SystemError{
+			Op:      "UpdateLoginAttempts",
 			Message: fmt.Sprintf("error resetting login attempts: %v", err),
+			Err:     err,
 		}
 	}
 
 	// Generate token
 	tokenBytes := make([]byte, 32)
 	if _, err := rand.Read(tokenBytes); err != nil {
-		return nil, domain.AuthenticationError{
+		return nil, domain.SystemError{
+			Op:      "GenerateToken",
 			Message: fmt.Sprintf("error generating token: %v", err),
+			Err:     err,
 		}
 	}
 	token := hex.EncodeToString(tokenBytes)
@@ -196,18 +284,20 @@ func (s *AuthService) Login(ctx context.Context, req *domain.LoginRequest) (*dom
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
 
-	fmt.Println("user.Name ", user.Name)
-
 	if err := s.authRepo.CreateToken(ctx, authToken); err != nil {
-		return nil, domain.AuthenticationError{
+		return nil, domain.SystemError{
+			Op:      "CreateToken",
 			Message: fmt.Sprintf("error creating auth token: %v", err),
+			Err:     err,
 		}
 	}
 
-	// Store session data
-	if err := s.sessionRepo.StoreSession(context.Background(), user.ID, token, authToken.ExpiresAt); err != nil {
-		return nil, domain.AuthenticationError{
+	// Store session
+	if err := s.sessionRepo.StoreSession(ctx, user.ID, token, authToken.ExpiresAt); err != nil {
+		return nil, domain.SystemError{
+			Op:      "StoreSession",
 			Message: fmt.Sprintf("error storing session: %v", err),
+			Err:     err,
 		}
 	}
 
@@ -216,11 +306,19 @@ func (s *AuthService) Login(ctx context.Context, req *domain.LoginRequest) (*dom
 
 func (s *AuthService) Logout(ctx context.Context, userID string, tokenHash string) error {
 	if err := s.sessionRepo.DeleteSession(context.Background(), userID); err != nil {
-		return fmt.Errorf("error deleting session: %v", err)
+		return domain.SystemError{
+			Op:      "DeleteSession",
+			Message: fmt.Sprintf("error deleting session: %v", err),
+			Err:     err,
+		}
 	}
 
 	if err := s.authRepo.InvalidateToken(ctx, userID); err != nil {
-		return err
+		return domain.SystemError{
+			Op:      "InvalidateToken",
+			Message: fmt.Sprintf("error invalidating token: %v", err),
+			Err:     err,
+		}
 	}
 
 	return nil

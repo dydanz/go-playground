@@ -2,8 +2,8 @@ package handler_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
-	"errors"
 	"go-playground/internal/domain"
 	"go-playground/internal/handler"
 	"net/http"
@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
 )
 
 // MockAuthService is a mock implementation of the auth service
@@ -21,228 +21,296 @@ type MockAuthService struct {
 	mock.Mock
 }
 
-func (m *MockAuthService) Register(req *domain.RegistrationRequest) (*domain.User, error) {
-	args := m.Called(req)
+func (m *MockAuthService) Register(ctx context.Context, req *domain.RegistrationRequest) (*domain.User, error) {
+	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.User), args.Error(1)
 }
 
-func (m *MockAuthService) Login(req *domain.LoginRequest) (*domain.AuthToken, error) {
-	args := m.Called(req)
+func (m *MockAuthService) Login(ctx context.Context, req *domain.LoginRequest) (*domain.AuthToken, error) {
+	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.AuthToken), args.Error(1)
 }
 
-func (m *MockAuthService) Logout(userID string, tokenHash string) error {
-	return m.Called(userID, tokenHash).Error(0)
-}
-
-func (m *MockAuthService) VerifyRegistration(req *domain.VerificationRequest) error {
-	args := m.Called(req)
+func (m *MockAuthService) Logout(ctx context.Context, userID string, tokenHash string) error {
+	args := m.Called(ctx, userID, tokenHash)
 	return args.Error(0)
 }
 
-func (m *MockAuthService) GetUserByEmail(email string) (*domain.User, error) {
-	args := m.Called(email)
+func (m *MockAuthService) VerifyRegistration(ctx context.Context, req *domain.VerificationRequest) error {
+	args := m.Called(ctx, req)
+	return args.Error(0)
+}
+
+func (m *MockAuthService) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
+	args := m.Called(ctx, email)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.User), args.Error(1)
 }
 
-func (m *MockAuthService) GetVerificationByUserID(userID string) (*domain.RegistrationVerification, error) {
-	args := m.Called(userID)
+func (m *MockAuthService) GetVerificationByUserID(ctx context.Context, userID string) (*domain.RegistrationVerification, error) {
+	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.RegistrationVerification), args.Error(1)
 }
 
-func (m *MockAuthService) GetRandomActiveUser() (*domain.User, error) {
-	args := m.Called()
+func (m *MockAuthService) GetRandomActiveUser(ctx context.Context) (*domain.User, error) {
+	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.User), args.Error(1)
 }
 
-func setupTest() (*gin.Engine, *MockAuthService) {
-	gin.SetMode(gin.TestMode)
-	mockService := new(MockAuthService)
-	authHandler := handler.NewAuthHandler(mockService)
+// AuthHandlerTestSuite defines the test suite
+type AuthHandlerTestSuite struct {
+	suite.Suite
+	mockAuthService *MockAuthService
+	handler         *handler.AuthHandler
+	router          *gin.Engine
+}
 
-	router := gin.Default()
-	// Create a test group to handle auth routes
-	auth := router.Group("/auth")
-	{
-		auth.POST("/register", authHandler.Register)
-		auth.POST("/login", authHandler.Login)
-		auth.POST("/logout", authHandler.Logout)
+// SetupTest is called before each test
+func (s *AuthHandlerTestSuite) SetupTest() {
+	gin.SetMode(gin.TestMode)
+	s.mockAuthService = new(MockAuthService)
+	s.handler = handler.NewAuthHandler(s.mockAuthService)
+	s.router = gin.New()
+
+	// Setup routes
+	s.router.POST("/auth/register", s.handler.Register)
+	s.router.POST("/auth/verify", s.handler.Verify)
+	s.router.POST("/auth/login", s.handler.Login)
+	s.router.POST("/auth/logout", s.handler.Logout)
+}
+
+// TestAuthHandlerTestSuite runs the test suite
+func TestAuthHandlerTestSuite(t *testing.T) {
+	suite.Run(t, new(AuthHandlerTestSuite))
+}
+
+// Test cases for Register
+func (s *AuthHandlerTestSuite) TestRegister_Success() {
+	req := domain.RegistrationRequest{
+		Email:    "test@example.com",
+		Password: "password123",
+		Name:     "Test User",
+		Phone:    "1234567890",
 	}
 
-	return router, mockService
+	expectedUser := &domain.User{
+		ID:    "user123",
+		Email: req.Email,
+		Name:  req.Name,
+		Phone: req.Phone,
+	}
+
+	s.mockAuthService.On("Register", mock.Anything, &req).Return(expectedUser, nil)
+
+	body, _ := json.Marshal(req)
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBuffer(body))
+	r.Header.Set("Content-Type", "application/json")
+
+	s.router.ServeHTTP(w, r)
+
+	s.Equal(http.StatusCreated, w.Code)
+
+	var response domain.User
+	s.NoError(json.Unmarshal(w.Body.Bytes(), &response))
+	s.Equal(expectedUser.Email, response.Email)
+	s.Equal(expectedUser.Name, response.Name)
 }
 
-func TestRegister(t *testing.T) {
-	router, mockService := setupTest()
+func (s *AuthHandlerTestSuite) TestRegister_InvalidInput() {
+	testCases := []struct {
+		name    string
+		request domain.RegistrationRequest
+		code    int
+	}{
+		{
+			name: "Empty Email",
+			request: domain.RegistrationRequest{
+				Email:    "",
+				Password: "password123",
+				Name:     "Test User",
+			},
+			code: http.StatusBadRequest,
+		},
+		{
+			name: "Invalid Email Format",
+			request: domain.RegistrationRequest{
+				Email:    "invalid-email",
+				Password: "password123",
+				Name:     "Test User",
+			},
+			code: http.StatusBadRequest,
+		},
+		{
+			name: "Empty Password",
+			request: domain.RegistrationRequest{
+				Email:    "test@example.com",
+				Password: "",
+				Name:     "Test User",
+			},
+			code: http.StatusBadRequest,
+		},
+		{
+			name: "Unicode Characters",
+			request: domain.RegistrationRequest{
+				Email:    "test@例子.com",
+				Password: "password123",
+				Name:     "测试用户",
+				Phone:    "1234567890",
+			},
+			code: http.StatusCreated,
+		},
+	}
 
-	t.Run("Success", func(t *testing.T) {
-		mockUser := &domain.User{
-			ID:     "123e4567-e89b-12d3-a456-426614174000",
-			Email:  "test@example.com",
-			Name:   "Test User",
-			Phone:  "1234567890",
-			Status: domain.UserStatusActive,
-		}
-		mockService.On("Register", mock.AnythingOfType("*domain.RegistrationRequest")).Return(mockUser, nil).Once()
+	for _, tc := range testCases {
+		s.Run(tc.name, func() {
+			if tc.code == http.StatusCreated {
+				expectedUser := &domain.User{
+					ID:    "user123",
+					Email: tc.request.Email,
+					Name:  tc.request.Name,
+					Phone: tc.request.Phone,
+				}
+				s.mockAuthService.On("Register", mock.Anything, &tc.request).Return(expectedUser, nil)
+			}
 
-		body := []byte(`{
-			"email": "test@example.com",
-			"password": "password123",
-			"name": "Test User",
-			"phone": "1234567890"
-		}`)
+			body, _ := json.Marshal(tc.request)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBuffer(body))
+			r.Header.Set("Content-Type", "application/json")
 
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/auth/register", bytes.NewBuffer(body))
-		req.Header.Set("Content-Type", "application/json")
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusCreated, w.Code)
-
-		var response domain.User
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, mockUser.Name, response.Name)
-	})
-
-	t.Run("Failure", func(t *testing.T) {
-		mockService.On("Register", mock.AnythingOfType("*domain.RegistrationRequest")).Return(nil, errors.New("email already exists")).Once()
-
-		body := []byte(`{
-			"email": "test@example.com",
-			"password": "password123",
-			"name": "Test User",
-			"phone": "1234567890"
-		}`)
-
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/auth/register", bytes.NewBuffer(body))
-		req.Header.Set("Content-Type", "application/json")
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-	})
-
+			s.router.ServeHTTP(w, r)
+			s.Equal(tc.code, w.Code)
+		})
+	}
 }
 
-func TestLogin(t *testing.T) {
-	router, mockService := setupTest()
+// Test cases for Login
+func (s *AuthHandlerTestSuite) TestLogin_Success() {
+	req := domain.LoginRequest{
+		Email:    "test@example.com",
+		Password: "password123",
+	}
 
-	t.Run("Success", func(t *testing.T) {
-		mockToken := &domain.AuthToken{
-			UserID:    "123e4567-e89b-12d3-a456-426614174000",
-			TokenHash: "someRandomToken",
-			ExpiresAt: time.Now().Add(24 * time.Hour),
-		}
-		mockService.On("Login", mock.AnythingOfType("*domain.LoginRequest")).Return(mockToken, nil).Once()
+	expectedToken := &domain.AuthToken{
+		TokenHash: "token123",
+		UserID:    "user123",
+		UserName:  "Test User",
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	}
 
-		body := []byte(`{
-			"email": "test@example.com",
-			"password": "password123"
-		}`)
+	s.mockAuthService.On("Login", mock.Anything, &req).Return(expectedToken, nil)
 
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/auth/login", bytes.NewBuffer(body))
-		req.Header.Set("Content-Type", "application/json")
-		router.ServeHTTP(w, req)
+	body, _ := json.Marshal(req)
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(body))
+	r.Header.Set("Content-Type", "application/json")
 
-		assert.Equal(t, http.StatusOK, w.Code)
+	s.router.ServeHTTP(w, r)
 
-		var response domain.LoginResponse
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.Equal(t, mockToken.TokenHash, response.Token)
-	})
+	s.Equal(http.StatusOK, w.Code)
 
-	t.Run("Failure", func(t *testing.T) {
-		mockService.On("Login", mock.AnythingOfType("*domain.LoginRequest")).Return(nil, domain.AuthenticationError{
-			Message: "invalid credentials",
-		}).Once()
-
-		body := []byte(`{
-			"email": "test@example.com",
-			"password": "wrongpassword"
-		}`)
-
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/auth/login", bytes.NewBuffer(body))
-		req.Header.Set("Content-Type", "application/json")
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
-	})
-
+	var response domain.LoginResponse
+	s.NoError(json.Unmarshal(w.Body.Bytes(), &response))
+	s.Equal(expectedToken.TokenHash, response.Token)
+	s.Equal(expectedToken.UserID, response.UserID)
 }
 
-/*
-func TestLogout(t *testing.T) {
-	router, mockService := setupTest()
+func (s *AuthHandlerTestSuite) TestLogin_InvalidCredentials() {
+	req := domain.LoginRequest{
+		Email:    "test@example.com",
+		Password: "wrongpassword",
+	}
 
-	t.Run("Success", func(t *testing.T) {
-		userID := "123e4567-e89b-12d3-a456-426614174000"
-		mockService.On("Logout", userID).Return(nil).Once()
+	s.mockAuthService.On("Login", mock.Anything, &req).Return(nil, domain.AuthenticationError{Message: "invalid credentials"})
 
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/auth/logout", nil)
+	body, _ := json.Marshal(req)
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(body))
+	r.Header.Set("Content-Type", "application/json")
 
-		// Set up the context directly with the request
-		req = req.WithContext(context.Background())
-		c, _ := gin.CreateTestContext(w)
-		c.Request = req
-		c.Set("userID", userID)
+	s.router.ServeHTTP(w, r)
 
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-		mockService.AssertExpectations(t)
-	})
-
-	t.Run("Failure", func(t *testing.T) {
-		userID := "123e4567-e89b-12d3-a456-426614174000"
-		mockService.On("Logout", userID).Return(errors.New("user not found")).Once()
-
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/auth/logout", nil)
-
-		// Create a new Gin context
-		ctx, _ := gin.CreateTestContext(w)
-		ctx.Request = req
-		ctx.Set("userID", userID)
-
-		// Handle the request
-		router.HandleContext(ctx)
-
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		mockService.AssertExpectations(t)
-	})
-
-	t.Run("Unauthorized - No UserID", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/auth/logout", nil)
-
-		// Create a new Gin context without userID
-		ctx, _ := gin.CreateTestContext(w)
-		ctx.Request = req
-
-		// Handle the request
-		router.HandleContext(ctx)
-
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
-	})
+	s.Equal(http.StatusUnauthorized, w.Code)
 }
-*/
+
+// Test cases for Logout
+func (s *AuthHandlerTestSuite) TestLogout_Success() {
+	userID := "user123"
+	tokenHash := "token123"
+
+	s.mockAuthService.On("Logout", mock.Anything, userID, tokenHash).Return(nil)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+	r.Header.Set("Authorization", "Bearer "+tokenHash)
+
+	// Set user_id in context
+	c, _ := gin.CreateTestContext(w)
+	c.Set("user_id", userID)
+	c.Request = r
+
+	s.handler.Logout(c)
+
+	s.Equal(http.StatusOK, w.Code)
+}
+
+func (s *AuthHandlerTestSuite) TestLogout_Unauthorized() {
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+
+	s.router.ServeHTTP(w, r)
+
+	s.Equal(http.StatusUnauthorized, w.Code)
+}
+
+// Test cases for Verify
+func (s *AuthHandlerTestSuite) TestVerify_Success() {
+	req := domain.VerificationRequest{
+		Email: "test@example.com",
+		OTP:   "123456",
+	}
+
+	s.mockAuthService.On("VerifyRegistration", mock.Anything, &req).Return(nil)
+
+	body, _ := json.Marshal(req)
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/auth/verify", bytes.NewBuffer(body))
+	r.Header.Set("Content-Type", "application/json")
+
+	s.router.ServeHTTP(w, r)
+
+	s.Equal(http.StatusOK, w.Code)
+}
+
+func (s *AuthHandlerTestSuite) TestVerify_InvalidOTP() {
+	req := domain.VerificationRequest{
+		Email: "test@example.com",
+		OTP:   "invalid",
+	}
+
+	s.mockAuthService.On("VerifyRegistration", mock.Anything, &req).Return(domain.ValidationError{Message: "invalid OTP"})
+
+	body, _ := json.Marshal(req)
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/auth/verify", bytes.NewBuffer(body))
+	r.Header.Set("Content-Type", "application/json")
+
+	s.router.ServeHTTP(w, r)
+
+	s.Equal(http.StatusBadRequest, w.Code)
+}
