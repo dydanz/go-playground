@@ -1,12 +1,14 @@
-# Go-Playground - Random Go/Gin-Boilerplate Playground 
+# Go-Loyalty - Random Go/Gin-Boilerplate Playground for Loyalty Points Management
 
 [![Go Build](https://github.com/dydanz/go-playground/actions/workflows/go.yml/badge.svg)](https://github.com/dydanz/go-playground/actions/workflows/go.yml) [![Docker](https://github.com/dydanz/go-playground/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/dydanz/go-playground/actions/workflows/docker-publish.yml) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/00bb0e4faf7c4cd493b14ff5d587ea68)](https://app.codacy.com/gh/dydanz/go-playground/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Jekyll / GitHub Pages](https://github.com/dydanz/go-playground/actions/workflows/jekyll-gh-pages.yml/badge.svg)](https://github.com/dydanz/go-playground/actions/workflows/jekyll-gh-pages.yml)
 
 A (playground) RESTful API service, built with Go (Gin framework) that handles Loyalty Points management with PostgreSQL for data persistence and Redis for caching.
 
+It receives inbound transactions from merchant clients, classifies transactions, and generates points for each transaction based on predefined program rules and constraints.
+
 #### Disclaimer
-As designated for my personal research AI-generated code, most of the code are less-caffeinated-machine-generated
+As designated for my personal research AI-generated code, most of the codes are less-caffeinated-machine-generated
 
 But feel free to fork, clone or whatever you want at your own risk. 
 For questions or professional inquiries: [Linkedin](https://www.linkedin.com/in/dandi-diputra/)
