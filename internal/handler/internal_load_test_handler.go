@@ -32,7 +32,7 @@ func (h *InternalLoadTestHandler) GetVerificationCode(c *gin.Context) {
 		return
 	}
 
-	user, err := h.authService.GetUserByEmail(email)
+	user, err := h.authService.GetUserByEmail(c.Request.Context(), email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -42,7 +42,7 @@ func (h *InternalLoadTestHandler) GetVerificationCode(c *gin.Context) {
 		return
 	}
 
-	verification, err := h.authService.GetVerificationByUserID(user.ID)
+	verification, err := h.authService.GetVerificationByUserID(c.Request.Context(), user.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -65,7 +65,7 @@ func (h *InternalLoadTestHandler) GetVerificationCode(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /auth/test/random-user [get]
 func (h *InternalLoadTestHandler) GetRandomVerifiedUser(c *gin.Context) {
-	user, err := h.authService.GetRandomActiveUser()
+	user, err := h.authService.GetRandomActiveUser(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

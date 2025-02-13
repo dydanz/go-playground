@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type ProgramHandler struct {
@@ -36,7 +37,7 @@ func (h *ProgramHandler) Create(c *gin.Context) {
 		return
 	}
 
-	program, err := h.programService.Create(&req)
+	program, err := h.programService.Create(c.Request.Context(), &req)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -69,7 +70,7 @@ func (h *ProgramHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	program, err := h.programService.GetByID(id)
+	program, err := h.programService.GetByID(c.Request.Context(), uuid.MustParse(id))
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -101,7 +102,7 @@ func (h *ProgramHandler) GetByMerchantID(c *gin.Context) {
 		return
 	}
 
-	programs, err := h.programService.GetByMerchantID(merchantID)
+	programs, err := h.programService.GetByMerchantID(c.Request.Context(), uuid.MustParse(merchantID))
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -141,7 +142,7 @@ func (h *ProgramHandler) Update(c *gin.Context) {
 		return
 	}
 
-	program, err := h.programService.Update(id, &req)
+	program, err := h.programService.Update(c.Request.Context(), uuid.MustParse(id), &req)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -174,7 +175,7 @@ func (h *ProgramHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.programService.Delete(id); err != nil {
+	if err := h.programService.Delete(c.Request.Context(), uuid.MustParse(id)); err != nil {
 		util.HandleError(c, err)
 		return
 	}

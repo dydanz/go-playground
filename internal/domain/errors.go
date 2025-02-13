@@ -8,9 +8,9 @@ import (
 // Common error types
 type (
 	ValidationError struct {
-		Field   string
-		Message string
-	}
+	Field   string
+	Message string
+}
 
 	ResourceNotFoundError struct {
 		Resource string
@@ -19,16 +19,16 @@ type (
 	}
 
 	AuthenticationError struct {
-		Message string
-	}
+	Message string
+}
 
 	AuthorizationError struct {
 		Message string
-	}
+}
 
 	ResourceConflictError struct {
-		Resource string
-		Message  string
+	Resource string
+	Message  string
 	}
 
 	RateLimitError struct {

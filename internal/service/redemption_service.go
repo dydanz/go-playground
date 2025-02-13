@@ -34,7 +34,7 @@ func NewRedemptionService(
 
 func (s *RedemptionService) Create(ctx context.Context, redemption *domain.Redemption) error {
 	// Check if reward exists and is active
-	reward, err := s.rewardsRepo.GetByID(redemption.RewardID)
+	reward, err := s.rewardsRepo.GetByID(ctx, redemption.RewardID)
 	if err != nil {
 		return domain.NewSystemError("RedemptionService.Create", err, "failed to get reward")
 	}
@@ -140,7 +140,7 @@ func (s *RedemptionService) UpdateStatus(ctx context.Context, id string, status 
 
 	// If canceling a pending redemption, refund the points
 	if oldStatus == "pending" && status == "canceled" {
-		reward, err := s.rewardsRepo.GetByID(redemption.RewardID)
+		reward, err := s.rewardsRepo.GetByID(ctx, redemption.RewardID)
 		if err != nil {
 			return domain.NewSystemError("RedemptionService.UpdateStatus", err, "failed to get reward")
 		}

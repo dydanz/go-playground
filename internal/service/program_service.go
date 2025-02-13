@@ -16,7 +16,7 @@ func NewProgramService(programRepo domain.ProgramRepository) *ProgramService {
 	return &ProgramService{programRepo: programRepo}
 }
 
-func (s *ProgramService) Create(req *domain.CreateProgramRequest) (*domain.Program, error) {
+func (s *ProgramService) Create(ctx context.Context, req *domain.CreateProgramRequest) (*domain.Program, error) {
 	// Validate required fields
 	if req.ProgramName == "" {
 		return nil, domain.NewValidationError("program_name", "program name is required")
@@ -34,26 +34,27 @@ func (s *ProgramService) Create(req *domain.CreateProgramRequest) (*domain.Progr
 		UpdatedAt:         time.Now(),
 	}
 
-	if err := s.programRepo.Create(program); err != nil {
+	result, err := s.programRepo.Create(ctx, program)
+	if err != nil {
 		return nil, domain.NewSystemError("ProgramService.Create", err, "failed to create program")
 	}
 
-	return program, nil
+	return result, nil
 }
 
-func (s *ProgramService) GetByID(id string) (*domain.Program, error) {
-	program, err := s.programRepo.GetByID(id)
+func (s *ProgramService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Program, error) {
+	program, err := s.programRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, domain.NewSystemError("ProgramService.GetByID", err, "failed to get program")
 	}
 	if program == nil {
-		return nil, domain.NewResourceNotFoundError("program", id, "program not found")
+		return nil, domain.NewResourceNotFoundError("program", id.String(), "program not found")
 	}
 	return program, nil
 }
 
-func (s *ProgramService) GetAll() ([]*domain.Program, error) {
-	programs, err := s.programRepo.GetAll()
+func (s *ProgramService) GetAll(ctx context.Context) ([]*domain.Program, error) {
+	programs, err := s.programRepo.GetAll(ctx)
 	if err != nil {
 		return nil, domain.NewSystemError("ProgramService.GetAll", err, "failed to get programs")
 	}
@@ -63,13 +64,13 @@ func (s *ProgramService) GetAll() ([]*domain.Program, error) {
 	return programs, nil
 }
 
-func (s *ProgramService) Update(id string, req *domain.UpdateProgramRequest) (*domain.Program, error) {
-	program, err := s.programRepo.GetByID(id)
+func (s *ProgramService) Update(ctx context.Context, id uuid.UUID, req *domain.UpdateProgramRequest) (*domain.Program, error) {
+	program, err := s.programRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, domain.NewSystemError("ProgramService.Update", err, "failed to get program")
 	}
 	if program == nil {
-		return nil, domain.NewResourceNotFoundError("program", id, "program not found")
+		return nil, domain.NewResourceNotFoundError("program", id.String(), "program not found")
 	}
 
 	if req.ProgramName != "" {
@@ -80,30 +81,30 @@ func (s *ProgramService) Update(id string, req *domain.UpdateProgramRequest) (*d
 	}
 	program.UpdatedAt = time.Now()
 
-	if err := s.programRepo.Update(program); err != nil {
+	if err := s.programRepo.Update(ctx, program); err != nil {
 		return nil, domain.NewSystemError("ProgramService.Update", err, "failed to update program")
 	}
 
 	return program, nil
 }
 
-func (s *ProgramService) Delete(id string) error {
-	program, err := s.programRepo.GetByID(id)
+func (s *ProgramService) Delete(ctx context.Context, id uuid.UUID) error {
+	program, err := s.programRepo.GetByID(ctx, id)
 	if err != nil {
 		return domain.NewSystemError("ProgramService.Delete", err, "failed to get program")
 	}
 	if program == nil {
-		return domain.NewResourceNotFoundError("program", id, "program not found")
+		return domain.NewResourceNotFoundError("program", id.String(), "program not found")
 	}
 
-	if err := s.programRepo.Delete(id); err != nil {
+	if err := s.programRepo.Delete(ctx, id); err != nil {
 		return domain.NewSystemError("ProgramService.Delete", err, "failed to delete program")
 	}
 	return nil
 }
 
-func (s *ProgramService) GetByMerchantID(merchantID string) ([]*domain.Program, error) {
-	programs, err := s.programRepo.GetByMerchantID(merchantID)
+func (s *ProgramService) GetByMerchantID(ctx context.Context, merchantID uuid.UUID) ([]*domain.Program, error) {
+	programs, err := s.programRepo.GetByMerchantID(ctx, merchantID)
 	if err != nil {
 		return nil, domain.NewSystemError("ProgramService.GetByMerchantID", err, "failed to get programs")
 	}
@@ -127,24 +128,25 @@ func (s *ProgramService) CreateProgram(ctx context.Context, merchantID uuid.UUID
 		PointCurrencyName: pointCurrencyName,
 	}
 
-	if err := s.programRepo.Create(program); err != nil {
+	result, err := s.programRepo.Create(ctx, program)
+	if err != nil {
 		return nil, domain.NewSystemError("ProgramService.CreateProgram", err, "failed to create program")
 	}
 
 	response := &domain.CreateProgramResponse{
-		ProgramID:         program.ID,
-		MerchantID:        merchantID,
-		ProgramName:       program.ProgramName,
-		PointCurrencyName: program.PointCurrencyName,
-		CreatedAt:         program.CreatedAt,
-		UpdatedAt:         program.UpdatedAt,
+		ProgramID:         result.ID,
+		MerchantID:        result.MerchantID,
+		ProgramName:       result.ProgramName,
+		PointCurrencyName: result.PointCurrencyName,
+		CreatedAt:         result.CreatedAt,
+		UpdatedAt:         result.UpdatedAt,
 	}
 
 	return response, nil
 }
 
 func (s *ProgramService) GetProgram(ctx context.Context, programID uuid.UUID) (*domain.Program, error) {
-	program, err := s.programRepo.GetByID(programID.String())
+	program, err := s.programRepo.GetByID(ctx, programID)
 	if err != nil {
 		return nil, domain.NewSystemError("ProgramService.GetProgram", err, "failed to get program")
 	}
@@ -155,7 +157,7 @@ func (s *ProgramService) GetProgram(ctx context.Context, programID uuid.UUID) (*
 }
 
 func (s *ProgramService) GetMerchantPrograms(ctx context.Context, merchantID uuid.UUID) ([]*domain.Program, error) {
-	programs, err := s.programRepo.GetByMerchantID(merchantID.String())
+	programs, err := s.programRepo.GetByMerchantID(ctx, merchantID)
 	if err != nil {
 		return nil, domain.NewSystemError("ProgramService.GetMerchantPrograms", err, "failed to get programs")
 	}
@@ -173,7 +175,7 @@ func (s *ProgramService) UpdateProgram(ctx context.Context, programID uuid.UUID,
 		return nil, domain.NewValidationError("point_currency_name", "point currency name is required")
 	}
 
-	program, err := s.programRepo.GetByID(programID.String())
+	program, err := s.programRepo.GetByID(ctx, programID)
 	if err != nil {
 		return nil, domain.NewSystemError("ProgramService.UpdateProgram", err, "failed to get program")
 	}
@@ -184,7 +186,7 @@ func (s *ProgramService) UpdateProgram(ctx context.Context, programID uuid.UUID,
 	program.ProgramName = programName
 	program.PointCurrencyName = pointCurrencyName
 
-	if err := s.programRepo.Update(program); err != nil {
+	if err := s.programRepo.Update(ctx, program); err != nil {
 		return nil, domain.NewSystemError("ProgramService.UpdateProgram", err, "failed to update program")
 	}
 
@@ -192,7 +194,7 @@ func (s *ProgramService) UpdateProgram(ctx context.Context, programID uuid.UUID,
 }
 
 func (s *ProgramService) DeleteProgram(ctx context.Context, programID uuid.UUID) error {
-	program, err := s.programRepo.GetByID(programID.String())
+	program, err := s.programRepo.GetByID(ctx, programID)
 	if err != nil {
 		return domain.NewSystemError("ProgramService.DeleteProgram", err, "failed to get program")
 	}
@@ -200,7 +202,7 @@ func (s *ProgramService) DeleteProgram(ctx context.Context, programID uuid.UUID)
 		return domain.NewResourceNotFoundError("program", programID.String(), "program not found")
 	}
 
-	if err := s.programRepo.Delete(programID.String()); err != nil {
+	if err := s.programRepo.Delete(ctx, programID); err != nil {
 		return domain.NewSystemError("ProgramService.DeleteProgram", err, "failed to delete program")
 	}
 	return nil

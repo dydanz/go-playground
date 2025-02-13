@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log"
 
 	"go-playground/internal/domain"
 
@@ -42,12 +43,14 @@ func (s *TransactionService) getMerchantIDByCustomerID(ctx context.Context, cust
 
 func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTransactionRequest) (*domain.Transaction, error) {
 	if req.TransactionAmount <= 0 {
+		log.Println("TransactionService: Transaction amount must be greater than 0")
 		return nil, domain.NewValidationError("transaction_amount", "transaction amount must be greater than 0")
 	}
 
 	// Get merchant ID from customer ID
 	merchantID, err := s.getMerchantIDByCustomerID(ctx, req.MerchantCustomersID)
 	if err != nil {
+		log.Println("TransactionService: Error getting merchant ID: ", err)
 		return nil, err
 	}
 
@@ -62,6 +65,7 @@ func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTrans
 
 	createdTx, err := s.transactionRepo.Create(ctx, transaction)
 	if err != nil {
+		log.Println("TransactionService: Error creating transaction: ", err)
 		return nil, domain.NewSystemError("TransactionService.Create", err, "failed to create transaction")
 	}
 
@@ -83,13 +87,24 @@ func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTrans
 	// TODO: Check if the customer has enough points to redeem
 	// TODO: Update points balance if applicable
 
-	if points != 0 {
+	if points > 0 {
 		if _, err := s.pointsService.EarnPoints(ctx, &domain.PointsTransaction{
 			CustomerID:    transaction.MerchantCustomersID.String(),
 			ProgramID:     transaction.ProgramID.String(),
 			Points:        points,
-			TransactionID: transaction.TransactionID.String(),
+			TransactionID: createdTx.TransactionID.String(),
 		}); err != nil {
+			log.Println("TransactionService: Error earning points: ", err)
+			return nil, err
+		}
+	} else if points < 0 {
+		if _, err := s.pointsService.RedeemPoints(ctx, &domain.PointsTransaction{
+			CustomerID:    transaction.MerchantCustomersID.String(),
+			ProgramID:     transaction.ProgramID.String(),
+			Points:        points,
+			TransactionID: createdTx.TransactionID.String(),
+		}); err != nil {
+			log.Println("TransactionService: Error redeeming points: ", err)
 			return nil, err
 		}
 	}

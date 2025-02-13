@@ -50,12 +50,12 @@ func (r *MerchantRepository) Create(ctx context.Context, merchant *domain.Mercha
 	return &result, nil
 }
 
-func (r *MerchantRepository) GetByID(id uuid.UUID) (*domain.Merchant, error) {
+func (r *MerchantRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Merchant, error) {
 	query := `SELECT id, user_id, name, type, created_at, updated_at 
 			  FROM merchants WHERE id = $1`
 
 	merchant := &domain.Merchant{}
-	err := r.db.QueryRow(query, id).Scan(
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&merchant.ID,
 		&merchant.UserID,
 		&merchant.Name,

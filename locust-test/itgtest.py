@@ -252,7 +252,7 @@ def run_sequence():
         merchant_customer_response = make_request("POST", "/api/merchant-customers", headers=auth_headers, 
                                                   data=merchant_customer_data)
         # Check for 409 Conflict
-        if merchant_customer_response.status_code == 409:
+        if merchant_customer_response.status_code == 409 or merchant_customer_response.status_code == 401:
             print("Merchant customer user already exists, skipping to get existing merchant customer user...")
             time.sleep(0.45)
             registration_failed = True

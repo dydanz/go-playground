@@ -16,7 +16,7 @@ func NewRewardsRepository(db *sql.DB) *RewardsRepository {
 	return &RewardsRepository{db: db}
 }
 
-func (r *RewardsRepository) Create(ctx context.Context, reward *domain.Reward) error {
+func (r *RewardsRepository) Create(ctx context.Context, reward *domain.Reward) (*domain.Reward, error) {
 	if reward.ID == uuid.Nil {
 		reward.ID = uuid.New()
 	}
@@ -48,12 +48,12 @@ func (r *RewardsRepository) Create(ctx context.Context, reward *domain.Reward) e
 
 	if err != nil {
 		if isPgUniqueViolation(err) {
-			return domain.NewResourceConflictError("reward", "reward with this name already exists")
+			return nil, domain.NewResourceConflictError("reward", "reward with this name already exists")
 		}
-		return domain.NewSystemError("RewardsRepository.Create", err, "failed to create reward")
+		return nil, domain.NewSystemError("RewardsRepository.Create", err, "failed to create reward")
 	}
 
-	return nil
+	return reward, nil
 }
 
 func (r *RewardsRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Reward, error) {
@@ -153,7 +153,7 @@ func (r *RewardsRepository) GetAll(ctx context.Context, activeOnly bool) ([]doma
 	return rewards, nil
 }
 
-func (r *RewardsRepository) Update(ctx context.Context, reward *domain.Reward) error {
+func (r *RewardsRepository) Update(ctx context.Context, reward *domain.Reward) (*domain.Reward, error) {
 	query := `
 		UPDATE rewards
 		SET name = $1, description = $2, points_required = $3,
@@ -176,21 +176,21 @@ func (r *RewardsRepository) Update(ctx context.Context, reward *domain.Reward) e
 
 	if err != nil {
 		if isPgUniqueViolation(err) {
-			return domain.NewResourceConflictError("reward", "reward with this name already exists")
+			return nil, domain.NewResourceConflictError("reward", "reward with this name already exists")
 		}
-		return domain.NewSystemError("RewardsRepository.Update", err, "failed to update reward")
+		return nil, domain.NewSystemError("RewardsRepository.Update", err, "failed to update reward")
 	}
 
 	affected, err := result.RowsAffected()
 	if err != nil {
-		return domain.NewSystemError("RewardsRepository.Update", err, "failed to get affected rows")
+		return nil, domain.NewSystemError("RewardsRepository.Update", err, "failed to get affected rows")
 	}
 
 	if affected == 0 {
-		return domain.NewResourceNotFoundError("reward", reward.ID.String(), "reward not found")
+		return nil, domain.NewResourceNotFoundError("reward", reward.ID.String(), "reward not found")
 	}
 
-	return nil
+	return reward, nil
 }
 
 func (r *RewardsRepository) Delete(ctx context.Context, id uuid.UUID) error {

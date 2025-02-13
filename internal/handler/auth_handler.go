@@ -36,7 +36,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	user, err := h.authService.Register(&req)
+	user, err := h.authService.Register(c.Request.Context(), &req)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -62,7 +62,7 @@ func (h *AuthHandler) Verify(c *gin.Context) {
 		return
 	}
 
-	if err := h.authService.VerifyRegistration(&req); err != nil {
+	if err := h.authService.VerifyRegistration(c.Request.Context(), &req); err != nil {
 		util.HandleError(c, err)
 		return
 	}
@@ -86,7 +86,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	authToken, err := h.authService.Login(&req)
+	authToken, err := h.authService.Login(c.Request.Context(), &req)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -146,7 +146,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		tokenHash = parts[1]
 	}
 
-	if err := h.authService.Logout(userID.(string), tokenHash); err != nil {
+	if err := h.authService.Logout(c.Request.Context(), userID.(string), tokenHash); err != nil {
 		util.HandleError(c, err)
 		return
 	}

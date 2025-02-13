@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"math"
+
 	"go-playground/internal/domain"
 
 	"github.com/google/uuid"
@@ -20,7 +22,9 @@ func NewPointsService(pointsRepo domain.PointsRepository, eventRepo domain.Event
 }
 
 func (s *PointsService) RedeemPoints(ctx context.Context, req *domain.PointsTransaction) (*domain.PointsTransaction, error) {
-	if req.Points <= 0 {
+	absPointsRedeemed := int(math.Abs(float64(req.Points)))	
+
+	if absPointsRedeemed <= 0 {
 		return nil, domain.NewValidationError("points", "points must be greater than 0")
 	}
 
@@ -29,17 +33,17 @@ func (s *PointsService) RedeemPoints(ctx context.Context, req *domain.PointsTran
 		return nil, domain.NewSystemError("PointsService.RedeemPoints", err, "failed to get current balance")
 	}
 
-	if currentBalance < req.Points {
+	if currentBalance < absPointsRedeemed {
 		return nil, domain.NewBusinessLogicError("INSUFFICIENT_POINTS", "insufficient points balance")
 	}
 
-	err = s.pointsRepo.Create(ctx, &domain.PointsLedger{
+	ledger, err := s.pointsRepo.Create(ctx, &domain.PointsLedger{
 		LedgerID:            uuid.New(),
 		MerchantCustomersID: uuid.MustParse(req.CustomerID),
 		ProgramID:           uuid.MustParse(req.ProgramID),
 		PointsEarned:        0,
-		PointsRedeemed:      req.Points,
-		PointsBalance:       currentBalance - req.Points,
+		PointsRedeemed:      absPointsRedeemed,
+		PointsBalance:       currentBalance - absPointsRedeemed,
 		TransactionID:       uuid.MustParse(req.TransactionID),
 	})
 	if err != nil {
@@ -47,10 +51,10 @@ func (s *PointsService) RedeemPoints(ctx context.Context, req *domain.PointsTran
 	}
 
 	return &domain.PointsTransaction{
-		TransactionID: req.TransactionID,
-		CustomerID:    req.CustomerID,
-		ProgramID:     req.ProgramID,
-		Points:        req.Points,
+		TransactionID: ledger.TransactionID.String(),
+		CustomerID:    ledger.MerchantCustomersID.String(),
+		ProgramID:     ledger.ProgramID.String(),
+		Points:        ledger.PointsRedeemed,
 		Type:          "redeem",
 	}, nil
 }
@@ -89,7 +93,7 @@ func (s *PointsService) EarnPoints(ctx context.Context, req *domain.PointsTransa
 		return nil, domain.NewSystemError("PointsService.EarnPoints", err, "failed to get current balance")
 	}
 
-	err = s.pointsRepo.Create(ctx, &domain.PointsLedger{
+	ledger, err := s.pointsRepo.Create(ctx, &domain.PointsLedger{
 		LedgerID:            uuid.New(),
 		MerchantCustomersID: uuid.MustParse(req.CustomerID),
 		ProgramID:           uuid.MustParse(req.ProgramID),
@@ -103,10 +107,10 @@ func (s *PointsService) EarnPoints(ctx context.Context, req *domain.PointsTransa
 	}
 
 	return &domain.PointsTransaction{
-		TransactionID: req.TransactionID,
-		CustomerID:    req.CustomerID,
-		ProgramID:     req.ProgramID,
-		Points:        req.Points,
+		TransactionID: ledger.TransactionID.String(),
+		CustomerID:    ledger.MerchantCustomersID.String(),
+		ProgramID:     ledger.ProgramID.String(),
+		Points:        ledger.PointsEarned,
 		Type:          "earn",
 	}, nil
 }

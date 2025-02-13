@@ -53,7 +53,7 @@ func (r *ProgramsRepository) Create(ctx context.Context, program *domain.Program
 	return &result, nil
 }
 
-func (r *ProgramsRepository) GetByID(ctx context.Context, id string) (*domain.Program, error) {
+func (r *ProgramsRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Program, error) {
 	query := `
 		SELECT program_id, merchant_id, program_name, point_currency_name, created_at, updated_at
 		FROM programs
@@ -71,7 +71,7 @@ func (r *ProgramsRepository) GetByID(ctx context.Context, id string) (*domain.Pr
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, domain.NewResourceNotFoundError("program", id, "program not found")
+			return nil, domain.NewResourceNotFoundError("program", id.String(), "program not found")
 		}
 		return nil, domain.NewSystemError("ProgramsRepository.GetByID", err, "failed to get program")
 	}
@@ -152,22 +152,7 @@ func (r *ProgramsRepository) Update(ctx context.Context, program *domain.Program
 	return nil
 }
 
-func (r *ProgramsRepository) Delete(ctx context.Context, id string) error {
-	query := `DELETE FROM programs WHERE program_id = $1`
-	result, err := r.db.ExecContext(ctx, query, id)
-	if err != nil {
-		return domain.NewSystemError("ProgramsRepository.Delete", err, "failed to delete program")
-	}
-
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return domain.NewSystemError("ProgramsRepository.Delete", err, "failed to get affected rows")
-	}
-
-	if affected == 0 {
-		return domain.NewResourceNotFoundError("program", id, "program not found")
-	}
-
+func (r *ProgramsRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 

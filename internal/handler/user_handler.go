@@ -41,7 +41,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.Create(&req)
+	user, err := h.userService.Create(c.Request.Context(), &req)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -71,7 +71,7 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.GetByID(id)
+	user, err := h.userService.GetByID(c.Request.Context(), id)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -91,7 +91,7 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 // @Failure      401  {object}  map[string]string
 // @Router       /users [get]
 func (h *UserHandler) GetAll(c *gin.Context) {
-	users, err := h.userService.GetAll()
+	users, err := h.userService.GetAll(c.Request.Context())
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -128,7 +128,7 @@ func (h *UserHandler) Update(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.Update(id, &req)
+	user, err := h.userService.Update(c.Request.Context(), id, &req)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -157,7 +157,7 @@ func (h *UserHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.userService.Delete(id); err != nil {
+	if err := h.userService.Delete(c.Request.Context(), id); err != nil {
 		util.HandleError(c, err)
 		return
 	}
@@ -182,7 +182,7 @@ func (h *UserHandler) GetMe(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.GetByID(userID)
+	user, err := h.userService.GetByID(c.Request.Context(), userID)
 	if err != nil {
 		util.HandleError(c, err)
 		return

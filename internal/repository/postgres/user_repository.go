@@ -50,7 +50,7 @@ func (r *UserRepository) Create(ctx context.Context, req *domain.CreateUserReque
 	return user, nil
 }
 
-func (r *UserRepository) GetByID(id string) (*domain.User, error) {
+func (r *UserRepository) GetByID(ctx context.Context, id string) (*domain.User, error) {
 	user := &domain.User{}
 	var statusStr string
 	query := `
@@ -58,7 +58,7 @@ func (r *UserRepository) GetByID(id string) (*domain.User, error) {
 		FROM users
 		WHERE id = $1
 	`
-	err := r.db.QueryRow(query, id).Scan(
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&user.ID,
 		&user.Name,
 		&user.Email,
@@ -119,22 +119,7 @@ func (r *UserRepository) Update(ctx context.Context, user *domain.User) error {
 	return nil
 }
 
-func (r *UserRepository) Delete(id string) error {
-	query := `DELETE FROM users WHERE id = $1`
-	result, err := r.db.Exec(query, id)
-	if err != nil {
-		return domain.NewSystemError("UserRepository.Delete", err, "failed to delete user")
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return domain.NewSystemError("UserRepository.Delete", err, "failed to get affected rows")
-	}
-
-	if rowsAffected == 0 {
-		return domain.NewResourceNotFoundError("user", id, "user not found")
-	}
-
+func (r *UserRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 

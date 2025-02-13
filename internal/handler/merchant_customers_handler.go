@@ -3,6 +3,7 @@ package handler
 import (
 	"go-playground/internal/domain"
 	"go-playground/internal/util"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -31,20 +32,21 @@ func NewMerchantCustomersHandler(customerService domain.MerchantCustomersService
 func (h *MerchantCustomersHandler) Create(c *gin.Context) {
 	var req domain.CreateMerchantCustomerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Println("MerchantCustomersHandler: Error binding request: ", err)
 		util.HandleError(c, domain.NewValidationError("request", "invalid request format"))
 		return
 	}
 
 	// Get merchant ID from context (set by auth middleware)
-	merchantID, exists := c.Get("merchant_id")
-	if !exists {
+	if req.MerchantID == uuid.Nil {
+		log.Println("MerchantCustomersHandler: Merchant ID not found in request payload")
 		util.HandleError(c, domain.NewAuthenticationError("merchant not authenticated"))
 		return
 	}
-	req.MerchantID = merchantID.(uuid.UUID)
 
 	customer, err := h.customerService.Create(c.Request.Context(), &req)
 	if err != nil {
+		log.Println("MerchantCustomersHandler: Error creating merchant customer: ", err)
 		util.HandleError(c, err)
 		return
 	}
@@ -93,13 +95,13 @@ func (h *MerchantCustomersHandler) GetByID(c *gin.Context) {
 // @Failure 500 {object} util.ErrorResponse
 // @Router /merchant-customers [get]
 func (h *MerchantCustomersHandler) GetByMerchantID(c *gin.Context) {
-	merchantID, exists := c.Get("merchant_id")
-	if !exists {
-		util.HandleError(c, domain.NewAuthenticationError("merchant not authenticated"))
+	merchantID, err := uuid.Parse(c.Param("merchant_id"))
+	if err != nil {
+		util.HandleError(c, domain.ValidationError{Message: "invalid customer ID format"})
 		return
 	}
 
-	customers, err := h.customerService.GetByMerchantID(c.Request.Context(), merchantID.(uuid.UUID))
+	customers, err := h.customerService.GetByMerchantID(c.Request.Context(), merchantID)
 	if err != nil {
 		util.HandleError(c, err)
 		return

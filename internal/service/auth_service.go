@@ -29,9 +29,9 @@ func NewAuthService(userRepo domain.UserRepository, authRepo domain.AuthReposito
 	}
 }
 
-func (s *AuthService) Register(req *domain.RegistrationRequest) (*domain.User, error) {
+func (s *AuthService) Register(ctx context.Context, req *domain.RegistrationRequest) (*domain.User, error) {
 	// Check if email already exists
-	existingUser, err := s.userRepo.GetByEmail(req.Email)
+	existingUser, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, domain.ResourceNotFoundError{
 			Resource: "user",
@@ -59,7 +59,7 @@ func (s *AuthService) Register(req *domain.RegistrationRequest) (*domain.User, e
 		Phone:    req.Phone,
 	}
 
-	user, err := s.userRepo.Create(context.Background(), createReq)
+	user, err := s.userRepo.Create(ctx, createReq)
 	if err != nil {
 		return nil, fmt.Errorf("error creating user: %v", err)
 	}
@@ -72,7 +72,7 @@ func (s *AuthService) Register(req *domain.RegistrationRequest) (*domain.User, e
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
 
-	if err := s.authRepo.CreateVerification(verification); err != nil {
+	if err := s.authRepo.CreateVerification(ctx, verification); err != nil {
 		return nil, fmt.Errorf("error creating verification: %v", err)
 	}
 
@@ -82,8 +82,8 @@ func (s *AuthService) Register(req *domain.RegistrationRequest) (*domain.User, e
 	return user, nil
 }
 
-func (s *AuthService) VerifyRegistration(req *domain.VerificationRequest) error {
-	user, err := s.userRepo.GetByEmail(req.Email)
+func (s *AuthService) VerifyRegistration(ctx context.Context, req *domain.VerificationRequest) error {
+	user, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
 		return domain.ResourceNotFoundError{
 			Resource: "user",
@@ -104,7 +104,7 @@ func (s *AuthService) VerifyRegistration(req *domain.VerificationRequest) error 
 		}
 	}
 
-	verification, err := s.authRepo.GetVerification(user.ID, req.OTP)
+	verification, err := s.authRepo.GetVerification(ctx, user.ID, req.OTP)
 	if err != nil {
 		return domain.ValidationError{
 			Field:   "otp",
@@ -113,29 +113,29 @@ func (s *AuthService) VerifyRegistration(req *domain.VerificationRequest) error 
 	}
 
 	// Start transaction
-	tx, err := s.authRepo.BeginTx()
+	tx, err := s.authRepo.BeginTx(ctx)
 	if err != nil {
 		return fmt.Errorf("transaction error: %v", err)
 	}
 	defer tx.Rollback()
 
 	// Mark verification as used
-	if err := s.authRepo.MarkVerificationUsedTx(tx, verification.ID); err != nil {
+	if err := s.authRepo.MarkVerificationUsedTx(ctx, tx, verification.ID); err != nil {
 		return fmt.Errorf("error marking verification used: %v", err)
 	}
 
 	// Update user status
 	user.Status = domain.UserStatusActive
-	if err := s.userRepo.UpdateTx(tx, user); err != nil {
+	if err := s.userRepo.UpdateTx(ctx, tx, user); err != nil {
 		return fmt.Errorf("error updating user status: %v", err)
 	}
 
 	return tx.Commit()
 }
 
-func (s *AuthService) Login(req *domain.LoginRequest) (*domain.AuthToken, error) {
+func (s *AuthService) Login(ctx context.Context, req *domain.LoginRequest) (*domain.AuthToken, error) {
 	// Check login attempts
-	attempt, err := s.authRepo.UpdateLoginAttempts(req.Email, true)
+	attempt, err := s.authRepo.UpdateLoginAttempts(ctx, req.Email, true)
 	if err != nil {
 		return nil, domain.AuthenticationError{
 			Message: fmt.Sprintf("error checking login attempts: %v", err),
@@ -148,7 +148,7 @@ func (s *AuthService) Login(req *domain.LoginRequest) (*domain.AuthToken, error)
 		}
 	}
 
-	user, err := s.userRepo.GetByEmail(req.Email)
+	user, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, domain.AuthenticationError{
 			Message: "invalid credentials",
@@ -173,7 +173,7 @@ func (s *AuthService) Login(req *domain.LoginRequest) (*domain.AuthToken, error)
 	}
 
 	// Reset login attempts on successful login
-	if _, err := s.authRepo.UpdateLoginAttempts(req.Email, false); err != nil {
+	if _, err := s.authRepo.UpdateLoginAttempts(ctx, req.Email, false); err != nil {
 		return nil, domain.AuthenticationError{
 			Message: fmt.Sprintf("error resetting login attempts: %v", err),
 		}
@@ -198,7 +198,7 @@ func (s *AuthService) Login(req *domain.LoginRequest) (*domain.AuthToken, error)
 
 	fmt.Println("user.Name ", user.Name)
 
-	if err := s.authRepo.CreateToken(authToken); err != nil {
+	if err := s.authRepo.CreateToken(ctx, authToken); err != nil {
 		return nil, domain.AuthenticationError{
 			Message: fmt.Sprintf("error creating auth token: %v", err),
 		}
@@ -214,20 +214,20 @@ func (s *AuthService) Login(req *domain.LoginRequest) (*domain.AuthToken, error)
 	return authToken, nil
 }
 
-func (s *AuthService) Logout(userID string, tokenHash string) error {
+func (s *AuthService) Logout(ctx context.Context, userID string, tokenHash string) error {
 	if err := s.sessionRepo.DeleteSession(context.Background(), userID); err != nil {
 		return fmt.Errorf("error deleting session: %v", err)
 	}
 
-	if err := s.authRepo.InvalidateToken(userID); err != nil {
-		return fmt.Errorf("error invalidating token: %v", err)
+	if err := s.authRepo.InvalidateToken(ctx, userID); err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (s *AuthService) GetUserByEmail(email string) (*domain.User, error) {
-	user, err := s.userRepo.GetByEmail(email)
+func (s *AuthService) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
+	user, err := s.userRepo.GetByEmail(ctx, email)
 	if err != nil {
 		return nil, domain.ResourceNotFoundError{
 			Resource: "user",
@@ -243,8 +243,8 @@ func (s *AuthService) GetUserByEmail(email string) (*domain.User, error) {
 	return user, nil
 }
 
-func (s *AuthService) GetVerificationByUserID(userID string) (*domain.RegistrationVerification, error) {
-	verification, err := s.authRepo.GetLatestVerification(userID)
+func (s *AuthService) GetVerificationByUserID(ctx context.Context, userID string) (*domain.RegistrationVerification, error) {
+	verification, err := s.authRepo.GetLatestVerification(ctx, userID)
 	if err != nil {
 		return nil, domain.ResourceNotFoundError{
 			Resource: "verification",
@@ -254,8 +254,8 @@ func (s *AuthService) GetVerificationByUserID(userID string) (*domain.Registrati
 	return verification, nil
 }
 
-func (s *AuthService) GetRandomActiveUser() (*domain.User, error) {
-	user, err := s.userRepo.GetRandomActiveUser()
+func (s *AuthService) GetRandomActiveUser(ctx context.Context) (*domain.User, error) {
+	user, err := s.userRepo.GetRandomActiveUser(ctx)
 	if err != nil {
 		return nil, domain.ResourceNotFoundError{
 			Resource: "user",

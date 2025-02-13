@@ -101,7 +101,7 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 		}
 
 		// If session not found in cache, check database
-		token, err := authRepo.GetTokenByHash(tokenCookie)
+		token, err := authRepo.GetTokenByHash(c.Request.Context(), tokenCookie)
 		if err != nil {
 			log.Printf("Error getting token from database: %v\n", err)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token validation failed"})

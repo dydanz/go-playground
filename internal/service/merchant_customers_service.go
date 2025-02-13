@@ -4,6 +4,7 @@ import (
 	"context"
 	"go-playground/internal/domain"
 	"go-playground/internal/util"
+	"log"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -23,12 +24,14 @@ func (s *MerchantCustomersService) Create(ctx context.Context, req *domain.Creat
 		// Check if customer already exists with email or phone
 		existingByEmail, _ := s.customerRepo.GetByEmail(ctx, req.Email)
 		if existingByEmail != nil {
+			log.Println("Email already exists: ", req.Email)
 			createErr = domain.NewResourceConflictError("merchant customer", "email already exists")
 			return nil
 		}
 
 		existingByPhone, _ := s.customerRepo.GetByPhone(ctx, req.Phone)
 		if existingByPhone != nil {
+			log.Println("Phone already exists: ", req.Phone)
 			createErr = domain.NewResourceConflictError("merchant customer", "phone already exists")
 			return nil
 		}
@@ -36,6 +39,7 @@ func (s *MerchantCustomersService) Create(ctx context.Context, req *domain.Creat
 		// Hash password
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
+			log.Println("Error hashing password: ", err)
 			createErr = domain.NewSystemError("MerchantCustomersService.Create", err, "failed to hash password")
 			return nil
 		}
@@ -50,6 +54,7 @@ func (s *MerchantCustomersService) Create(ctx context.Context, req *domain.Creat
 		}
 
 		if err := s.customerRepo.Create(ctx, customer); err != nil {
+			log.Println("Error creating merchant customer: ", err)
 			createErr = domain.NewSystemError("MerchantCustomersService.Create", err, "failed to create customer")
 			return nil
 		}
@@ -60,6 +65,7 @@ func (s *MerchantCustomersService) Create(ctx context.Context, req *domain.Creat
 	result := decoratedFn()
 	if result == nil {
 		if createErr == nil {
+			log.Println("Error creating merchant customer: ", createErr)
 			createErr = domain.NewSystemError("MerchantCustomersService.Create", nil, "failed to create customer")
 		}
 		return nil, createErr

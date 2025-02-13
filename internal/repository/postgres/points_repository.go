@@ -18,7 +18,7 @@ func NewPointsRepository(db *sql.DB) *PointsRepository {
 }
 
 // Create inserts a new points ledger entry into the database
-func (r *PointsRepository) Create(ctx context.Context, ledger *domain.PointsLedger) error {
+func (r *PointsRepository) Create(ctx context.Context, ledger *domain.PointsLedger) (*domain.PointsLedger, error) {
 	/*
 		The CTE (last_balance) fetches the points_balance of the last transaction
 		for the same merchant_customers_id and program_id.
@@ -56,8 +56,17 @@ func (r *PointsRepository) Create(ctx context.Context, ledger *domain.PointsLedg
 			$5,
 			CURRENT_TIMESTAMP
 		)
-		RETURNING created_at`
+		RETURNING 
+			ledger_id, 
+			merchant_customers_id, 
+			program_id, 
+			points_earned, 
+			points_redeemed, 
+			points_balance, 
+			transaction_id, 
+			created_at`
 
+	result := &domain.PointsLedger{}
 	err := r.db.QueryRowContext(
 		ctx,
 		query,
@@ -66,13 +75,22 @@ func (r *PointsRepository) Create(ctx context.Context, ledger *domain.PointsLedg
 		ledger.PointsEarned,
 		ledger.PointsRedeemed,
 		ledger.TransactionID,
-	).Scan(&ledger.CreatedAt)
+	).Scan(
+		&result.LedgerID,
+		&result.MerchantCustomersID,
+		&result.ProgramID,
+		&result.PointsEarned,
+		&result.PointsRedeemed,
+		&result.PointsBalance,
+		&result.TransactionID,
+		&result.CreatedAt,
+	)
 
 	if err != nil {
-		return domain.NewSystemError("PointsRepository.Create", err, "failed to create points ledger entry")
+		return nil, domain.NewSystemError("PointsRepository.Create", err, "failed to create points ledger entry")
 	}
 
-	return nil
+	return result, nil
 }
 
 // GetByCustomerAndProgram retrieves all points ledger entries for a given customer and program

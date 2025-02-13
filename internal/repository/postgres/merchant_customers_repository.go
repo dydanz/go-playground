@@ -3,8 +3,10 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"go-playground/internal/domain"
+	"log"
 	"time"
+
+	"go-playground/internal/domain"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
@@ -42,11 +44,14 @@ func (r *MerchantCustomersRepository) Create(ctx context.Context, customer *doma
 		if pqErr, ok := err.(*pq.Error); ok {
 			switch pqErr.Code.Name() {
 			case "unique_violation":
+				log.Println("Unique violation error: ", pqErr.Code.Name())
 				return domain.NewResourceConflictError("merchant customer", "email or phone already exists")
 			case "foreign_key_violation":
+				log.Println("Foreign key violation error: ", pqErr.Code.Name())
 				return domain.NewValidationError("merchant_id", "invalid merchant ID")
 			}
 		}
+		log.Println("Error creating merchant customer: ", err)
 		return domain.NewSystemError("MerchantCustomersRepository.Create", err, "database error")
 	}
 

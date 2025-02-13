@@ -44,7 +44,7 @@ func (h *MerchantHandler) Create(c *gin.Context) {
 	}
 	req.UserID = userID.(uuid.UUID)
 
-	merchant, err := h.merchantService.Create(&req)
+	merchant, err := h.merchantService.Create(c.Request.Context(), &req)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -70,7 +70,7 @@ func (h *MerchantHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	merchant, err := h.merchantService.GetByID(id)
+	merchant, err := h.merchantService.GetByID(c.Request.Context(), id)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -87,7 +87,7 @@ func (h *MerchantHandler) GetByID(c *gin.Context) {
 // @Failure 500 {object} util.ErrorResponse
 // @Router /merchants [get]
 func (h *MerchantHandler) GetAll(c *gin.Context) {
-	merchants, err := h.merchantService.GetAll()
+	merchants, err := h.merchantService.GetAll(c.Request.Context())
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -132,7 +132,7 @@ func (h *MerchantHandler) Update(c *gin.Context) {
 		return
 	}
 
-	merchant, err := h.merchantService.Update(id, &req)
+	merchant, err := h.merchantService.Update(c.Request.Context(), id, &req)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -164,7 +164,7 @@ func (h *MerchantHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.merchantService.Delete(id); err != nil {
+	if err := h.merchantService.Delete(c.Request.Context(), id); err != nil {
 		util.HandleError(c, err)
 		return
 	}
@@ -179,7 +179,7 @@ func (h *MerchantHandler) verifyMerchantAccess(c *gin.Context, merchantID uuid.U
 		return domain.NewAuthenticationError("user not authenticated")
 	}
 
-	merchant, err := h.merchantService.GetByID(merchantID)
+	merchant, err := h.merchantService.GetByID(c.Request.Context(), merchantID)
 	if err != nil {
 		return err
 	}
