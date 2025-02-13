@@ -1,11 +1,13 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"go-playground/internal/domain"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type MerchantRepository struct {
@@ -16,17 +18,25 @@ func NewMerchantRepository(db *sql.DB) *MerchantRepository {
 	return &MerchantRepository{db: db}
 }
 
-func (r *MerchantRepository) Create(merchant *domain.Merchant) (*domain.Merchant, error) {
+func (r *MerchantRepository) Create(ctx context.Context, merchant *domain.Merchant) (*domain.Merchant, error) {
 	query := `INSERT INTO merchants (user_id, name, type, created_at, updated_at) 
-			  VALUES ($1, $2, $3, $4, $5)`
+			  VALUES ($1, $2, $3, $4, $5)
+			  RETURNING id, user_id, name, type, created_at, updated_at`
 
-	result, err := r.db.Exec(query,
+	result := domain.Merchant{}
+	err := r.db.QueryRowContext(ctx, query,
 		merchant.UserID,
 		merchant.Name,
 		merchant.Type,
 		merchant.CreatedAt,
 		merchant.UpdatedAt,
-	)
+	).Scan(
+		&result.ID,
+		&result.UserID,
+		&result.Name,
+		&result.Type,
+		&result.CreatedAt,
+		&result.UpdatedAt)
 
 	if err != nil {
 		// Check for unique constraint violation
@@ -37,16 +47,7 @@ func (r *MerchantRepository) Create(merchant *domain.Merchant) (*domain.Merchant
 		return nil, domain.NewSystemError("MerchantRepository.Create", err, "failed to create merchant")
 	}
 
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return nil, domain.NewSystemError("MerchantRepository.Create", err, "failed to get affected rows")
-	}
-
-	if affected == 0 {
-		return nil, domain.NewSystemError("MerchantRepository.Create", nil, "no rows affected")
-	}
-
-	return merchant, nil
+	return &result, nil
 }
 
 func (r *MerchantRepository) GetByID(id uuid.UUID) (*domain.Merchant, error) {
@@ -73,11 +74,11 @@ func (r *MerchantRepository) GetByID(id uuid.UUID) (*domain.Merchant, error) {
 	return merchant, nil
 }
 
-func (r *MerchantRepository) GetByUserID(userID uuid.UUID) ([]*domain.Merchant, error) {
+func (r *MerchantRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*domain.Merchant, error) {
 	query := `SELECT id, user_id, name, type, created_at, updated_at 
 			  FROM merchants WHERE user_id = $1`
 
-	rows, err := r.db.Query(query, userID)
+	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, domain.NewSystemError("MerchantRepository.GetByUserID", err, "failed to query merchants")
 	}
@@ -107,13 +108,13 @@ func (r *MerchantRepository) GetByUserID(userID uuid.UUID) ([]*domain.Merchant, 
 	return merchants, nil
 }
 
-func (r *MerchantRepository) GetAll() ([]*domain.Merchant, error) {
+func (r *MerchantRepository) GetAll(ctx context.Context) ([]*domain.Merchant, error) {
 	query := `
 		SELECT id, user_id, merchant_name, merchant_type, created_at, updated_at
 		FROM merchants
 		ORDER BY merchant_name
 	`
-	rows, err := r.db.Query(query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +139,7 @@ func (r *MerchantRepository) GetAll() ([]*domain.Merchant, error) {
 	return merchants, nil
 }
 
-func (r *MerchantRepository) Update(merchant *domain.Merchant) error {
+func (r *MerchantRepository) Update(ctx context.Context, merchant *domain.Merchant) error {
 	query := `
 		UPDATE merchants
 		SET merchant_name = $1, merchant_type = $2, updated_at = $3
@@ -147,7 +148,8 @@ func (r *MerchantRepository) Update(merchant *domain.Merchant) error {
 	`
 	merchant.UpdatedAt = time.Now().UTC()
 
-	return r.db.QueryRow(
+	return r.db.QueryRowContext(
+		ctx,
 		query,
 		merchant.Name,
 		merchant.Type,
@@ -156,26 +158,14 @@ func (r *MerchantRepository) Update(merchant *domain.Merchant) error {
 	).Scan(&merchant.UpdatedAt)
 }
 
-func (r *MerchantRepository) Delete(id uuid.UUID) error {
-	query := `DELETE FROM merchants WHERE id = $1`
-	result, err := r.db.Exec(query, id)
-	if err != nil {
-		return err
-	}
-
-	count, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if count == 0 {
-		return sql.ErrNoRows
-	}
+func (r *MerchantRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
 // Helper function to check for PostgreSQL unique constraint violations
 func isPgUniqueViolation(err error) bool {
-	// Implement PostgreSQL specific error checking
-	// Example: check for error code 23505 (unique_violation)
-	return false // TODO: implement actual check
+	if pqErr, ok := err.(*pq.Error); ok {
+		return pqErr.Code == "23505" // PostgreSQL error code for unique_violation
+	}
+	return false
 }

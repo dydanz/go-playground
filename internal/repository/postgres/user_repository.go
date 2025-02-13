@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"go-playground/internal/domain"
 )
 
@@ -42,7 +41,10 @@ func (r *UserRepository) Create(ctx context.Context, req *domain.CreateUserReque
 	)
 
 	if err != nil {
-		return nil, err
+		if isPgUniqueViolation(err) {
+			return nil, domain.NewResourceConflictError("user", "user with this email already exists")
+		}
+		return nil, domain.NewSystemError("UserRepository.Create", err, "failed to create user")
 	}
 
 	return user, nil
@@ -67,18 +69,18 @@ func (r *UserRepository) GetByID(id string) (*domain.User, error) {
 		&user.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("user not found")
-	}
 	if err != nil {
-		return nil, err
+		if err == sql.ErrNoRows {
+			return nil, domain.NewResourceNotFoundError("user", id, "user not found")
+		}
+		return nil, domain.NewSystemError("UserRepository.GetByID", err, "failed to get user")
 	}
 
 	user.Status = domain.UserStatus(statusStr)
 	return user, nil
 }
 
-func (r *UserRepository) Update(user *domain.User) error {
+func (r *UserRepository) Update(ctx context.Context, user *domain.User) error {
 	query := `
 		UPDATE users 
 		SET name = $1, 
@@ -89,40 +91,54 @@ func (r *UserRepository) Update(user *domain.User) error {
 		RETURNING created_at, updated_at
 	`
 
-	err := r.db.QueryRow(
+	result, err := r.db.ExecContext(
+		ctx,
 		query,
 		user.Name,
 		user.Phone,
 		user.Status,
 		user.ID,
-	).Scan(
-		&user.CreatedAt,
-		&user.UpdatedAt,
 	)
 
-	return err
+	if err != nil {
+		if isPgUniqueViolation(err) {
+			return domain.NewResourceConflictError("user", "user with this email already exists")
+		}
+		return domain.NewSystemError("UserRepository.Update", err, "failed to update user")
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return domain.NewSystemError("UserRepository.Update", err, "failed to get affected rows")
+	}
+
+	if affected == 0 {
+		return domain.NewResourceNotFoundError("user", user.ID, "user not found")
+	}
+
+	return nil
 }
 
 func (r *UserRepository) Delete(id string) error {
 	query := `DELETE FROM users WHERE id = $1`
 	result, err := r.db.Exec(query, id)
 	if err != nil {
-		return err
+		return domain.NewSystemError("UserRepository.Delete", err, "failed to delete user")
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return domain.NewSystemError("UserRepository.Delete", err, "failed to get affected rows")
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("user not found")
+		return domain.NewResourceNotFoundError("user", id, "user not found")
 	}
 
 	return nil
 }
 
-func (r *UserRepository) GetByEmail(email string) (*domain.User, error) {
+func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	user := &domain.User{}
 	var statusStr string
 	query := `
@@ -130,7 +146,11 @@ func (r *UserRepository) GetByEmail(email string) (*domain.User, error) {
 		FROM users
 		WHERE email = $1
 	`
-	err := r.db.QueryRow(query, email).Scan(
+	err := r.db.QueryRowContext(
+		ctx,
+		query,
+		email,
+	).Scan(
 		&user.ID,
 		&user.Email,
 		&user.Password,
@@ -140,25 +160,25 @@ func (r *UserRepository) GetByEmail(email string) (*domain.User, error) {
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
 	if err != nil {
-		return nil, err
+		if err == sql.ErrNoRows {
+			return nil, domain.NewResourceNotFoundError("user", email, "user not found")
+		}
+		return nil, domain.NewSystemError("UserRepository.GetByEmail", err, "failed to get user")
 	}
 
 	user.Status = domain.UserStatus(statusStr)
-	return user, err
+	return user, nil
 }
 
-func (r *UserRepository) GetAll() ([]*domain.User, error) {
+func (r *UserRepository) GetAll(ctx context.Context) ([]*domain.User, error) {
 	query := `
 		SELECT id, email, password, name, phone, status, created_at, updated_at
 		FROM users
 	`
-	rows, err := r.db.Query(query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("UserRepository.GetAll", err, "failed to query users")
 	}
 	defer rows.Close()
 
@@ -177,15 +197,20 @@ func (r *UserRepository) GetAll() ([]*domain.User, error) {
 			&user.UpdatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewSystemError("UserRepository.GetAll", err, "failed to scan user")
 		}
 		user.Status = domain.UserStatus(statusStr)
 		users = append(users, user)
 	}
+
+	if err = rows.Err(); err != nil {
+		return nil, domain.NewSystemError("UserRepository.GetAll", err, "error iterating users")
+	}
+
 	return users, nil
 }
 
-func (r *UserRepository) UpdateTx(tx *sql.Tx, user *domain.User) error {
+func (r *UserRepository) UpdateTx(ctx context.Context, tx *sql.Tx, user *domain.User) error {
 	query := `
 		UPDATE users 
 		SET name = $1, 
@@ -196,21 +221,35 @@ func (r *UserRepository) UpdateTx(tx *sql.Tx, user *domain.User) error {
 		RETURNING created_at, updated_at
 	`
 
-	err := tx.QueryRow(
+	result, err := tx.ExecContext(
+		ctx,
 		query,
 		user.Name,
 		user.Phone,
 		user.Status,
 		user.ID,
-	).Scan(
-		&user.CreatedAt,
-		&user.UpdatedAt,
 	)
 
-	return err
+	if err != nil {
+		if isPgUniqueViolation(err) {
+			return domain.NewResourceConflictError("user", "user with this email already exists")
+		}
+		return domain.NewSystemError("UserRepository.UpdateTx", err, "failed to update user")
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return domain.NewSystemError("UserRepository.UpdateTx", err, "failed to get affected rows")
+	}
+
+	if affected == 0 {
+		return domain.NewResourceNotFoundError("user", user.ID, "user not found")
+	}
+
+	return nil
 }
 
-func (r *UserRepository) GetRandomActiveUser() (*domain.User, error) {
+func (r *UserRepository) GetRandomActiveUser(ctx context.Context) (*domain.User, error) {
 	user := &domain.User{}
 	var statusStr string
 	query := `
@@ -220,7 +259,11 @@ func (r *UserRepository) GetRandomActiveUser() (*domain.User, error) {
 		ORDER BY RANDOM()
 		LIMIT 1
 	`
-	err := r.db.QueryRow(query, domain.UserStatusActive).Scan(
+	err := r.db.QueryRowContext(
+		ctx,
+		query,
+		domain.UserStatusActive,
+	).Scan(
 		&user.ID,
 		&user.Email,
 		&user.Password,
@@ -231,11 +274,11 @@ func (r *UserRepository) GetRandomActiveUser() (*domain.User, error) {
 		&user.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
 	if err != nil {
-		return nil, err
+		if err == sql.ErrNoRows {
+			return nil, domain.NewResourceNotFoundError("user", "active", "no active users found")
+		}
+		return nil, domain.NewSystemError("UserRepository.GetRandomActiveUser", err, "failed to get random active user")
 	}
 
 	user.Status = domain.UserStatus(statusStr)

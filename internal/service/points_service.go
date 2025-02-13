@@ -2,17 +2,9 @@ package service
 
 import (
 	"context"
-	"errors"
-	"time"
-
 	"go-playground/internal/domain"
 
 	"github.com/google/uuid"
-)
-
-var (
-	ErrInsufficientPoints = errors.New("insufficient points balance")
-	ErrInvalidPoints      = errors.New("invalid points amount")
 )
 
 type PointsService struct {
@@ -28,13 +20,17 @@ func NewPointsService(pointsRepo domain.PointsRepository, eventRepo domain.Event
 }
 
 func (s *PointsService) RedeemPoints(ctx context.Context, req *domain.PointsTransaction) (*domain.PointsTransaction, error) {
+	if req.Points <= 0 {
+		return nil, domain.NewValidationError("points", "points must be greater than 0")
+	}
+
 	currentBalance, err := s.pointsRepo.GetCurrentBalance(ctx, uuid.MustParse(req.CustomerID), uuid.MustParse(req.ProgramID))
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("PointsService.RedeemPoints", err, "failed to get current balance")
 	}
 
 	if currentBalance < req.Points {
-		return nil, ErrInsufficientPoints
+		return nil, domain.NewBusinessLogicError("INSUFFICIENT_POINTS", "insufficient points balance")
 	}
 
 	err = s.pointsRepo.Create(ctx, &domain.PointsLedger{
@@ -47,7 +43,7 @@ func (s *PointsService) RedeemPoints(ctx context.Context, req *domain.PointsTran
 		TransactionID:       uuid.MustParse(req.TransactionID),
 	})
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("PointsService.RedeemPoints", err, "failed to create points ledger entry")
 	}
 
 	return &domain.PointsTransaction{
@@ -60,21 +56,20 @@ func (s *PointsService) RedeemPoints(ctx context.Context, req *domain.PointsTran
 }
 
 func (s *PointsService) GetLedger(ctx context.Context, customerID uuid.UUID, programID uuid.UUID) ([]*domain.PointsLedger, error) {
-
-	ledgers, err := s.pointsRepo.GetByCustomerAndProgram(context.Background(), customerID, programID)
+	ledgers, err := s.pointsRepo.GetByCustomerAndProgram(ctx, customerID, programID)
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("PointsService.GetLedger", err, "failed to get points ledger")
 	}
 	if len(ledgers) == 0 {
-		return nil, nil
+		return []*domain.PointsLedger{}, nil
 	}
 	return ledgers, nil
 }
 
 func (s *PointsService) GetBalance(ctx context.Context, customerID uuid.UUID, programID uuid.UUID) (*domain.PointsBalance, error) {
-	balance, err := s.pointsRepo.GetCurrentBalance(context.Background(), customerID, programID)
+	balance, err := s.pointsRepo.GetCurrentBalance(ctx, customerID, programID)
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("PointsService.GetBalance", err, "failed to get points balance")
 	}
 
 	return &domain.PointsBalance{
@@ -85,24 +80,27 @@ func (s *PointsService) GetBalance(ctx context.Context, customerID uuid.UUID, pr
 }
 
 func (s *PointsService) EarnPoints(ctx context.Context, req *domain.PointsTransaction) (*domain.PointsTransaction, error) {
-	customerID, err := uuid.Parse(req.CustomerID)
-	if err != nil {
-		return nil, err
+	if req.Points <= 0 {
+		return nil, domain.NewValidationError("points", "points must be greater than 0")
 	}
 
-	programID, err := uuid.Parse(req.ProgramID)
+	currentBalance, err := s.pointsRepo.GetCurrentBalance(ctx, uuid.MustParse(req.CustomerID), uuid.MustParse(req.ProgramID))
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("PointsService.EarnPoints", err, "failed to get current balance")
 	}
 
-	s.pointsRepo.Create(ctx, &domain.PointsLedger{
+	err = s.pointsRepo.Create(ctx, &domain.PointsLedger{
 		LedgerID:            uuid.New(),
-		MerchantCustomersID: customerID,
-		ProgramID:           programID,
+		MerchantCustomersID: uuid.MustParse(req.CustomerID),
+		ProgramID:           uuid.MustParse(req.ProgramID),
 		PointsEarned:        req.Points,
+		PointsRedeemed:      0,
+		PointsBalance:       currentBalance + req.Points,
 		TransactionID:       uuid.MustParse(req.TransactionID),
-		CreatedAt:           time.Now(),
 	})
+	if err != nil {
+		return nil, domain.NewSystemError("PointsService.EarnPoints", err, "failed to create points ledger entry")
+	}
 
 	return &domain.PointsTransaction{
 		TransactionID: req.TransactionID,
@@ -110,6 +108,5 @@ func (s *PointsService) EarnPoints(ctx context.Context, req *domain.PointsTransa
 		ProgramID:     req.ProgramID,
 		Points:        req.Points,
 		Type:          "earn",
-		CreatedAt:     time.Now(),
 	}, nil
 }

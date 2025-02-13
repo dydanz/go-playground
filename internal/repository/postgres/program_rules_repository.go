@@ -24,9 +24,9 @@ func (r *ProgramRuleRepository) Create(ctx context.Context, rule *domain.Program
 			program_id, rule_name, condition_type, condition_value,
 			multiplier, points_awarded, effective_from, effective_to
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		RETURNING created_at, updated_at
+		RETURNING id, created_at, updated_at
 	`
-	return r.db.RW.QueryRowContext(
+	err := r.db.RW.QueryRowContext(
 		ctx,
 		query,
 		rule.ProgramID,
@@ -37,7 +37,16 @@ func (r *ProgramRuleRepository) Create(ctx context.Context, rule *domain.Program
 		rule.PointsAwarded,
 		rule.EffectiveFrom,
 		rule.EffectiveTo,
-	).Scan(&rule.CreatedAt, &rule.UpdatedAt)
+	).Scan(&rule.ID, &rule.CreatedAt, &rule.UpdatedAt)
+
+	if err != nil {
+		if isPgUniqueViolation(err) {
+			return domain.NewResourceConflictError("program rule", "rule with this name already exists for the program")
+		}
+		return domain.NewSystemError("ProgramRuleRepository.Create", err, "failed to create program rule")
+	}
+
+	return nil
 }
 
 func (r *ProgramRuleRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.ProgramRule, error) {
@@ -62,10 +71,13 @@ func (r *ProgramRuleRepository) GetByID(ctx context.Context, id uuid.UUID) (*dom
 		&rule.CreatedAt,
 		&rule.UpdatedAt,
 	)
-	if err == sql.ErrNoRows {
-		return nil, nil
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, domain.NewResourceNotFoundError("program rule", id.String(), "program rule not found")
+		}
+		return nil, domain.NewSystemError("ProgramRuleRepository.GetByID", err, "failed to get program rule")
 	}
-	return rule, err
+	return rule, nil
 }
 
 func (r *ProgramRuleRepository) GetByProgramID(ctx context.Context, programID uuid.UUID) ([]*domain.ProgramRule, error) {
@@ -79,7 +91,7 @@ func (r *ProgramRuleRepository) GetByProgramID(ctx context.Context, programID uu
 	`
 	rows, err := r.db.RR.QueryContext(ctx, query, programID)
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("ProgramRuleRepository.GetByProgramID", err, "failed to query program rules")
 	}
 	defer rows.Close()
 
@@ -100,10 +112,15 @@ func (r *ProgramRuleRepository) GetByProgramID(ctx context.Context, programID uu
 			&rule.UpdatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewSystemError("ProgramRuleRepository.GetByProgramID", err, "failed to scan program rule")
 		}
 		rules = append(rules, rule)
 	}
+
+	if err = rows.Err(); err != nil {
+		return nil, domain.NewSystemError("ProgramRuleRepository.GetByProgramID", err, "error iterating program rules")
+	}
+
 	return rules, nil
 }
 
@@ -116,11 +133,12 @@ func (r *ProgramRuleRepository) Update(ctx context.Context, rule *domain.Program
 			multiplier = $4,
 			points_awarded = $5,
 			effective_from = $6,
-			effective_to = $7
+			effective_to = $7,
+			updated_at = CURRENT_TIMESTAMP
 		WHERE id = $8
 		RETURNING updated_at
 	`
-	return r.db.RW.QueryRowContext(
+	result, err := r.db.RW.ExecContext(
 		ctx,
 		query,
 		rule.RuleName,
@@ -131,23 +149,41 @@ func (r *ProgramRuleRepository) Update(ctx context.Context, rule *domain.Program
 		rule.EffectiveFrom,
 		rule.EffectiveTo,
 		rule.ID,
-	).Scan(&rule.UpdatedAt)
+	)
+
+	if err != nil {
+		if isPgUniqueViolation(err) {
+			return domain.NewResourceConflictError("program rule", "rule with this name already exists for the program")
+		}
+		return domain.NewSystemError("ProgramRuleRepository.Update", err, "failed to update program rule")
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return domain.NewSystemError("ProgramRuleRepository.Update", err, "failed to get affected rows")
+	}
+
+	if affected == 0 {
+		return domain.NewResourceNotFoundError("program rule", rule.ID.String(), "program rule not found")
+	}
+
+	return nil
 }
 
 func (r *ProgramRuleRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	query := `DELETE FROM program_rules WHERE id = $1`
 	result, err := r.db.RW.ExecContext(ctx, query, id)
 	if err != nil {
-		return err
+		return domain.NewSystemError("ProgramRuleRepository.Delete", err, "failed to delete program rule")
 	}
 
-	rowsAffected, err := result.RowsAffected()
+	affected, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return domain.NewSystemError("ProgramRuleRepository.Delete", err, "failed to get affected rows")
 	}
 
-	if rowsAffected == 0 {
-		return sql.ErrNoRows
+	if affected == 0 {
+		return domain.NewResourceNotFoundError("program rule", id.String(), "program rule not found")
 	}
 
 	return nil
@@ -166,7 +202,7 @@ func (r *ProgramRuleRepository) GetActiveRules(ctx context.Context, programID uu
 	`
 	rows, err := r.db.RR.QueryContext(ctx, query, programID, timestamp)
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("ProgramRuleRepository.GetActiveRules", err, "failed to query active program rules")
 	}
 	defer rows.Close()
 
@@ -187,9 +223,14 @@ func (r *ProgramRuleRepository) GetActiveRules(ctx context.Context, programID uu
 			&rule.UpdatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewSystemError("ProgramRuleRepository.GetActiveRules", err, "failed to scan program rule")
 		}
 		rules = append(rules, rule)
 	}
+
+	if err = rows.Err(); err != nil {
+		return nil, domain.NewSystemError("ProgramRuleRepository.GetActiveRules", err, "error iterating active program rules")
+	}
+
 	return rules, nil
 }

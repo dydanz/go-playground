@@ -10,13 +10,13 @@ import (
 
 type UserRepository interface {
 	Create(ctx context.Context, req *CreateUserRequest) (*User, error)
-	GetByEmail(email string) (*User, error)
-	GetByID(id string) (*User, error)
-	GetAll() ([]*User, error)
-	Update(user *User) error
-	Delete(id string) error
-	UpdateTx(tx *sql.Tx, user *User) error
-	GetRandomActiveUser() (*User, error)
+	GetByEmail(ctx context.Context, email string) (*User, error)
+	GetByID(ctx context.Context, id string) (*User, error)
+	GetAll(ctx context.Context) ([]*User, error)
+	Update(ctx context.Context, user *User) error
+	Delete(ctx context.Context, id string) error
+	UpdateTx(ctx context.Context, tx *sql.Tx, user *User) error
+	GetRandomActiveUser(ctx context.Context) (*User, error)
 }
 
 type CacheRepository interface {
@@ -57,16 +57,7 @@ type PointsRepository interface {
 	GetByCustomerAndProgram(ctx context.Context, customerID, programID uuid.UUID) ([]*PointsLedger, error)
 	GetCurrentBalance(ctx context.Context, customerID, programID uuid.UUID) (int, error)
 	GetByTransactionID(ctx context.Context, transactionID uuid.UUID) (*PointsLedger, error)
-}
-
-// TransactionRepository handles transaction operations
-type TransactionService interface {
-	Create(ctx context.Context, req *CreateTransactionRequest) (*Transaction, error)
-	GetByID(ctx context.Context, id string) (*Transaction, error)
-	GetByCustomerID(ctx context.Context, customerID string) ([]*Transaction, error)
-	GetByCustomerIDWithPagination(ctx context.Context, customerID string, offset, limit int) ([]*Transaction, int64, error)
-	GetByMerchantID(ctx context.Context, merchantID string) ([]*Transaction, error)
-	UpdateStatus(ctx context.Context, id string, status string) error
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 type TransactionRepository interface {
@@ -80,10 +71,10 @@ type TransactionRepository interface {
 
 // RewardsRepository handles rewards operations
 type RewardsRepository interface {
-	Create(reward *Reward) error
-	GetByID(id uuid.UUID) (*Reward, error)
-	Update(reward *Reward) error
-	Delete(id uuid.UUID) error
+	Create(ctx context.Context, reward *Reward) error
+	GetByID(ctx context.Context, id uuid.UUID) (*Reward, error)
+	Update(ctx context.Context, reward *Reward) error
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 // RedemptionRepository handles redemption operations
@@ -92,6 +83,15 @@ type RedemptionRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*Redemption, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*Redemption, error)
 	Update(ctx context.Context, redemption *Redemption) error
+}
+
+type ProgramRepository interface {
+	Create(ctx context.Context, program *Program) (*Program, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*Program, error)
+	GetAll(ctx context.Context) ([]*Program, error)
+	Update(ctx context.Context, program *Program) error
+	Delete(ctx context.Context, id uuid.UUID) error
+	GetByMerchantID(ctx context.Context, merchantID uuid.UUID) ([]*Program, error)
 }
 
 type ProgramRuleRepository interface {
@@ -144,15 +144,6 @@ type ProgramRulesService interface {
 	GetActiveRules(programID string) ([]*ProgramRule, error)
 }
 
-type ProgramRepository interface {
-	Create(program *Program) error
-	GetByID(id string) (*Program, error)
-	GetAll() ([]*Program, error)
-	Update(program *Program) error
-	Delete(id string) error
-	GetByMerchantID(merchantID string) ([]*Program, error)
-}
-
 type RewardsService interface {
 	Create(req *CreateRewardRequest) (*Reward, error)
 	GetByID(id string) (*Reward, error)
@@ -172,4 +163,14 @@ type EventLogRepository interface {
 	GetByID(id string) (*EventLog, error)
 	GetByUserID(userID string) ([]EventLog, error)
 	GetByReferenceID(referenceID string) (*EventLog, error)
+}
+
+// TransactionRepository handles transaction operations
+type TransactionService interface {
+	Create(ctx context.Context, req *CreateTransactionRequest) (*Transaction, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*Transaction, error)
+	GetByCustomerID(ctx context.Context, customerID uuid.UUID) ([]*Transaction, error)
+	GetByCustomerIDWithPagination(ctx context.Context, customerID uuid.UUID, offset, limit int) ([]*Transaction, int64, error)
+	GetByMerchantID(ctx context.Context, merchantID uuid.UUID) ([]*Transaction, error)
+	UpdateStatus(ctx context.Context, id string, status string) error
 }

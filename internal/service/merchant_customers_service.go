@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"go-playground/internal/domain"
 	"go-playground/internal/util"
 
@@ -19,25 +18,30 @@ func NewMerchantCustomersService(customerRepo domain.MerchantCustomersRepository
 }
 
 func (s *MerchantCustomersService) Create(ctx context.Context, req *domain.CreateMerchantCustomerRequest) (*domain.MerchantCustomer, error) {
+	var createErr error
 	decoratedFn := util.ServiceLatencyDecorator("MerchantCustomersService.Create", func() *domain.MerchantCustomer {
 		// Check if customer already exists with email or phone
 		existingByEmail, _ := s.customerRepo.GetByEmail(ctx, req.Email)
 		if existingByEmail != nil {
+			createErr = domain.NewResourceConflictError("merchant customer", "email already exists")
 			return nil
 		}
 
 		existingByPhone, _ := s.customerRepo.GetByPhone(ctx, req.Phone)
 		if existingByPhone != nil {
+			createErr = domain.NewResourceConflictError("merchant customer", "phone already exists")
 			return nil
 		}
 
 		// Hash password
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
+			createErr = domain.NewSystemError("MerchantCustomersService.Create", err, "failed to hash password")
 			return nil
 		}
 
 		customer := &domain.MerchantCustomer{
+			ID:         uuid.New(),
 			MerchantID: req.MerchantID,
 			Email:      req.Email,
 			Password:   string(hashedPassword),
@@ -46,6 +50,7 @@ func (s *MerchantCustomersService) Create(ctx context.Context, req *domain.Creat
 		}
 
 		if err := s.customerRepo.Create(ctx, customer); err != nil {
+			createErr = domain.NewSystemError("MerchantCustomersService.Create", err, "failed to create customer")
 			return nil
 		}
 
@@ -54,18 +59,24 @@ func (s *MerchantCustomersService) Create(ctx context.Context, req *domain.Creat
 
 	result := decoratedFn()
 	if result == nil {
-		return nil, domain.ResourceConflictError{
-			Resource: "merchant customer",
-			Message:  "customer already exists or data input is invalid",
+		if createErr == nil {
+			createErr = domain.NewSystemError("MerchantCustomersService.Create", nil, "failed to create customer")
 		}
+		return nil, createErr
 	}
 	return result, nil
 }
 
 func (s *MerchantCustomersService) GetByID(ctx context.Context, id uuid.UUID) (*domain.MerchantCustomer, error) {
+	var getErr error
 	decoratedFn := util.ServiceLatencyDecorator("MerchantCustomersService.GetByID", func() *domain.MerchantCustomer {
 		customer, err := s.customerRepo.GetByID(ctx, id)
 		if err != nil {
+			getErr = domain.NewSystemError("MerchantCustomersService.GetByID", err, "failed to get customer")
+			return nil
+		}
+		if customer == nil {
+			getErr = domain.NewResourceNotFoundError("merchant customer", id.String(), "customer not found")
 			return nil
 		}
 		return customer
@@ -73,18 +84,21 @@ func (s *MerchantCustomersService) GetByID(ctx context.Context, id uuid.UUID) (*
 
 	result := decoratedFn()
 	if result == nil {
-		return nil, domain.ResourceNotFoundError{
-			Resource: "merchant customer",
-			Message:  "merchant customer not found",
-		}
+		return nil, getErr
 	}
 	return result, nil
 }
 
 func (s *MerchantCustomersService) GetByEmail(ctx context.Context, email string) (*domain.MerchantCustomer, error) {
+	var getErr error
 	decoratedFn := util.ServiceLatencyDecorator("MerchantCustomersService.GetByEmail", func() *domain.MerchantCustomer {
 		customer, err := s.customerRepo.GetByEmail(ctx, email)
 		if err != nil {
+			getErr = domain.NewSystemError("MerchantCustomersService.GetByEmail", err, "failed to get customer")
+			return nil
+		}
+		if customer == nil {
+			getErr = domain.NewResourceNotFoundError("merchant customer", email, "customer not found")
 			return nil
 		}
 		return customer
@@ -92,18 +106,21 @@ func (s *MerchantCustomersService) GetByEmail(ctx context.Context, email string)
 
 	result := decoratedFn()
 	if result == nil {
-		return nil, domain.ResourceNotFoundError{
-			Resource: "merchant customer",
-			Message:  "merchant customer not found",
-		}
+		return nil, getErr
 	}
 	return result, nil
 }
 
 func (s *MerchantCustomersService) GetByPhone(ctx context.Context, phone string) (*domain.MerchantCustomer, error) {
+	var getErr error
 	decoratedFn := util.ServiceLatencyDecorator("MerchantCustomersService.GetByPhone", func() *domain.MerchantCustomer {
 		customer, err := s.customerRepo.GetByPhone(ctx, phone)
 		if err != nil {
+			getErr = domain.NewSystemError("MerchantCustomersService.GetByPhone", err, "failed to get customer")
+			return nil
+		}
+		if customer == nil {
+			getErr = domain.NewResourceNotFoundError("merchant customer", phone, "customer not found")
 			return nil
 		}
 		return customer
@@ -111,18 +128,21 @@ func (s *MerchantCustomersService) GetByPhone(ctx context.Context, phone string)
 
 	result := decoratedFn()
 	if result == nil {
-		return nil, domain.ResourceNotFoundError{
-			Resource: "merchant customer",
-			Message:  "merchant customer not found",
-		}
+		return nil, getErr
 	}
 	return result, nil
 }
 
 func (s *MerchantCustomersService) GetByMerchantID(ctx context.Context, merchantID uuid.UUID) ([]*domain.MerchantCustomer, error) {
+	var getErr error
 	decoratedFn := util.ServiceLatencyDecorator("MerchantCustomersService.GetByMerchantID", func() []*domain.MerchantCustomer {
 		customers, err := s.customerRepo.GetByMerchantID(ctx, merchantID)
 		if err != nil {
+			getErr = domain.NewSystemError("MerchantCustomersService.GetByMerchantID", err, "failed to get customers")
+			return nil
+		}
+		if len(customers) == 0 {
+			getErr = domain.NewResourceNotFoundError("merchant customers", merchantID.String(), "no customers found")
 			return nil
 		}
 		return customers
@@ -130,10 +150,7 @@ func (s *MerchantCustomersService) GetByMerchantID(ctx context.Context, merchant
 
 	result := decoratedFn()
 	if result == nil {
-		return nil, domain.ResourceNotFoundError{
-			Resource: "merchant customers",
-			Message:  "merchant customers not found",
-		}
+		return nil, getErr
 	}
 	return result, nil
 }
@@ -201,14 +218,21 @@ func (s *MerchantCustomersService) Update(ctx context.Context, id uuid.UUID, req
 }
 
 func (s *MerchantCustomersService) ValidateCredentials(ctx context.Context, email, password string) (*domain.MerchantCustomer, error) {
+	var authErr error
 	decoratedFn := util.ServiceLatencyDecorator("MerchantCustomersService.ValidateCredentials", func() *domain.MerchantCustomer {
 		customer, err := s.customerRepo.GetByEmail(ctx, email)
 		if err != nil {
+			authErr = domain.NewSystemError("MerchantCustomersService.ValidateCredentials", err, "failed to get customer")
+			return nil
+		}
+		if customer == nil {
+			authErr = domain.NewAuthenticationError("invalid credentials")
 			return nil
 		}
 
 		err = bcrypt.CompareHashAndPassword([]byte(customer.Password), []byte(password))
 		if err != nil {
+			authErr = domain.NewAuthenticationError("invalid credentials")
 			return nil
 		}
 
@@ -217,7 +241,7 @@ func (s *MerchantCustomersService) ValidateCredentials(ctx context.Context, emai
 
 	result := decoratedFn()
 	if result == nil {
-		return nil, errors.New("invalid credentials")
+		return nil, authErr
 	}
 	return result, nil
 }
