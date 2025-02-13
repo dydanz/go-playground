@@ -1,7 +1,7 @@
 package service
 
 import (
-	"errors"
+	"context"
 	"go-playground/internal/domain"
 	"time"
 
@@ -18,9 +18,12 @@ func NewRewardsService(rewardsRepo domain.RewardsRepository) *RewardsService {
 	}
 }
 
-func (s *RewardsService) Create(req *domain.CreateRewardRequest) (*domain.Reward, error) {
+func (s *RewardsService) Create(ctx context.Context, req *domain.CreateRewardRequest) (*domain.Reward, error) {
+	if req.Name == "" {
+		return nil, domain.NewValidationError("name", "reward name is required")
+	}
 	if req.PointsRequired <= 0 {
-		return nil, errors.New("points required must be greater than 0")
+		return nil, domain.NewValidationError("points_required", "points required must be greater than 0")
 	}
 
 	reward := &domain.Reward{
@@ -34,21 +37,32 @@ func (s *RewardsService) Create(req *domain.CreateRewardRequest) (*domain.Reward
 		UpdatedAt:      time.Now(),
 	}
 
-	if err := s.rewardsRepo.Create(reward); err != nil {
-		return nil, err
+	result, err := s.rewardsRepo.Create(ctx, reward)
+	if err != nil {
+		return nil, domain.NewSystemError("RewardsService.Create", err, "failed to create reward")
 	}
 
+	return result, nil
+}
+
+func (s *RewardsService) GetByID(ctx context.Context, id string) (*domain.Reward, error) {
+	reward, err := s.rewardsRepo.GetByID(ctx, uuid.MustParse(id))
+	if err != nil {
+		return nil, domain.NewSystemError("RewardsService.GetByID", err, "failed to get reward")
+	}
+	if reward == nil {
+		return nil, domain.NewResourceNotFoundError("reward", id, "reward not found")
+	}
 	return reward, nil
 }
 
-func (s *RewardsService) GetByID(id string) (*domain.Reward, error) {
-	return s.rewardsRepo.GetByID(uuid.MustParse(id))
-}
-
-func (s *RewardsService) Update(id string, req *domain.UpdateRewardRequest) (*domain.Reward, error) {
-	reward, err := s.rewardsRepo.GetByID(uuid.MustParse(id))
+func (s *RewardsService) Update(ctx context.Context, id string, req *domain.UpdateRewardRequest) (*domain.Reward, error) {
+	reward, err := s.rewardsRepo.GetByID(ctx, uuid.MustParse(id))
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("RewardsService.Update", err, "failed to get reward")
+	}
+	if reward == nil {
+		return nil, domain.NewResourceNotFoundError("reward", id, "reward not found")
 	}
 
 	if req.Name != "" {
@@ -59,7 +73,7 @@ func (s *RewardsService) Update(id string, req *domain.UpdateRewardRequest) (*do
 	}
 	if req.PointsRequired != nil {
 		if *req.PointsRequired <= 0 {
-			return nil, errors.New("points required must be greater than 0")
+			return nil, domain.NewValidationError("points_required", "points required must be greater than 0")
 		}
 		reward.PointsRequired = *req.PointsRequired
 	}
@@ -71,23 +85,40 @@ func (s *RewardsService) Update(id string, req *domain.UpdateRewardRequest) (*do
 	}
 	reward.UpdatedAt = time.Now()
 
-	if err := s.rewardsRepo.Update(reward); err != nil {
+	result, err := s.rewardsRepo.Update(ctx, reward)
+	if err != nil {
+		return nil, domain.NewSystemError("RewardsService.Update", err, "failed to update reward")
+	}
+
+	return result, nil
+}
+
+func (s *RewardsService) Delete(ctx context.Context, id string) error {
+	reward, err := s.rewardsRepo.GetByID(ctx, uuid.MustParse(id))
+	if err != nil {
+		return domain.NewSystemError("RewardsService.Delete", err, "failed to get reward")
+	}
+	if reward == nil {
+		return domain.NewResourceNotFoundError("reward", id, "reward not found")
+	}
+
+	if err := s.rewardsRepo.Delete(ctx, uuid.MustParse(id)); err != nil {
+		return domain.NewSystemError("RewardsService.Delete", err, "failed to delete reward")
+	}
+	return nil
+}
+
+func (s *RewardsService) UpdateAvailability(ctx context.Context, id string, available bool) (*domain.Reward, error) {
+	reward, err := s.rewardsRepo.GetByID(ctx, uuid.MustParse(id))
+	if err != nil {
 		return nil, err
 	}
 
-	return reward, nil
-}
-
-func (s *RewardsService) Delete(id string) error {
-	return s.rewardsRepo.Delete(uuid.MustParse(id))
-}
-
-func (s *RewardsService) UpdateAvailability(id string, available bool) error {
-	reward, err := s.rewardsRepo.GetByID(uuid.MustParse(id))
+	reward.IsActive = available
+	result, err := s.rewardsRepo.Update(ctx, reward)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	reward.IsActive = available
-	return s.rewardsRepo.Update(reward)
+	return result, nil
 }

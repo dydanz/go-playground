@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"errors"
+	"log"
 
 	"go-playground/internal/domain"
 
@@ -33,51 +33,53 @@ func NewTransactionService(
 func (s *TransactionService) getMerchantIDByCustomerID(ctx context.Context, customerID uuid.UUID) (uuid.UUID, error) {
 	customer, err := s.merchantCustomerRepo.GetByID(ctx, customerID)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, domain.NewSystemError("TransactionService.getMerchantIDByCustomerID", err, "failed to get merchant customer")
 	}
 	if customer == nil {
-		return uuid.Nil, errors.New("merchant customer not found")
+		return uuid.Nil, domain.NewResourceNotFoundError("merchant customer", customerID.String(), "customer not found")
 	}
 	return customer.MerchantID, nil
 }
 
 func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTransactionRequest) (*domain.Transaction, error) {
-
-	if req.MerchantID == uuid.Nil {
-		// Get merchant ID from customer ID
-		merchantID, err := s.getMerchantIDByCustomerID(ctx, req.MerchantCustomersID)
-		if err != nil {
-			return nil, err
-		}
-		req.MerchantID = merchantID
+	if req.TransactionAmount <= 0 {
+		log.Println("TransactionService: Transaction amount must be greater than 0")
+		return nil, domain.NewValidationError("transaction_amount", "transaction amount must be greater than 0")
 	}
 
-	tx := &domain.Transaction{
-		MerchantID:          req.MerchantID,
+	// Get merchant ID from customer ID
+	merchantID, err := s.getMerchantIDByCustomerID(ctx, req.MerchantCustomersID)
+	if err != nil {
+		log.Println("TransactionService: Error getting merchant ID: ", err)
+		return nil, err
+	}
+
+	transaction := &domain.Transaction{
+		TransactionID:       uuid.New(),
 		MerchantCustomersID: req.MerchantCustomersID,
+		MerchantID:          merchantID,
 		ProgramID:           req.ProgramID,
-		BranchID:            req.BranchID,
 		TransactionType:     req.TransactionType,
 		TransactionAmount:   req.TransactionAmount,
-		Status:              "pending",
 	}
 
-	createdTx, err := s.transactionRepo.Create(ctx, tx)
+	createdTx, err := s.transactionRepo.Create(ctx, transaction)
 	if err != nil {
-		return nil, err
+		log.Println("TransactionService: Error creating transaction: ", err)
+		return nil, domain.NewSystemError("TransactionService.Create", err, "failed to create transaction")
 	}
 
 	// Calculate points based on transaction amount and type
 	var points int
-	switch tx.TransactionType {
+	switch transaction.TransactionType {
 	case "purchase":
-		points = int(tx.TransactionAmount) // Example: 1 point per currency unit
+		points = int(transaction.TransactionAmount) // Example: 1 point per currency unit
 	case "refund":
-		points = -int(tx.TransactionAmount)
+		points = -int(transaction.TransactionAmount)
 	case "bonus":
-		points = int(tx.TransactionAmount * 2) // Example: Double points for bonus
+		points = int(transaction.TransactionAmount * 2) // Example: Double points for bonus
 	case "redemption":
-		points = int(tx.TransactionAmount * -1)
+		points = int(transaction.TransactionAmount * -1)
 	}
 
 	// TODO: Check if the transaction is valid for the program, branch/merchant
@@ -85,29 +87,41 @@ func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTrans
 	// TODO: Check if the customer has enough points to redeem
 	// TODO: Update points balance if applicable
 
-	if points != 0 {
+	if points > 0 {
 		if _, err := s.pointsService.EarnPoints(ctx, &domain.PointsTransaction{
-			CustomerID:    tx.MerchantCustomersID.String(),
-			ProgramID:     tx.ProgramID.String(),
+			CustomerID:    transaction.MerchantCustomersID.String(),
+			ProgramID:     transaction.ProgramID.String(),
 			Points:        points,
 			TransactionID: createdTx.TransactionID.String(),
 		}); err != nil {
+			log.Println("TransactionService: Error earning points: ", err)
+			return nil, err
+		}
+	} else if points < 0 {
+		if _, err := s.pointsService.RedeemPoints(ctx, &domain.PointsTransaction{
+			CustomerID:    transaction.MerchantCustomersID.String(),
+			ProgramID:     transaction.ProgramID.String(),
+			Points:        points,
+			TransactionID: createdTx.TransactionID.String(),
+		}); err != nil {
+			log.Println("TransactionService: Error redeeming points: ", err)
 			return nil, err
 		}
 	}
 
-	// Log the transaction event, make async
+	// Log the transaction event
 	event := &domain.EventLog{
 		EventType:   string(domain.TransactionCreated),
 		ActorID:     req.MerchantCustomersID.String(),
 		ActorType:   string(domain.MerchantUserActorType),
 		ReferenceID: func() *string { s := createdTx.TransactionID.String(); return &s }(),
 		Details: map[string]interface{}{
-			"merchant_id":        tx.MerchantID,
-			"transaction_type":   tx.TransactionType,
-			"transaction_amount": tx.TransactionAmount,
+			"transaction_id":     createdTx.TransactionID,
+			"merchant_id":        merchantID,
+			"program_id":         req.ProgramID,
+			"transaction_type":   req.TransactionType,
+			"transaction_amount": req.TransactionAmount,
 			"points_earned":      points,
-			"branch_id":          tx.BranchID,
 		},
 	}
 
@@ -116,37 +130,41 @@ func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTrans
 	return createdTx, nil
 }
 
-func (s *TransactionService) GetByID(ctx context.Context, id string) (*domain.Transaction, error) {
-	txID, err := uuid.Parse(id)
+func (s *TransactionService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Transaction, error) {
+	transaction, err := s.transactionRepo.GetByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("TransactionService.GetByID", err, "failed to get transaction")
 	}
-	return s.transactionRepo.GetByID(ctx, txID)
+	if transaction == nil {
+		return nil, domain.NewResourceNotFoundError("transaction", id.String(), "transaction not found")
+	}
+	return transaction, nil
 }
 
-func (s *TransactionService) GetByCustomerID(ctx context.Context, customerID string) ([]*domain.Transaction, error) {
-	custID, err := uuid.Parse(customerID)
+func (s *TransactionService) GetByCustomerID(ctx context.Context, customerID uuid.UUID) ([]*domain.Transaction, error) {
+	transactions, err := s.transactionRepo.GetByCustomerID(ctx, customerID)
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("TransactionService.GetByCustomerID", err, "failed to get transactions")
 	}
-	txs, _, err := s.transactionRepo.GetByCustomerIDWithPagination(ctx, custID, 0, -1)
-	return txs, err
+	if len(transactions) == 0 {
+		return []*domain.Transaction{}, nil
+	}
+	return transactions, nil
 }
 
-func (s *TransactionService) GetByCustomerIDWithPagination(ctx context.Context, customerID string, offset, limit int) ([]*domain.Transaction, int64, error) {
-	custID, err := uuid.Parse(customerID)
-	if err != nil {
-		return nil, 0, err
-	}
-	return s.transactionRepo.GetByCustomerIDWithPagination(ctx, custID, offset, limit)
+func (s *TransactionService) GetByCustomerIDWithPagination(ctx context.Context, customerID uuid.UUID, offset, limit int) ([]*domain.Transaction, int64, error) {
+	return s.transactionRepo.GetByCustomerIDWithPagination(ctx, customerID, offset, limit)
 }
 
-func (s *TransactionService) GetByMerchantID(ctx context.Context, merchantID string) ([]*domain.Transaction, error) {
-	merchID, err := uuid.Parse(merchantID)
+func (s *TransactionService) GetByMerchantID(ctx context.Context, merchantID uuid.UUID) ([]*domain.Transaction, error) {
+	transactions, err := s.transactionRepo.GetByMerchantID(ctx, merchantID)
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("TransactionService.GetByMerchantID", err, "failed to get transactions")
 	}
-	return s.transactionRepo.GetByMerchantID(ctx, merchID)
+	if len(transactions) == 0 {
+		return []*domain.Transaction{}, nil
+	}
+	return transactions, nil
 }
 
 func (s *TransactionService) UpdateStatus(ctx context.Context, id string, status string) error {

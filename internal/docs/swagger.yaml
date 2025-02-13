@@ -193,13 +193,13 @@ definitions:
     type: object
   domain.MerchantCustomer:
     properties:
-      createdAt:
+      created_at:
         type: string
       email:
         type: string
       id:
         type: string
-      merchantID:
+      merchant_id:
         type: string
       name:
         type: string
@@ -207,7 +207,7 @@ definitions:
         type: string
       phone:
         type: string
-      updatedAt:
+      updated_at:
         type: string
     type: object
   domain.MerchantType:
@@ -487,6 +487,16 @@ definitions:
     - email
     - otp
     type: object
+  util.ErrorResponse:
+    properties:
+      code:
+        type: string
+      details: {}
+      message:
+        type: string
+      status:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -740,45 +750,6 @@ paths:
       tags:
       - merchant-customers
   /merchant-customers/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete a merchant customer
-      parameters:
-      - description: Customer ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      - UserIdAuth: []
-      summary: Delete merchant customer
-      tags:
-      - merchant-customers
     get:
       consumes:
       - application/json
@@ -960,6 +931,10 @@ paths:
             items:
               $ref: '#/definitions/domain.Merchant'
             type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
       summary: Get all merchants
       tags:
       - merchants
@@ -984,9 +959,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/util.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
       summary: Create merchant
       tags:
       - merchants
@@ -1004,12 +989,18 @@ paths:
       responses:
         "204":
           description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/util.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
       summary: Delete merchant
       tags:
       - merchants
@@ -1028,12 +1019,18 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/domain.Merchant'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/util.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
       summary: Get merchant by ID
       tags:
       - merchants
@@ -1060,12 +1057,18 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/domain.Merchant'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/util.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
       summary: Update merchant
       tags:
       - merchants

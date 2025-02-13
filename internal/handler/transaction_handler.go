@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type TransactionHandler struct {
@@ -68,7 +69,7 @@ func (h *TransactionHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	transaction, err := h.transactionService.GetByID(c.Request.Context(), id)
+	transaction, err := h.transactionService.GetByID(c.Request.Context(), uuid.MustParse(id))
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -119,7 +120,7 @@ func (h *TransactionHandler) GetByCustomerID(c *gin.Context) {
 	// Calculate offset
 	offset := (page - 1) * limit
 
-	transactions, total, err := h.transactionService.GetByCustomerIDWithPagination(c.Request.Context(), customerID, offset, limit)
+	transactions, total, err := h.transactionService.GetByCustomerIDWithPagination(c.Request.Context(), uuid.MustParse(customerID), offset, limit)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -165,7 +166,7 @@ func (h *TransactionHandler) GetByMerchantID(c *gin.Context) {
 		return
 	}
 
-	transactions, err := h.transactionService.GetByMerchantID(c.Request.Context(), merchantID)
+	transactions, err := h.transactionService.GetByMerchantID(c.Request.Context(), uuid.MustParse(merchantID))
 	if err != nil {
 		util.HandleError(c, err)
 		return

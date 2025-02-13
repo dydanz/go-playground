@@ -1,5 +1,18 @@
 DROP TABLE IF EXISTS points_balance; 
 
+CREATE TYPE point_tx_type AS ENUM (
+    'point_multiplier',
+    'point_bonus',
+    'point_expiration',
+    'point_transfer',
+    'point_conversion',
+    'point_redemption',
+    'point_expiration',
+    'point_transfer',
+    'point_conversion',
+    'point_redemption'
+);
+
 CREATE TABLE IF NOT EXISTS points_ledger (
     ledger_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     merchant_customers_id UUID NOT NULL REFERENCES merchant_customers(id),

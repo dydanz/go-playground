@@ -3,12 +3,13 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"go-playground/internal/domain"
 	"log"
 	"time"
 
+	"go-playground/internal/domain"
+
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type MerchantCustomersRepository struct {
@@ -22,23 +23,36 @@ func NewMerchantCustomersRepository(db *sql.DB) *MerchantCustomersRepository {
 // Create inserts a new merchant customer into the database
 func (r *MerchantCustomersRepository) Create(ctx context.Context, customer *domain.MerchantCustomer) error {
 	query := `
-		INSERT INTO merchant_customers (merchant_id, email, password, name, phone, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-		RETURNING id`
+		INSERT INTO merchant_customers (id, merchant_id, email, password, name, phone, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	`
 
-	log.Println("Creating merchant customer:", customer)
+	now := time.Now().UTC()
+	customer.CreatedAt = now
+	customer.UpdatedAt = now
 
-	err := r.db.QueryRowContext(ctx, query,
+	_, err := r.db.ExecContext(ctx, query,
+		customer.ID,
 		customer.MerchantID,
 		customer.Email,
 		customer.Password,
 		customer.Name,
 		customer.Phone,
-	).Scan(&customer.ID)
+	)
 
 	if err != nil {
-		log.Println("error creating merchant customer", err)
-		return err
+		if pqErr, ok := err.(*pq.Error); ok {
+			switch pqErr.Code.Name() {
+			case "unique_violation":
+				log.Println("Unique violation error: ", pqErr.Code.Name())
+				return domain.NewResourceConflictError("merchant customer", "email or phone already exists")
+			case "foreign_key_violation":
+				log.Println("Foreign key violation error: ", pqErr.Code.Name())
+				return domain.NewValidationError("merchant_id", "invalid merchant ID")
+			}
+		}
+		log.Println("Error creating merchant customer: ", err)
+		return domain.NewSystemError("MerchantCustomersRepository.Create", err, "database error")
 	}
 
 	return nil
@@ -49,9 +63,8 @@ func (r *MerchantCustomersRepository) GetByID(ctx context.Context, id uuid.UUID)
 	query := `
 		SELECT id, merchant_id, email, password, name, phone, created_at, updated_at
 		FROM merchant_customers
-		WHERE id = $1`
-
-	log.Println("Getting merchant customer by id:", id)
+		WHERE id = $1
+	`
 
 	customer := &domain.MerchantCustomer{}
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
@@ -65,13 +78,11 @@ func (r *MerchantCustomersRepository) GetByID(ctx context.Context, id uuid.UUID)
 		&customer.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
-		log.Println("error getting merchant customer by id", err)
-		return nil, errors.New("merchant customer not found")
-	}
 	if err != nil {
-		log.Println("error getting merchant customer by id", err)
-		return nil, err
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, domain.NewSystemError("MerchantCustomersRepository.GetByID", err, "database error")
 	}
 
 	return customer, nil
@@ -82,7 +93,8 @@ func (r *MerchantCustomersRepository) GetByEmail(ctx context.Context, email stri
 	query := `
 		SELECT id, merchant_id, email, password, name, phone, created_at, updated_at
 		FROM merchant_customers
-		WHERE email = $1`
+		WHERE email = $1
+	`
 
 	customer := &domain.MerchantCustomer{}
 	err := r.db.QueryRowContext(ctx, query, email).Scan(
@@ -96,13 +108,11 @@ func (r *MerchantCustomersRepository) GetByEmail(ctx context.Context, email stri
 		&customer.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
-		log.Println("error getting merchant customer by email", err)
-		return nil, errors.New("merchant customer not found")
-	}
 	if err != nil {
-		log.Println("error getting merchant customer by email", err)
-		return nil, err
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, domain.NewSystemError("MerchantCustomersRepository.GetByEmail", err, "database error")
 	}
 
 	return customer, nil
@@ -113,7 +123,8 @@ func (r *MerchantCustomersRepository) GetByPhone(ctx context.Context, phone stri
 	query := `
 		SELECT id, merchant_id, email, password, name, phone, created_at, updated_at
 		FROM merchant_customers
-		WHERE phone = $1`
+		WHERE phone = $1
+	`
 
 	customer := &domain.MerchantCustomer{}
 	err := r.db.QueryRowContext(ctx, query, phone).Scan(
@@ -127,13 +138,11 @@ func (r *MerchantCustomersRepository) GetByPhone(ctx context.Context, phone stri
 		&customer.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
-		log.Println("error getting merchant customer by phone", err)
-		return nil, errors.New("merchant customer not found")
-	}
 	if err != nil {
-		log.Println("error getting merchant customer by phone", err)
-		return nil, err
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, domain.NewSystemError("MerchantCustomersRepository.GetByPhone", err, "database error")
 	}
 
 	return customer, nil
@@ -144,11 +153,12 @@ func (r *MerchantCustomersRepository) GetByMerchantID(ctx context.Context, merch
 	query := `
 		SELECT id, merchant_id, email, password, name, phone, created_at, updated_at
 		FROM merchant_customers
-		WHERE merchant_id = $1`
+		WHERE merchant_id = $1
+	`
 
 	rows, err := r.db.QueryContext(ctx, query, merchantID)
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("MerchantCustomersRepository.GetByMerchantID", err, "database error")
 	}
 	defer rows.Close()
 
@@ -166,15 +176,13 @@ func (r *MerchantCustomersRepository) GetByMerchantID(ctx context.Context, merch
 			&customer.UpdatedAt,
 		)
 		if err != nil {
-			log.Println("error getting merchant customer by merchant id", err)
-			return nil, err
+			return nil, domain.NewSystemError("MerchantCustomersRepository.GetByMerchantID", err, "error scanning row")
 		}
 		customers = append(customers, customer)
 	}
 
 	if err = rows.Err(); err != nil {
-		log.Println("error getting merchant customer by merchant id", err)
-		return nil, err
+		return nil, domain.NewSystemError("MerchantCustomersRepository.GetByMerchantID", err, "error iterating rows")
 	}
 
 	return customers, nil
@@ -184,49 +192,35 @@ func (r *MerchantCustomersRepository) GetByMerchantID(ctx context.Context, merch
 func (r *MerchantCustomersRepository) Update(ctx context.Context, customer *domain.MerchantCustomer) error {
 	query := `
 		UPDATE merchant_customers
-		SET merchant_id = $1, email = $2, password = $3, name = $4, phone = $5, updated_at = $6
-		WHERE id = $7
-		RETURNING updated_at`
+		SET email = $1, password = $2, name = $3, phone = $4, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $5
+	`
 
-	customer.UpdatedAt = time.Now().UTC()
-
-	err := r.db.QueryRowContext(ctx, query,
-		customer.MerchantID,
+	result, err := r.db.ExecContext(ctx, query,
 		customer.Email,
 		customer.Password,
 		customer.Name,
 		customer.Phone,
-		customer.UpdatedAt,
 		customer.ID,
-	).Scan(&customer.UpdatedAt)
+	)
 
-	if err == sql.ErrNoRows {
-		log.Println("error updating merchant customer", err)
-		return errors.New("merchant customer not found")
-	}
 	if err != nil {
-		return err
+		if pqErr, ok := err.(*pq.Error); ok {
+			switch pqErr.Code.Name() {
+			case "unique_violation":
+				return domain.NewResourceConflictError("merchant customer", "email or phone already exists")
+			}
+		}
+		return domain.NewSystemError("MerchantCustomersRepository.Update", err, "database error")
 	}
 
-	return nil
-}
-
-// Delete removes a merchant customer from the database
-func (r *MerchantCustomersRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	query := `DELETE FROM merchant_customers WHERE id = $1`
-
-	result, err := r.db.ExecContext(ctx, query, id)
+	rows, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return domain.NewSystemError("MerchantCustomersRepository.Update", err, "error getting affected rows")
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if rowsAffected == 0 {
-		return errors.New("merchant customer not found")
+	if rows == 0 {
+		return domain.NewResourceNotFoundError("merchant customer", customer.ID.String(), "customer not found")
 	}
 
 	return nil

@@ -38,7 +38,10 @@ func (r *RedemptionRepository) Create(ctx context.Context, redemption *domain.Re
 		&redemption.UpdatedAt,
 	)
 	if err != nil {
-		return nil, err
+		if isPgUniqueViolation(err) {
+			return nil, domain.NewResourceConflictError("redemption", "duplicate redemption record")
+		}
+		return nil, domain.NewSystemError("RedemptionRepository.Create", err, "failed to create redemption")
 	}
 	return []*domain.Redemption{redemption}, nil
 }
@@ -53,9 +56,10 @@ func (r *RedemptionRepository) GetByUserID(ctx context.Context, userID uuid.UUID
 	`
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("RedemptionRepository.GetByUserID", err, "failed to query redemptions")
 	}
 	defer rows.Close()
+
 	redemptions := []*domain.Redemption{}
 	for rows.Next() {
 		redemption := &domain.Redemption{}
@@ -70,10 +74,15 @@ func (r *RedemptionRepository) GetByUserID(ctx context.Context, userID uuid.UUID
 			&redemption.UpdatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewSystemError("RedemptionRepository.GetByUserID", err, "failed to scan redemption")
 		}
 		redemptions = append(redemptions, redemption)
 	}
+
+	if err = rows.Err(); err != nil {
+		return nil, domain.NewSystemError("RedemptionRepository.GetByUserID", err, "error iterating redemptions")
+	}
+
 	return redemptions, nil
 }
 
@@ -95,10 +104,13 @@ func (r *RedemptionRepository) GetByID(ctx context.Context, id uuid.UUID) (*doma
 		&redemption.CreatedAt,
 		&redemption.UpdatedAt,
 	)
-	if err == sql.ErrNoRows {
-		return nil, nil
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, domain.NewResourceNotFoundError("redemption", id.String(), "redemption not found")
+		}
+		return nil, domain.NewSystemError("RedemptionRepository.GetByID", err, "failed to get redemption")
 	}
-	return redemption, err
+	return redemption, nil
 }
 
 func (r *RedemptionRepository) GetByMerchantCustomerID(ctx context.Context, merchantCustomersID uuid.UUID) ([]*domain.Redemption, error) {
@@ -111,7 +123,7 @@ func (r *RedemptionRepository) GetByMerchantCustomerID(ctx context.Context, merc
 	`
 	rows, err := r.db.QueryContext(ctx, query, merchantCustomersID)
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("RedemptionRepository.GetByMerchantCustomerID", err, "failed to query redemptions")
 	}
 	defer rows.Close()
 
@@ -129,10 +141,15 @@ func (r *RedemptionRepository) GetByMerchantCustomerID(ctx context.Context, merc
 			&redemption.UpdatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewSystemError("RedemptionRepository.GetByMerchantCustomerID", err, "failed to scan redemption")
 		}
 		redemptions = append(redemptions, redemption)
 	}
+
+	if err = rows.Err(); err != nil {
+		return nil, domain.NewSystemError("RedemptionRepository.GetByMerchantCustomerID", err, "error iterating redemptions")
+	}
+
 	return redemptions, nil
 }
 
@@ -143,8 +160,21 @@ func (r *RedemptionRepository) Update(ctx context.Context, redemption *domain.Re
 		WHERE id = $2
 		RETURNING updated_at
 	`
-	return r.db.QueryRowContext(ctx, query, redemption.Status, redemption.ID).
-		Scan(&redemption.UpdatedAt)
+	result, err := r.db.ExecContext(ctx, query, redemption.Status, redemption.ID)
+	if err != nil {
+		return domain.NewSystemError("RedemptionRepository.Update", err, "failed to update redemption")
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return domain.NewSystemError("RedemptionRepository.Update", err, "failed to get affected rows")
+	}
+
+	if affected == 0 {
+		return domain.NewResourceNotFoundError("redemption", redemption.ID.String(), "redemption not found")
+	}
+
+	return nil
 }
 
 func (r *RedemptionRepository) GetByRewardID(ctx context.Context, rewardID uuid.UUID) ([]*domain.Redemption, error) {
@@ -157,7 +187,7 @@ func (r *RedemptionRepository) GetByRewardID(ctx context.Context, rewardID uuid.
 	`
 	rows, err := r.db.QueryContext(ctx, query, rewardID)
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("RedemptionRepository.GetByRewardID", err, "failed to query redemptions")
 	}
 	defer rows.Close()
 
@@ -175,9 +205,14 @@ func (r *RedemptionRepository) GetByRewardID(ctx context.Context, rewardID uuid.
 			&redemption.UpdatedAt,
 		)
 		if err != nil {
-			return nil, err
+			return nil, domain.NewSystemError("RedemptionRepository.GetByRewardID", err, "failed to scan redemption")
 		}
 		redemptions = append(redemptions, redemption)
 	}
+
+	if err = rows.Err(); err != nil {
+		return nil, domain.NewSystemError("RedemptionRepository.GetByRewardID", err, "error iterating redemptions")
+	}
+
 	return redemptions, nil
 }

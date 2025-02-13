@@ -1,11 +1,12 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
-	"fmt"
 	"go-playground/internal/config"
 	"go-playground/internal/domain"
 	"log"
+	"time"
 )
 
 type AuthRepository struct {
@@ -14,44 +15,51 @@ type AuthRepository struct {
 }
 
 func NewAuthRepository(db *sql.DB, config *config.AuthConfig) *AuthRepository {
-	repo := &AuthRepository{
-		db:     db,
-		config: config,
-	}
-
-	return repo
+	return &AuthRepository{db: db, config: config}
 }
 
-func (r *AuthRepository) CreateVerification(verification *domain.RegistrationVerification) error {
+func (r *AuthRepository) CreateVerification(ctx context.Context, verification *domain.RegistrationVerification) error {
 	query := `
 		INSERT INTO registration_verifications (user_id, otp, expires_at)
 		VALUES ($1, $2, $3)
-		RETURNING id
+		RETURNING id, created_at
 	`
-	return r.db.QueryRow(
+	err := r.db.QueryRowContext(
+		ctx,
 		query,
 		verification.UserID,
 		verification.OTP,
 		verification.ExpiresAt,
-	).Scan(&verification.ID)
+	).Scan(&verification.ID, &verification.CreatedAt)
+
+	if err != nil {
+		if isPgUniqueViolation(err) {
+			return domain.NewResourceConflictError("verification", "verification already exists for this user")
+		}
+		return domain.NewSystemError("AuthRepository.CreateVerification", err, "failed to create verification")
+	}
+
+	return nil
 }
 
-func (r *AuthRepository) GetVerification(userID, otp string) (*domain.RegistrationVerification, error) {
+func (r *AuthRepository) GetVerification(ctx context.Context, userID, otp string) (*domain.RegistrationVerification, error) {
 	verification := &domain.RegistrationVerification{}
 	var usedAt sql.NullTime
 
-	// Get the verification record
 	query := `
 		SELECT id, user_id, otp, expires_at, created_at, used_at
 		FROM registration_verifications
-			WHERE user_id = $1 
-			AND otp = $2 
-			AND expires_at > NOW()
-			ORDER BY created_at DESC
-			LIMIT 1
+		WHERE user_id = $1 AND otp = $2
+		ORDER BY created_at DESC
+		LIMIT 1
 	`
 
-	err := r.db.QueryRow(query, userID, otp).Scan(
+	err := r.db.QueryRowContext(
+		ctx,
+		query,
+		userID,
+		otp,
+	).Scan(
 		&verification.ID,
 		&verification.UserID,
 		&verification.OTP,
@@ -60,19 +68,13 @@ func (r *AuthRepository) GetVerification(userID, otp string) (*domain.Registrati
 		&usedAt,
 	)
 
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("invalid or expired OTP")
-	}
 	if err != nil {
-		return nil, err
+		if err == sql.ErrNoRows {
+			return nil, domain.NewResourceNotFoundError("verification", userID, "verification not found")
+		}
+		return nil, domain.NewSystemError("AuthRepository.GetVerification", err, "failed to get verification")
 	}
 
-	// Check if OTP is already used
-	if usedAt.Valid {
-		return nil, fmt.Errorf("OTP already used")
-	}
-
-	// Set the used_at field if valid
 	if usedAt.Valid {
 		verification.UsedAt = usedAt.Time
 	}
@@ -80,43 +82,72 @@ func (r *AuthRepository) GetVerification(userID, otp string) (*domain.Registrati
 	return verification, nil
 }
 
-func (r *AuthRepository) MarkVerificationUsed(id string) error {
+func (r *AuthRepository) MarkVerificationUsed(ctx context.Context, id string) error {
 	query := `
-			UPDATE registration_verifications
-			SET used_at = NOW()
-			WHERE id = $1
+		UPDATE registration_verifications
+		SET used_at = CURRENT_TIMESTAMP
+		WHERE id = $1 AND used_at IS NULL
 	`
-	_, err := r.db.Exec(query, id)
-	return err
+	result, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return domain.NewSystemError("AuthRepository.MarkVerificationUsed", err, "failed to mark verification as used")
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return domain.NewSystemError("AuthRepository.MarkVerificationUsed", err, "failed to get affected rows")
+	}
+
+	if affected == 0 {
+		return domain.NewResourceNotFoundError("verification", id, "verification not found or already used")
+	}
+
+	return nil
 }
 
-func (r *AuthRepository) CreateToken(token *domain.AuthToken) error {
+func (r *AuthRepository) CreateToken(ctx context.Context, token *domain.AuthToken) error {
 	query := `
 		INSERT INTO auth_tokens (user_id, token_hash, expires_at)
 		VALUES ($1, $2, $3)
-		ON CONFLICT (user_id) 
-		DO UPDATE SET 
+		ON CONFLICT (user_id) -- Specify the column(s) that should trigger the conflict
+		DO UPDATE SET
 			token_hash = EXCLUDED.token_hash,
-			expires_at = EXCLUDED.expires_at,
-			created_at = CURRENT_TIMESTAMP,
-			last_used_at = NULL
-		RETURNING id
+			expires_at = EXCLUDED.expires_at
+		RETURNING id, created_at
 	`
-	return r.db.QueryRow(query, token.UserID, token.TokenHash, token.ExpiresAt).Scan(&token.ID)
+	err := r.db.QueryRowContext(
+		ctx,
+		query,
+		token.UserID,
+		token.TokenHash,
+		token.ExpiresAt,
+	).Scan(&token.ID, &token.CreatedAt)
+
+	if err != nil {
+		if isPgUniqueViolation(err) {
+			return domain.NewResourceConflictError("auth token", "token already exists")
+		}
+		return domain.NewSystemError("AuthRepository.CreateToken", err, "failed to create auth token")
+	}
+
+	return nil
 }
 
-func (r *AuthRepository) GetTokenByHash(hash string) (*domain.AuthToken, error) {
+func (r *AuthRepository) GetTokenByHash(ctx context.Context, hash string) (*domain.AuthToken, error) {
 	token := &domain.AuthToken{}
 	var lastUsedAt sql.NullTime
 
 	query := `
 		SELECT id, user_id, token_hash, expires_at, created_at, last_used_at
 		FROM auth_tokens
-		WHERE token_hash = $1 
-		AND expires_at > NOW()
-		LIMIT 1
+		WHERE token_hash = $1
 	`
-	err := r.db.QueryRow(query, hash).Scan(
+
+	err := r.db.QueryRowContext(
+		ctx,
+		query,
+		hash,
+	).Scan(
 		&token.ID,
 		&token.UserID,
 		&token.TokenHash,
@@ -125,149 +156,204 @@ func (r *AuthRepository) GetTokenByHash(hash string) (*domain.AuthToken, error) 
 		&lastUsedAt,
 	)
 
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
 	if err != nil {
-		return nil, fmt.Errorf("database error: %v", err)
+		if err == sql.ErrNoRows {
+			return nil, domain.NewResourceNotFoundError("auth token", hash, "token not found")
+		}
+		return nil, domain.NewSystemError("AuthRepository.GetTokenByHash", err, "failed to get auth token")
 	}
 
 	if lastUsedAt.Valid {
 		token.LastUsedAt = lastUsedAt.Time
 	}
 
-	// Update last_used_at
-	updateQuery := `
-		UPDATE auth_tokens 
-		SET last_used_at = CURRENT_TIMESTAMP
-		WHERE id = $1
-	`
-	_, err = r.db.Exec(updateQuery, token.ID)
-	if err != nil {
-		log.Printf("Failed to update last_used_at: %v", err)
-	}
-
 	return token, nil
 }
 
-func (r *AuthRepository) UpdateLoginAttempts(email string, increment bool) (*domain.LoginAttempt, error) {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return nil, err
+func (r *AuthRepository) UpdateLoginAttempts(ctx context.Context, email string, increment bool) (*domain.LoginAttempt, error) {
+	var attempt domain.LoginAttempt
+	var lastAttempt sql.NullTime
+
+	// First, try to get existing record
+	query := `
+		SELECT id, email, attempt_count, last_attempt_at
+		FROM login_attempts
+		WHERE email = $1
+	`
+	err := r.db.QueryRowContext(ctx, query, email).Scan(
+		&attempt.ID,
+		&attempt.Email,
+		&attempt.AttemptCount,
+		&lastAttempt,
+	)
+
+	if err != nil && err != sql.ErrNoRows {
+		return nil, domain.NewSystemError("AuthRepository.UpdateLoginAttempts", err, "failed to get login attempts")
 	}
-	defer tx.Rollback()
 
-	attempt := &domain.LoginAttempt{}
-	if increment {
-		var lockedUntil sql.NullTime
+	if err == sql.ErrNoRows {
+		// Create new record if not exists
+		if !increment {
+			attempt.Email = email
+			attempt.AttemptCount = 0
+			attempt.LastAttempt = time.Now()
+			return &attempt, nil
+		}
 
-		query := `
+		query = `
 			INSERT INTO login_attempts (email, attempt_count, last_attempt_at)
-			VALUES ($1, 1, NOW())
-				ON CONFLICT (email) DO UPDATE
-				SET 
-					attempt_count = CASE
-						WHEN login_attempts.last_attempt_at < NOW() - $2::interval THEN 1
-						ELSE login_attempts.attempt_count + 1
-					END,
-					last_attempt_at = NOW(),
-					locked_until = CASE
-						WHEN login_attempts.last_attempt_at < NOW() - $2::interval THEN NULL
-						WHEN login_attempts.attempt_count + 1 >= $3 THEN NOW() + $4::interval
-						ELSE NULL
-					END
-				RETURNING id, email, attempt_count, last_attempt_at, locked_until
+			VALUES ($1, 1, CURRENT_TIMESTAMP)
+			RETURNING id, attempt_count, last_attempt_at
 		`
-		err = tx.QueryRow(
-			query,
-			email,
-			fmt.Sprintf("%d seconds", int(r.config.LoginAttemptResetPeriod.Seconds())),
-			r.config.MaxLoginAttempts,
-			fmt.Sprintf("%d seconds", int(r.config.LockDuration.Seconds())),
-		).Scan(
+		err = r.db.QueryRowContext(ctx, query, email).Scan(
 			&attempt.ID,
-			&attempt.Email,
 			&attempt.AttemptCount,
 			&attempt.LastAttempt,
-			&lockedUntil,
 		)
 
-		if lockedUntil.Valid {
-			attempt.LockedUntil = lockedUntil.Time
+		if err != nil {
+			if isPgUniqueViolation(err) {
+				return nil, domain.NewResourceConflictError("login attempt", "concurrent login attempt detected")
+			}
+			return nil, domain.NewSystemError("AuthRepository.UpdateLoginAttempts", err, "failed to create login attempt")
 		}
-	} else {
-		query := `DELETE FROM login_attempts WHERE email = $1`
-		_, err = tx.Exec(query, email)
+
+		attempt.Email = email
+		return &attempt, nil
 	}
+
+	// Update existing record
+	if increment {
+		query = `
+			UPDATE login_attempts
+			SET attempt_count = attempt_count + 1,
+				last_attempt_at = CURRENT_TIMESTAMP
+			WHERE email = $1
+			RETURNING attempt_count, last_attempt_at
+		`
+	} else {
+		query = `
+			UPDATE login_attempts
+			SET attempt_count = 0,
+				last_attempt_at = CURRENT_TIMESTAMP
+			WHERE email = $1
+			RETURNING attempt_count, last_attempt_at
+		`
+	}
+
+	err = r.db.QueryRowContext(ctx, query, email).Scan(
+		&attempt.AttemptCount,
+		&attempt.LastAttempt,
+	)
 
 	if err != nil {
-		return nil, err
+		return nil, domain.NewSystemError("AuthRepository.UpdateLoginAttempts", err, "failed to update login attempts")
 	}
 
-	return attempt, tx.Commit()
+	if lastAttempt.Valid {
+		attempt.LastAttempt = lastAttempt.Time
+	}
+
+	return &attempt, nil
 }
 
-func (r *AuthRepository) CleanupExpiredAttempts() error {
-	query := `
-		DELETE FROM login_attempts 
-		WHERE last_attempt_at < NOW() - $1::interval
-		OR (locked_until IS NOT NULL AND locked_until < NOW())
-	`
-	_, err := r.db.Exec(query, fmt.Sprintf("%d seconds", int(r.config.LoginAttemptResetPeriod.Seconds())))
-	return err
+func (r *AuthRepository) CleanupExpiredAttempts(ctx context.Context) error {
+	query := `DELETE FROM login_attempts WHERE last_attempt_at < $1`
+	_, err := r.db.ExecContext(ctx, query, time.Now().Add(-r.config.LoginAttemptResetPeriod))
+	if err != nil {
+		return domain.NewSystemError("AuthRepository.CleanupExpiredAttempts", err, "failed to cleanup expired attempts")
+	}
+	return nil
 }
 
-func (r *AuthRepository) BeginTx() (*sql.Tx, error) {
-	return r.db.Begin()
+func (r *AuthRepository) BeginTx(ctx context.Context) (*sql.Tx, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, domain.NewSystemError("AuthRepository.BeginTx", err, "failed to begin transaction")
+	}
+	return tx, nil
 }
 
-func (r *AuthRepository) MarkVerificationUsedTx(tx *sql.Tx, id string) error {
+func (r *AuthRepository) Commit(ctx context.Context, tx *sql.Tx) error {
+	return tx.Commit()
+}
+
+func (r *AuthRepository) MarkVerificationUsedTx(ctx context.Context, tx *sql.Tx, id string) error {
 	query := `
 		UPDATE registration_verifications
-		SET used_at = NOW()
-		WHERE id = $1
+		SET used_at = CURRENT_TIMESTAMP
+		WHERE id = $1 AND used_at IS NULL
 	`
-	_, err := tx.Exec(query, id)
-	return err
-}
-
-func (r *AuthRepository) GetUserVerificationStatus(userID string) (bool, error) {
-	var status string
-	err := r.db.QueryRow(`
-		SELECT status 
-		FROM users 
-		WHERE id = $1
-	`, userID).Scan(&status)
-
+	result, err := tx.ExecContext(ctx, query, id)
 	if err != nil {
-		return false, err
+		return domain.NewSystemError("AuthRepository.MarkVerificationUsedTx", err, "failed to mark verification as used")
 	}
 
-	return status == string(domain.UserStatusActive), nil
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return domain.NewSystemError("AuthRepository.MarkVerificationUsedTx", err, "failed to get affected rows")
+	}
+
+	if affected == 0 {
+		return domain.NewResourceNotFoundError("verification", id, "verification not found or already used")
+	}
+
+	return nil
 }
 
-func (r *AuthRepository) CleanupExpiredVerifications() error {
+func (r *AuthRepository) GetUserVerificationStatus(ctx context.Context, userID string) (bool, error) {
+	var count int
 	query := `
-		DELETE FROM registration_verifications 
-		WHERE expires_at < NOW() 
-		OR used_at IS NOT NULL
+		SELECT COUNT(*)
+		FROM registration_verifications
+		WHERE user_id = $1 AND used_at IS NOT NULL
 	`
-	_, err := r.db.Exec(query)
-	return err
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(&count)
+	if err != nil {
+		return false, domain.NewSystemError("AuthRepository.GetUserVerificationStatus", err, "failed to get verification status")
+	}
+	return count > 0, nil
 }
 
-func (r *AuthRepository) InvalidateToken(userID string) error {
-	// Set the expiration time to 1970-01-01 00:00:01
+func (r *AuthRepository) CleanupExpiredVerifications(ctx context.Context) error {
+	query := `DELETE FROM registration_verifications WHERE expires_at < CURRENT_TIMESTAMP AND used_at IS NULL`
+	_, err := r.db.ExecContext(ctx, query)
+	if err != nil {
+		return domain.NewSystemError("AuthRepository.CleanupExpiredVerifications", err, "failed to cleanup expired verifications")
+	}
+	return nil
+}
+
+func (r *AuthRepository) InvalidateToken(ctx context.Context, userID string) error {
+	log.Println("Invalidating token for user: ", userID)
 	query := `
-		UPDATE auth_tokens 
-		SET expires_at = '1970-01-01 00:00:01'
+		UPDATE auth_tokens
+		SET 
+		last_used_at = CURRENT_TIMESTAMP,
+		expires_at = CURRENT_TIMESTAMP
 		WHERE user_id = $1
 	`
-	_, err := r.db.Exec(query, userID)
-	return err
+	result, err := r.db.ExecContext(ctx, query, userID)
+	if err != nil {
+		log.Println("Error invalidating token for user: ", userID, err)
+		return domain.NewSystemError("AuthRepository.InvalidateToken", err, "failed to invalidate tokens")
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		log.Println("Error getting affected rows for user: ", userID, err)
+		return domain.NewSystemError("AuthRepository.InvalidateToken", err, "failed to get affected rows")
+	}
+
+	if affected == 0 {
+		log.Println("No active tokens found for user: ", userID)
+		return domain.NewValidationError("AuthRepository.InvalidateTokenn", "no  active tokens found for user")
+	}
+
+	return nil
 }
 
-func (r *AuthRepository) GetLatestVerification(userID string) (*domain.RegistrationVerification, error) {
+func (r *AuthRepository) GetLatestVerification(ctx context.Context, userID string) (*domain.RegistrationVerification, error) {
 	verification := &domain.RegistrationVerification{}
 	var usedAt sql.NullTime
 
@@ -279,7 +365,11 @@ func (r *AuthRepository) GetLatestVerification(userID string) (*domain.Registrat
 		LIMIT 1
 	`
 
-	err := r.db.QueryRow(query, userID).Scan(
+	err := r.db.QueryRowContext(
+		ctx,
+		query,
+		userID,
+	).Scan(
 		&verification.ID,
 		&verification.UserID,
 		&verification.OTP,
@@ -288,11 +378,11 @@ func (r *AuthRepository) GetLatestVerification(userID string) (*domain.Registrat
 		&usedAt,
 	)
 
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
 	if err != nil {
-		return nil, fmt.Errorf("database error: %v", err)
+		if err == sql.ErrNoRows {
+			return nil, domain.NewResourceNotFoundError("verification", userID, "no verification found for user")
+		}
+		return nil, domain.NewSystemError("AuthRepository.GetLatestVerification", err, "failed to get latest verification")
 	}
 
 	if usedAt.Valid {

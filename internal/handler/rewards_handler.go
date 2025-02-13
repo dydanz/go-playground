@@ -34,7 +34,7 @@ func (h *RewardsHandler) Create(c *gin.Context) {
 		return
 	}
 
-	reward, err := h.rewardsService.Create(&req)
+	reward, err := h.rewardsService.Create(c.Request.Context(), &req)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -64,7 +64,7 @@ func (h *RewardsHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	reward, err := h.rewardsService.GetByID(id)
+	reward, err := h.rewardsService.GetByID(c.Request.Context(), id)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -115,7 +115,7 @@ func (h *RewardsHandler) Update(c *gin.Context) {
 		return
 	}
 
-	reward, err := h.rewardsService.Update(id, &req)
+	reward, err := h.rewardsService.Update(c.Request.Context(), id, &req)
 	if err != nil {
 		util.HandleError(c, err)
 		return
@@ -145,7 +145,7 @@ func (h *RewardsHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.rewardsService.Delete(id); err != nil {
+	if err := h.rewardsService.Delete(c.Request.Context(), id); err != nil {
 		util.HandleError(c, err)
 		return
 	}

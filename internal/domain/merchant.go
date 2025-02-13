@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,10 +36,10 @@ type UpdateMerchantRequest struct {
 }
 
 type MerchantRepository interface {
-	Create(merchant *Merchant) error
-	GetByID(id uuid.UUID) (*Merchant, error)
-	GetByUserID(userID uuid.UUID) ([]*Merchant, error)
-	GetAll() ([]*Merchant, error)
-	Update(merchant *Merchant) error
-	Delete(id uuid.UUID) error
+	Create(ctx context.Context, merchant *Merchant) (*Merchant, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*Merchant, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*Merchant, error)
+	GetAll(ctx context.Context) ([]*Merchant, error)
+	Update(ctx context.Context, merchant *Merchant) error
+	Delete(ctx context.Context, id uuid.UUID) error
 }

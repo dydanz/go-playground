@@ -79,7 +79,7 @@ func main() {
 		defer ticker.Stop()
 
 		for range ticker.C {
-			if err := repos.AuthRepo.CleanupExpiredAttempts(); err != nil {
+			if err := repos.AuthRepo.CleanupExpiredAttempts(rdb.Context()); err != nil {
 				log.Printf("Failed to cleanup expired attempts: %v", err)
 			}
 		}

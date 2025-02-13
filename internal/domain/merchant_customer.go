@@ -27,7 +27,6 @@ type MerchantCustomersRepository interface {
 	GetByPhone(ctx context.Context, phone string) (*MerchantCustomer, error)
 	GetByMerchantID(ctx context.Context, merchantID uuid.UUID) ([]*MerchantCustomer, error)
 	Update(ctx context.Context, customer *MerchantCustomer) error
-	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 // MerchantCustomersService defines the interface for merchant customer business logic
@@ -38,7 +37,6 @@ type MerchantCustomersService interface {
 	GetByPhone(ctx context.Context, phone string) (*MerchantCustomer, error)
 	GetByMerchantID(ctx context.Context, merchantID uuid.UUID) ([]*MerchantCustomer, error)
 	Update(ctx context.Context, id uuid.UUID, req *UpdateMerchantCustomerRequest) (*MerchantCustomer, error)
-	Delete(ctx context.Context, id uuid.UUID) error
 	ValidateCredentials(ctx context.Context, email, password string) (*MerchantCustomer, error)
 }
 

@@ -23,10 +23,10 @@ func NewUserService(userRepo domain.UserRepository, cacheRepo domain.CacheReposi
 	}
 }
 
-func (s *UserService) Create(req *domain.CreateUserRequest) (*domain.User, error) {
+func (s *UserService) Create(ctx context.Context, req *domain.CreateUserRequest) (*domain.User, error) {
 	decoratedFn := util.ServiceLatencyDecorator("UserService.Create", func() *domain.User {
 		// Check if email already exists
-		existingUser, err := s.userRepo.GetByEmail(req.Email)
+		existingUser, err := s.userRepo.GetByEmail(ctx, req.Email)
 		if err != nil || existingUser != nil {
 			return nil
 		}
@@ -61,7 +61,7 @@ func (s *UserService) Create(req *domain.CreateUserRequest) (*domain.User, error
 	return result, nil
 }
 
-func (s *UserService) GetByID(id string) (*domain.User, error) {
+func (s *UserService) GetByID(ctx context.Context, id string) (*domain.User, error) {
 	decoratedFn := util.ServiceLatencyDecorator("UserService.GetByID", func() *domain.User {
 		// Try to get from cache first
 		if user, err := s.cacheRepo.GetUser(id); err == nil && user != nil {
@@ -70,7 +70,7 @@ func (s *UserService) GetByID(id string) (*domain.User, error) {
 		}
 
 		// If not in cache, get from database
-		user, err := s.userRepo.GetByID(id)
+		user, err := s.userRepo.GetByID(ctx, id)
 		if err != nil {
 			return nil
 		}
@@ -93,9 +93,9 @@ func (s *UserService) GetByID(id string) (*domain.User, error) {
 	return result, nil
 }
 
-func (s *UserService) GetAll() ([]domain.User, error) {
+func (s *UserService) GetAll(ctx context.Context) ([]domain.User, error) {
 	decoratedFn := util.ServiceLatencyDecorator("UserService.GetAll", func() []domain.User {
-		usersPtr, err := s.userRepo.GetAll()
+		usersPtr, err := s.userRepo.GetAll(ctx)
 		if err != nil {
 			return nil
 		}
@@ -116,10 +116,10 @@ func (s *UserService) GetAll() ([]domain.User, error) {
 	return result, nil
 }
 
-func (s *UserService) Update(id string, req *domain.UpdateUserRequest) (*domain.User, error) {
+func (s *UserService) Update(ctx context.Context, id string, req *domain.UpdateUserRequest) (*domain.User, error) {
 	decoratedFn := util.ServiceLatencyDecorator("UserService.Update", func() *domain.User {
 		// Get existing user
-		user, err := s.userRepo.GetByID(id)
+		user, err := s.userRepo.GetByID(ctx, id)
 		if err != nil || user == nil {
 			return nil
 		}
@@ -129,7 +129,7 @@ func (s *UserService) Update(id string, req *domain.UpdateUserRequest) (*domain.
 		user.Phone = req.Phone
 		user.UpdatedAt = time.Now()
 
-		if err := s.userRepo.Update(user); err != nil {
+		if err := s.userRepo.Update(ctx, user); err != nil {
 			return nil
 		}
 
@@ -145,15 +145,15 @@ func (s *UserService) Update(id string, req *domain.UpdateUserRequest) (*domain.
 	return result, nil
 }
 
-func (s *UserService) Delete(id string) error {
+func (s *UserService) Delete(ctx context.Context, id string) error {
 	decoratedFn := util.ServiceLatencyDecorator("UserService.Delete", func() bool {
 		// Get existing user
-		user, err := s.userRepo.GetByID(id)
+		user, err := s.userRepo.GetByID(ctx, id)
 		if err != nil || user == nil {
 			return false
 		}
 
-		if err := s.userRepo.Delete(id); err != nil {
+		if err := s.userRepo.Delete(ctx, id); err != nil {
 			return false
 		}
 		return true
