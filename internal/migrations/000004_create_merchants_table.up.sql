@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS merchants (
     merchant_name VARCHAR(255) NOT NULL,
     merchant_type merchant_type NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(16) NOT NULL DEFAULT 'active'
 );
 
 -- Create indexes

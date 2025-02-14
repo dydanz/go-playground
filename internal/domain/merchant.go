@@ -21,17 +21,18 @@ type Merchant struct {
 	Type      MerchantType `json:"merchant_type"`
 	CreatedAt time.Time    `json:"created_at"`
 	UpdatedAt time.Time    `json:"updated_at"`
+	Status    string       `json:"status"`
 }
 
 type CreateMerchantRequest struct {
 	UserID uuid.UUID    `json:"user_id" binding:"required"`
 	Name   string       `json:"merchant_name" binding:"required"`
-	Type   MerchantType `json:"merchant_type" binding:"required,oneof=bank e-commerce repair_shop"`
+	Type   MerchantType `json:"merchant_type" binding:"required"`
 }
 
 type UpdateMerchantRequest struct {
 	Name string       `json:"merchant_name" binding:"required"`
-	Type MerchantType `json:"merchant_type" binding:"required,oneof=bank e-commerce repair_shop"`
+	Type MerchantType `json:"merchant_type" binding:"required"`
 }
 
 // Pagination represents pagination metadata

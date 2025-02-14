@@ -2959,16 +2959,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "merchant_type": {
-                    "enum": [
-                        "bank",
-                        "e-commerce",
-                        "repair_shop"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.MerchantType"
-                        }
-                    ]
+                    "$ref": "#/definitions/domain.MerchantType"
                 },
                 "user_id": {
                     "type": "string"
@@ -3544,16 +3535,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "merchant_type": {
-                    "enum": [
-                        "bank",
-                        "e-commerce",
-                        "repair_shop"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.MerchantType"
-                        }
-                    ]
+                    "$ref": "#/definitions/domain.MerchantType"
                 }
             }
         },

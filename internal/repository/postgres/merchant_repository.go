@@ -53,7 +53,7 @@ func (r *MerchantRepository) Create(ctx context.Context, merchant *domain.Mercha
 
 func (r *MerchantRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Merchant, error) {
 	query := `SELECT id, user_id, merchant_name, merchant_type, created_at, updated_at 
-			  FROM merchants WHERE id = $1`
+			  FROM merchants WHERE id = $1 AND status = 'active'`
 
 	merchant := &domain.Merchant{}
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
@@ -85,9 +85,9 @@ func (r *MerchantRepository) GetMerchantsByUserID(ctx context.Context, userID uu
 	}
 
 	// Then get paginated results
-	query := `SELECT id, user_id, merchant_name, merchant_type, created_at, updated_at 
+	query := `SELECT id, user_id, merchant_name, merchant_type, created_at, updated_at, status
 			  FROM merchants 
-			  WHERE user_id = $1
+			  WHERE user_id = $1 
 			  ORDER BY created_at DESC
 			  LIMIT $2 OFFSET $3`
 
@@ -108,6 +108,7 @@ func (r *MerchantRepository) GetMerchantsByUserID(ctx context.Context, userID uu
 			&merchant.Type,
 			&merchant.CreatedAt,
 			&merchant.UpdatedAt,
+			&merchant.Status,
 		)
 		if err != nil {
 			log.Printf("Error scanning merchant: %v", err)
@@ -128,6 +129,7 @@ func (r *MerchantRepository) GetAll(ctx context.Context) ([]*domain.Merchant, er
 	query := `
 		SELECT id, user_id, merchant_name, merchant_type, created_at, updated_at
 		FROM merchants
+		WHERE status = 'active'
 		ORDER BY merchant_name
 	`
 	rows, err := r.db.QueryContext(ctx, query)
@@ -175,6 +177,20 @@ func (r *MerchantRepository) Update(ctx context.Context, merchant *domain.Mercha
 }
 
 func (r *MerchantRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	query := `
+		UPDATE merchants
+		SET status=$1, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $2
+	`
+	_, err := r.db.ExecContext(
+		ctx,
+		query,
+		"deactivated",
+		id,
+	)
+	if err != nil {
+		return domain.NewSystemError("MerchantRepository.Delete", err, "failed to delete merchant")
+	}
 	return nil
 }
 

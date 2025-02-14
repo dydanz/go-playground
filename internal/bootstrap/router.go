@@ -70,6 +70,7 @@ func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo red
 		"internal/static/pages/components/navbar.tmpl",
 		"internal/static/pages/components/sidenav.tmpl",
 		"internal/static/pages/components/sidenav-card.tmpl",
+		"internal/static/pages/components/add-merchant-modal.html",
 	)
 
 	// Serve static files

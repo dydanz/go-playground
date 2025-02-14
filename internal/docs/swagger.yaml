@@ -25,12 +25,7 @@ definitions:
       merchant_name:
         type: string
       merchant_type:
-        allOf:
-        - $ref: '#/definitions/domain.MerchantType'
-        enum:
-        - bank
-        - e-commerce
-        - repair_shop
+        $ref: '#/definitions/domain.MerchantType'
       user_id:
         type: string
     required:
@@ -422,12 +417,7 @@ definitions:
       merchant_name:
         type: string
       merchant_type:
-        allOf:
-        - $ref: '#/definitions/domain.MerchantType'
-        enum:
-        - bank
-        - e-commerce
-        - repair_shop
+        $ref: '#/definitions/domain.MerchantType'
     required:
     - merchant_name
     - merchant_type
