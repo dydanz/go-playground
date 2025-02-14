@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,11 +34,16 @@ type UpdateMerchantRequest struct {
 	Type MerchantType `json:"merchant_type" binding:"required,oneof=bank e-commerce repair_shop"`
 }
 
-type MerchantRepository interface {
-	Create(ctx context.Context, merchant *Merchant) (*Merchant, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*Merchant, error)
-	GetByUserID(ctx context.Context, userID uuid.UUID) ([]*Merchant, error)
-	GetAll(ctx context.Context) ([]*Merchant, error)
-	Update(ctx context.Context, merchant *Merchant) error
-	Delete(ctx context.Context, id uuid.UUID) error
+// Pagination represents pagination metadata
+type Pagination struct {
+	CurrentPage int `json:"current_page"`
+	TotalPages  int `json:"total_pages"`
+	Limit       int `json:"limit"`
+	Total       int `json:"total"`
+}
+
+// PaginatedMerchants represents a paginated list of merchants
+type PaginatedMerchants struct {
+	Merchants  []*Merchant `json:"merchants"`
+	Pagination Pagination  `json:"pagination"`
 }

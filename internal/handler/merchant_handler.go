@@ -4,6 +4,7 @@ import (
 	"go-playground/internal/domain"
 	"go-playground/internal/util"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -170,6 +171,69 @@ func (h *MerchantHandler) Delete(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+// @Summary Get all merchants for a user
+// @Description Get all Merchants for a User with pagination
+// @Tags merchants
+// @Produce json
+// @Param user_id path string true "User ID"
+// @Param page query int false "Page number (default: 1)"
+// @Param limit query int false "Number of items per page (default: 10)"
+// @Success 200 {object} domain.PaginatedMerchants
+// @Failure 400 {object} util.ErrorResponse
+// @Failure 404 {object} util.ErrorResponse
+// @Failure 500 {object} util.ErrorResponse
+// @Router /merchants/user/{user_id} [get]
+func (h *MerchantHandler) GetMerchantsByUserID(c *gin.Context) {
+	userID, err := uuid.Parse(c.Param("user_id"))
+	if err != nil {
+		util.HandleError(c, domain.NewValidationError("user_id", "invalid user ID format"))
+		return
+	}
+
+	// Get pagination parameters
+	page := 1
+	limit := 10
+	if pageStr := c.Query("page"); pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+
+	// Calculate offset
+	offset := (page - 1) * limit
+
+	merchants, total, err := h.merchantService.GetMerchantsByUserID(c.Request.Context(), userID, offset, limit)
+	if err != nil {
+		util.HandleError(c, err)
+		return
+	}
+
+	// Calculate total pages
+	totalPages := (total + limit - 1) / limit
+
+	response := domain.PaginatedMerchants{
+		Merchants: merchants,
+		Pagination: domain.Pagination{
+			CurrentPage: page,
+			TotalPages:  totalPages,
+			Limit:       limit,
+			Total:       total,
+		},
+	}
+
+	if len(merchants) == 0 {
+		util.EmptyResponse(c)
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // Helper function to verify merchant access

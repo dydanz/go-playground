@@ -111,16 +111,27 @@ func (s *MerchantService) Delete(ctx context.Context, id uuid.UUID) error {
 	return s.merchantRepo.Delete(ctx, id)
 }
 
+func (s *MerchantService) GetMerchantsByUserID(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*domain.Merchant, int, error) {
+	merchants, total, err := s.merchantRepo.GetMerchantsByUserID(ctx, userID, offset, limit)
+	if err != nil {
+		return nil, 0, domain.NewSystemError("MerchantService.GetMerchantsByUserID", err, "failed to get merchants")
+	}
+	if len(merchants) == 0 {
+		return []*domain.Merchant{}, 0, nil
+	}
+	return merchants, total, nil
+}
+
 // Helper functions for business logic validation
 
 func (s *MerchantService) validateMerchantCreation(ctx context.Context, merchant *domain.Merchant) error {
 	// Example business rule: Check if user already has maximum allowed merchants
-	merchants, err := s.merchantRepo.GetByUserID(ctx, merchant.UserID)
+	merchants, _, err := s.merchantRepo.GetMerchantsByUserID(ctx, merchant.UserID, 1, 50)
 	if err != nil {
 		return domain.NewSystemError("MerchantService.validateMerchantCreation", err, "failed to check existing merchants")
 	}
 
-	if len(merchants) >= 5 { // Example maximum limit
+	if len(merchants) >= 50 { // Example maximum limit
 		return domain.NewBusinessLogicError(
 			"MAX_MERCHANTS_EXCEEDED",
 			"user has reached the maximum number of allowed merchants",

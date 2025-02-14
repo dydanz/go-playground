@@ -220,6 +220,26 @@ definitions:
     - MerchantTypeBank
     - MerchantTypeEcommerce
     - MerchantTypeRepairShop
+  domain.PaginatedMerchants:
+    properties:
+      merchants:
+        items:
+          $ref: '#/definitions/domain.Merchant'
+        type: array
+      pagination:
+        $ref: '#/definitions/domain.Pagination'
+    type: object
+  domain.Pagination:
+    properties:
+      current_page:
+        type: integer
+      limit:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
   domain.PointsLedger:
     properties:
       created_at:
@@ -713,6 +733,28 @@ paths:
       tags:
       - auth
   /merchant-customers:
+    get:
+      description: Get all customers for a merchant
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.MerchantCustomer'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+      summary: Get merchant customers by merchant ID
+      tags:
+      - merchant-customers
     post:
       consumes:
       - application/json
@@ -720,7 +762,7 @@ paths:
       parameters:
       - description: Customer details
         in: body
-        name: request
+        name: customer
         required: true
         schema:
           $ref: '#/definitions/domain.CreateMerchantCustomerRequest'
@@ -734,25 +776,20 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/util.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      - UserIdAuth: []
+            $ref: '#/definitions/util.ErrorResponse'
       summary: Create merchant customer
       tags:
       - merchant-customers
   /merchant-customers/{id}:
     get:
-      consumes:
-      - application/json
       description: Get merchant customer details by ID
       parameters:
       - description: Customer ID
@@ -770,24 +807,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/util.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/util.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      - UserIdAuth: []
+            $ref: '#/definitions/util.ErrorResponse'
       summary: Get merchant customer by ID
       tags:
       - merchant-customers
@@ -801,9 +829,9 @@ paths:
         name: id
         required: true
         type: string
-      - description: Customer details to update
+      - description: Customer details
         in: body
-        name: request
+        name: customer
         required: true
         schema:
           $ref: '#/definitions/domain.UpdateMerchantCustomerRequest'
@@ -817,24 +845,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/util.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/util.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      - UserIdAuth: []
+            $ref: '#/definitions/util.ErrorResponse'
       summary: Update merchant customer
       tags:
       - merchant-customers
@@ -879,44 +902,6 @@ paths:
       - BearerAuth: []
       - UserIdAuth: []
       summary: Validate customer credentials
-      tags:
-      - merchant-customers
-  /merchant-customers/merchant/{merchant_id}:
-    get:
-      consumes:
-      - application/json
-      description: Get all customers for a specific merchant
-      parameters:
-      - description: Merchant ID
-        in: path
-        name: merchant_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/domain.MerchantCustomer'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      - UserIdAuth: []
-      summary: Get merchant customers by merchant ID
       tags:
       - merchant-customers
   /merchants:
@@ -1070,6 +1055,45 @@ paths:
           schema:
             $ref: '#/definitions/util.ErrorResponse'
       summary: Update merchant
+      tags:
+      - merchants
+  /merchants/user/{user_id}:
+    get:
+      description: Get all Merchants for a User with pagination
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Number of items per page (default: 10)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.PaginatedMerchants'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+      summary: Get all merchants for a user
       tags:
       - merchants
   /ping:

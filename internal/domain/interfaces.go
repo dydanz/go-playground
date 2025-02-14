@@ -135,6 +135,16 @@ type MerchantService interface {
 	GetAll(ctx context.Context) ([]*Merchant, error)
 	Update(ctx context.Context, id uuid.UUID, req *UpdateMerchantRequest) (*Merchant, error)
 	Delete(ctx context.Context, id uuid.UUID) error
+	GetMerchantsByUserID(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*Merchant, int, error)
+}
+
+type MerchantRepository interface {
+	Create(ctx context.Context, merchant *Merchant) (*Merchant, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*Merchant, error)
+	GetAll(ctx context.Context) ([]*Merchant, error)
+	Update(ctx context.Context, merchant *Merchant) error
+	Delete(ctx context.Context, id uuid.UUID) error
+	GetMerchantsByUserID(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*Merchant, int, error)
 }
 
 type ProgramRulesService interface {

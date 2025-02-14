@@ -224,11 +224,7 @@ func (s *AuthService) Login(ctx context.Context, req *domain.LoginRequest) (*dom
 
 	user, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
-		return nil, domain.SystemError{
-			Op:      "GetByEmail",
-			Message: fmt.Sprintf("error getting user: %v", err),
-			Err:     err,
-		}
+		return nil, err
 	}
 	if user == nil {
 		return nil, domain.AuthenticationError{
