@@ -28,7 +28,7 @@ async function fetchTransactions(page, merchantId = null) {
     const response = await fetch(url, {
       headers: {
         'accept': 'application/json',
-        'Authorization': 'Bearer d00d9a9c0591adc4997f8ed54877b7d179a836d803255d5b9ef8af5f2d8be497',
+        'Authorization': `Bearer ${getCookie('auth_token')}`,
         'X-User-Id': userId
       }
     });
