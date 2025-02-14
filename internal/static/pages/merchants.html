@@ -21,7 +21,7 @@
   <link rel="apple-touch-icon" sizes="76x76" href="/static/assets/img/apple-icon.png">
   <link rel="icon" type="image/png" href="/static/assets/img/favicon.png">
   <title>
-    Argon Dashboard 3 by Creative Tim
+    PLR Platform
   </title>
   <!--     Fonts and icons     -->
   <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700" rel="stylesheet" />
@@ -68,150 +68,55 @@
       <div class="row">
         <div class="col-12">
           <div class="card mb-4">
-            <div class="card-header pb-0">
-              <h6>Transaction table</h6>
+            <div class="card-header pb-0 d-flex align-items-center">
+              <button type="button" class="btn bg-gradient-primary mb-0 me-3" data-bs-toggle="modal" data-bs-target="#addMerchantModal">
+                <i class="fas fa-plus"></i>&nbsp;&nbsp;Add Merchant
+              </button>
             </div>
             <div class="card-body px-0 pt-0 pb-2">
+              <!-- Include Add Merchant Modal -->
+              {{template "add-merchant-modal.html" .}}
               <div class="table-responsive p-0">
                 <table class="table align-items-center mb-0">
                   <thead>
                     <tr>
-                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Transaction ID</th>
-                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Amount</th>
-                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Type</th>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Merchant</th>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Type</th>
+                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Created At</th>
+                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Updated At</th>
                       <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
-                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Date</th>
+                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Actions</th>
                     </tr>
                   </thead>
-                  <tbody id="transactionTableBody">
-                    <!-- Transaction data will be populated here -->
+                  <tbody id="merchantsTableBody">
+                    <!-- Merchant data will be populated here -->
                   </tbody>
                 </table>
                 <!-- Pagination -->
                 <div class="d-flex justify-content-between align-items-center p-3">
-                  <div class="text-secondary text-xs">
-                    Showing <span id="currentPage">1</span> of <span id="totalPages">1</span> pages
+                  <div class="text-secondary text-xs d-flex align-items-center">
+                    <select id="pageSize" class="form-select form-select-sm me-3" aria-label="Items per page">
+                      <option value="10">10 per page</option>
+                      <option value="25">25 per page</option>
+                      <option value="50">50 per page</option>
+                      <option value="100">100 per page</option>
+                    </select>
+                    <span>Showing <span id="currentPage">1</span> of <span id="totalPages">1</span> pages</span>
                   </div>
-                  <div>
-                    <button id="prevPage" class="btn btn-sm btn-secondary">Previous</button>
-                    <button id="nextPage" class="btn btn-sm btn-secondary">Next</button>
+                  <div class="d-flex align-items-center">
+                    <div>
+                      <button id="prevPage" class="btn btn-sm btn-secondary">Previous</button>
+                      <button id="nextPage" class="btn btn-sm btn-secondary">Next</button>
+                    </div>
                   </div>
                 </div>
               </div>
 
+              <script src="/static/assets/js/merchants.js"></script>
               <script>
-                let currentPage = 1;
-                const limit = 10;
-
-                function getCookie(name) {
-                  const value = `; ${document.cookie}`;
-                  const parts = value.split(`; ${name}=`);
-                  if (parts.length === 2) return parts.pop().split(';').shift();
-                  return null;
-                }
-
-                async function fetchTransactions(page) {
-                  try {
-                    const userId = getCookie('user_id');
-                    if (!userId) {
-                      console.error('User ID not found in cookies');
-                      return null;
-                    }
-
-                    const response = await fetch(`http://localhost:8080/api/transactions/user/${userId}?page=${page}&limit=${limit}`, {
-                      headers: {
-                        'accept': 'application/json',
-                        'Authorization': 'Bearer d00d9a9c0591adc4997f8ed54877b7d179a836d803255d5b9ef8af5f2d8be497',
-                        'X-User-Id': 'e0645aad-652a-45f8-965a-d1f51d472600'
-                      }
-                    });
-                    const data = await response.json();
-                    return data;
-                  } catch (error) {
-                    console.error('Error fetching transactions:', error);
-                    return null;
-                  }
-                }
-
-                function formatDate(dateString) {
-                  return new Date(dateString).toLocaleString();
-                }
-
-                function getStatusBadgeClass(status) {
-                  switch(status.toLowerCase()) {
-                    case 'completed':
-                      return 'bg-gradient-success';
-                    case 'pending':
-                      return 'bg-gradient-warning';
-                    case 'failed':
-                      return 'bg-gradient-danger';
-                    default:
-                      return 'bg-gradient-secondary';
-                  }
-                }
-
-                function updateTable(data) {
-                  const tableBody = document.getElementById('transactionTableBody');
-                  tableBody.innerHTML = '';
-
-                  data.transactions.forEach(tx => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                      <td>
-                        <div class="d-flex px-2 py-1">
-                          <div class="d-flex flex-column justify-content-center">
-                            <h6 class="mb-0 text-sm">${tx.transaction_id}</h6>
-                            <p class="text-xs text-secondary mb-0">Merchant: ${tx.merchant_id}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <p class="text-xs font-weight-bold mb-0">$${tx.transaction_amount}</p>
-                        <p class="text-xs text-secondary mb-0">Program: ${tx.program_id}</p>
-                      </td>
-                      <td class="align-middle text-center text-sm">
-                        <p class="text-xs font-weight-bold mb-0">${tx.transaction_type}</p>
-                      </td>
-                      <td class="align-middle text-center text-sm">
-                        <span class="badge badge-sm ${getStatusBadgeClass(tx.status)}">${tx.status}</span>
-                      </td>
-                      <td class="align-middle text-center">
-                        <span class="text-secondary text-xs font-weight-bold">${formatDate(tx.transaction_date)}</span>
-                      </td>
-                    `;
-                    tableBody.appendChild(row);
-                  });
-
-                  // Update pagination
-                  document.getElementById('currentPage').textContent = data.pagination.current_page;
-                  document.getElementById('totalPages').textContent = data.pagination.total_pages;
-                  
-                  // Update button states
-                  document.getElementById('prevPage').disabled = currentPage <= 1;
-                  document.getElementById('nextPage').disabled = currentPage >= data.pagination.total_pages;
-                }
-
-                async function loadTransactions(page) {
-                  const data = await fetchTransactions(page);
-                  if (data) {
-                    currentPage = page;
-                    updateTable(data);
-                  }
-                }
-
-                // Event listeners for pagination
-                document.getElementById('prevPage').addEventListener('click', () => {
-                  if (currentPage > 1) {
-                    loadTransactions(currentPage - 1);
-                  }
+                document.addEventListener('DOMContentLoaded', function() {
+                  fetchMerchants();
                 });
-
-                document.getElementById('nextPage').addEventListener('click', () => {
-                  loadTransactions(currentPage + 1);
-                });
-
-                // Initial load
-                loadTransactions(1);
               </script>
             </div>
           </div>
@@ -225,9 +130,8 @@
                 © <script>
                   document.write(new Date().getFullYear())
                 </script>,
-                made with <i class="fa fa-heart"></i> by
-                <a href="https://www.creative-tim.com" class="font-weight-bold" target="_blank">Creative Tim</a>
-                for a better web.
+                <a href="https://github.com/dydanz/go-playground" class="font-weight-bold" target="_blank">
+                  made by D team</a> - learn to build Scalable & Reliable Go Systems
               </div>
             </div>
             <div class="col-lg-6">

@@ -21,7 +21,7 @@
   <link rel="apple-touch-icon" sizes="76x76" href="/static/assets/img/apple-icon.png">
   <link rel="icon" type="image/png" href="/static/assets/img/favicon.png">
   <title>
-    Argon Dashboard 3 by Creative Tim
+    PLR Platform
   </title>
   <!--     Fonts and icons     -->
   <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700" rel="stylesheet" />
@@ -32,11 +32,13 @@
   <script src="https://kit.fontawesome.com/42d5adcbca.js" crossorigin="anonymous"></script>
   <!-- CSS Files -->
   <link id="pagestyle" href="/static/assets/css/argon-dashboard.css?v=2.1.0" rel="stylesheet" />
+  <!-- Custom JS -->
+  <script src="/static/assets/js/transactions.js"></script>
 </head>
 
-<body class="g-sidenav-show bg-gray-100">
+<body class="g-sidenav-show   bg-gray-100">
   <div class="min-height-300 bg-dark position-absolute w-100"></div>
-  <aside class="sidenav bg-white navbar navbar-vertical navbar-expand-xs border-0 border-radius-xl my-3 fixed-start ms-4" id="sidenav-main">
+  <aside class="sidenav bg-white navbar navbar-vertical navbar-expand-xs border-0 border-radius-xl my-3 fixed-start ms-4 " id="sidenav-main">
     <div class="sidenav-header">
       <i class="fas fa-times p-3 cursor-pointer text-secondary opacity-5 position-absolute end-0 top-0 d-none d-xl-none" aria-hidden="true" id="iconSidenav"></i>
       <a class="navbar-brand m-0" href=" https://demos.creative-tim.com/argon-dashboard/dashboard " target="_blank">
@@ -60,142 +62,192 @@
       {{template "sidenav-card.tmpl" .}}
     </div>
   </aside>
-  <main class="main-content position-relative border-radius-lg">
+  <main class="main-content position-relative border-radius-lg ">
     <!-- Navbar -->
     {{template "navbar.tmpl" .}}
     <!-- End Navbar -->
     <div class="container-fluid py-4">
       <div class="row">
-        <div class="col-md-8">
-          <div class="card">
-            <div class="card-header pb-0">
-              <div class="d-flex align-items-center">
-                <p class="mb-0">Edit Profile</p>
-                <button class="btn btn-primary btn-sm ms-auto">Settings</button>
+        <div class="col-12">
+          <div class="card mb-4">
+            <div class="card-header pb-0 d-flex align-items-center">
+              <!-- <h6 class="mb-0 me-3">Transaction table</h6> -->
+              <div class="dropdown me-2">
+                <button class="btn bg-gradient-primary dropdown-toggle" type="button" id="merchantDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                  Merchant Name
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="merchantDropdown">
+                  <li><a class="dropdown-item" href="#">All Merchants</a></li>
+                  <li><a class="dropdown-item" href="#">Merchant 1</a></li>
+                  <li><a class="dropdown-item" href="#">Merchant 2</a></li>
+                </ul>
               </div>
+              <!-- <div class="dropdown">
+                <button class="btn bg-gradient-primary dropdown-toggle" type="button" id="clientDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                  Client
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="clientDropdown">
+                  <li><a class="dropdown-item" href="#">All Clients</a></li>
+                  <li><a class="dropdown-item" href="#">Client 1</a></li>
+                  <li><a class="dropdown-item" href="#">Client 2</a></li>
+                </ul>
+              </div> -->
             </div>
-            <div class="card-body">
-              <p class="text-uppercase text-sm">User Information</p>
-              <div class="row">
-                <div class="col-md-6">
-                  <div class="form-group">
-                    <label for="example-text-input" class="form-control-label">Username</label>
-                    <input class="form-control" type="text" value="lucky.jesse">
+            <div class="card-body px-0 pt-0 pb-2">
+              <div class="table-responsive p-0">
+                <table class="table align-items-center mb-0">
+                  <thead>
+                    <tr>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Transaction ID</th>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Amount</th>
+                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Type</th>
+                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
+                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody id="transactionTableBody">
+                    <!-- Transaction data will be populated here -->
+                  </tbody>
+                </table>
+                <!-- Pagination -->
+                <div class="d-flex justify-content-between align-items-center p-3">
+                  <div class="text-secondary text-xs d-flex align-items-center">
+                    <select id="pageSize" class="form-select form-select-sm me-3" aria-label="Items per page">
+                      <option value="10">10 per page</option>
+                      <option value="25">25 per page</option>
+                      <option value="50">50 per page</option>
+                      <option value="100">100 per page</option>
+                    </select>
+                    <span>Showing <span id="currentPage">1</span> of <span id="totalPages">1</span> pages</span>
                   </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="form-group">
-                    <label for="example-text-input" class="form-control-label">Email address</label>
-                    <input class="form-control" type="email" value="jesse@example.com">
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="form-group">
-                    <label for="example-text-input" class="form-control-label">First name</label>
-                    <input class="form-control" type="text" value="Jesse">
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="form-group">
-                    <label for="example-text-input" class="form-control-label">Last name</label>
-                    <input class="form-control" type="text" value="Lucky">
-                  </div>
-                </div>
-              </div>
-              <hr class="horizontal dark">
-              <p class="text-uppercase text-sm">Contact Information</p>
-              <div class="row">
-                <div class="col-md-12">
-                  <div class="form-group">
-                    <label for="example-text-input" class="form-control-label">Address</label>
-                    <input class="form-control" type="text" value="Bld Mihail Kogalniceanu, nr. 8 Bl 1, Sc 1, Ap 09">
-                  </div>
-                </div>
-                <div class="col-md-4">
-                  <div class="form-group">
-                    <label for="example-text-input" class="form-control-label">City</label>
-                    <input class="form-control" type="text" value="New York">
-                  </div>
-                </div>
-                <div class="col-md-4">
-                  <div class="form-group">
-                    <label for="example-text-input" class="form-control-label">Country</label>
-                    <input class="form-control" type="text" value="United States">
-                  </div>
-                </div>
-                <div class="col-md-4">
-                  <div class="form-group">
-                    <label for="example-text-input" class="form-control-label">Postal code</label>
-                    <input class="form-control" type="text" value="437300">
-                  </div>
-                </div>
-              </div>
-              <hr class="horizontal dark">
-              <p class="text-uppercase text-sm">About me</p>
-              <div class="row">
-                <div class="col-md-12">
-                  <div class="form-group">
-                    <label for="example-text-input" class="form-control-label">About me</label>
-                    <input class="form-control" type="text" value="A beautiful Dashboard for Bootstrap 5. It is Free and Open Source.">
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-4">
-          <div class="card card-profile">
-            <img src="/static/assets/img/bg-profile.jpg" alt="Image placeholder" class="card-img-top">
-            <div class="row justify-content-center">
-              <div class="col-4 col-lg-4 order-lg-2">
-                <div class="mt-n4 mt-lg-n6 mb-4 mb-lg-0">
-                  <a href="javascript:;">
-                    <img src="/static/assets/img/team-2.jpg" class="rounded-circle img-fluid border border-2 border-white">
-                  </a>
-                </div>
-              </div>
-            </div>
-            <div class="card-header text-center border-0 pt-0 pt-lg-2 pb-4 pb-lg-3">
-              <div class="d-flex justify-content-between">
-                <a href="javascript:;" class="btn btn-sm btn-info mb-0 d-none d-lg-block">Connect</a>
-                <a href="javascript:;" class="btn btn-sm btn-info mb-0 d-block d-lg-none"><i class="ni ni-collection"></i></a>
-                <a href="javascript:;" class="btn btn-sm btn-dark float-right mb-0 d-none d-lg-block">Message</a>
-                <a href="javascript:;" class="btn btn-sm btn-dark float-right mb-0 d-block d-lg-none"><i class="ni ni-email-83"></i></a>
-              </div>
-            </div>
-            <div class="card-body pt-0">
-              <div class="row">
-                <div class="col">
-                  <div class="d-flex justify-content-center">
-                    <div class="d-grid text-center">
-                      <span class="text-lg font-weight-bolder">22</span>
-                      <span class="text-sm opacity-8">Friends</span>
-                    </div>
-                    <div class="d-grid text-center mx-4">
-                      <span class="text-lg font-weight-bolder">10</span>
-                      <span class="text-sm opacity-8">Photos</span>
-                    </div>
-                    <div class="d-grid text-center">
-                      <span class="text-lg font-weight-bolder">89</span>
-                      <span class="text-sm opacity-8">Comments</span>
+                  <div class="d-flex align-items-center">
+                    <div>
+                      <button id="prevPage" class="btn btn-sm btn-secondary">Previous</button>
+                      <button id="nextPage" class="btn btn-sm btn-secondary">Next</button>
                     </div>
                   </div>
                 </div>
               </div>
-              <div class="text-center mt-4">
-                <h5>
-                  Mark Davis<span class="font-weight-light">, 35</span>
-                </h5>
-                <div class="h6 font-weight-300">
-                  <i class="ni location_pin mr-2"></i>Bucharest, Romania
-                </div>
-                <div class="h6 mt-4">
-                  <i class="ni business_briefcase-24 mr-2"></i>Solution Manager - Creative Tim Officer
-                </div>
-                <div>
-                  <i class="ni education_hat mr-2"></i>University of Computer Science
-                </div>
-              </div>
+
+              <script>
+                let currentPage = 1;
+                let limit = 10;
+
+                function getCookie(name) {
+                  const value = `; ${document.cookie}`;
+                  const parts = value.split(`; ${name}=`);
+                  if (parts.length === 2) return parts.pop().split(';').shift();
+                  return null;
+                }
+
+                async function fetchTransactions(page) {
+                  try {
+                    const userId = getCookie('user_id');
+                    if (!userId) {
+                      console.error('User ID not found in cookies');
+                      return null;
+                    }
+
+                    const response = await fetch(`http://localhost:8080/api/transactions/user/${userId}?page=${page}&limit=${limit}`, {
+                      headers: {
+                        'accept': 'application/json',
+                        'Authorization': 'Bearer d00d9a9c0591adc4997f8ed54877b7d179a836d803255d5b9ef8af5f2d8be497',
+                        'X-User-Id': 'e0645aad-652a-45f8-965a-d1f51d472600'
+                      }
+                    });
+                    const data = await response.json();
+                    return data;
+                  } catch (error) {
+                    console.error('Error fetching transactions:', error);
+                    return null;
+                  }
+                }
+
+                function formatDate(dateString) {
+                  return new Date(dateString).toLocaleString();
+                }
+
+                function getStatusBadgeClass(status) {
+                  switch(status.toLowerCase()) {
+                    case 'completed':
+                      return 'bg-gradient-success';
+                    case 'pending':
+                      return 'bg-gradient-warning';
+                    case 'failed':
+                      return 'bg-gradient-danger';
+                    default:
+                      return 'bg-gradient-secondary';
+                  }
+                }
+
+                function updateTable(data) {
+                  const tableBody = document.getElementById('transactionTableBody');
+                  tableBody.innerHTML = '';
+
+                  data.transactions.forEach(tx => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                      <td>
+                        <div class="d-flex px-2 py-1">
+                          <div class="d-flex flex-column justify-content-center">
+                            <h6 class="mb-0 text-sm">${tx.transaction_id}</h6>
+                            <p class="text-xs text-secondary mb-0">Merchant: ${tx.merchant_id}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <p class="text-xs font-weight-bold mb-0">$${tx.transaction_amount}</p>
+                        <p class="text-xs text-secondary mb-0">Program: ${tx.program_id}</p>
+                      </td>
+                      <td class="align-middle text-center text-sm">
+                        <p class="text-xs font-weight-bold mb-0">${tx.transaction_type}</p>
+                      </td>
+                      <td class="align-middle text-center text-sm">
+                        <span class="badge badge-sm ${getStatusBadgeClass(tx.status)}">${tx.status}</span>
+                      </td>
+                      <td class="align-middle text-center">
+                        <span class="text-secondary text-xs font-weight-bold">${formatDate(tx.transaction_date)}</span>
+                      </td>
+                    `;
+                    tableBody.appendChild(row);
+                  });
+
+                  // Update pagination
+                  document.getElementById('currentPage').textContent = data.pagination.current_page;
+                  document.getElementById('totalPages').textContent = data.pagination.total_pages;
+                  
+                  // Update button states
+                  document.getElementById('prevPage').disabled = currentPage <= 1;
+                  document.getElementById('nextPage').disabled = currentPage >= data.pagination.total_pages;
+                }
+
+                async function loadTransactions(page) {
+                  const data = await fetchTransactions(page);
+                  if (data) {
+                    currentPage = page;
+                    updateTable(data);
+                  }
+                }
+
+                // Event listeners for pagination
+                document.getElementById('prevPage').addEventListener('click', () => {
+                  if (currentPage > 1) {
+                    loadTransactions(currentPage - 1);
+                  }
+                });
+
+                document.getElementById('nextPage').addEventListener('click', () => {
+                  loadTransactions(currentPage + 1);
+                });
+
+                document.getElementById('pageSize').addEventListener('change', (e) => {
+                  limit = parseInt(e.target.value);
+                  loadTransactions(1);
+                });
+
+                // Initial load
+                loadTransactions(1);
+              </script>
             </div>
           </div>
         </div>
@@ -277,6 +329,12 @@
         </div>
         <p class="text-sm d-xl-none d-block mt-2">You can change the sidenav type just on desktop view.</p>
         <!-- Navbar Fixed -->
+        <div class="d-flex my-3">
+          <h6 class="mb-0">Navbar Fixed</h6>
+          <div class="form-check form-switch ps-0 ms-auto my-auto">
+            <input class="form-check-input mt-1 ms-auto" type="checkbox" id="navbarFixed" onclick="navbarFixed(this)">
+          </div>
+        </div>
         <hr class="horizontal dark my-sm-4">
         <div class="mt-2 mb-5 d-flex">
           <h6 class="mb-0">Light / Dark</h6>

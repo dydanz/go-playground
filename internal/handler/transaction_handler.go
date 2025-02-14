@@ -3,6 +3,7 @@ package handler
 import (
 	"go-playground/internal/domain"
 	"go-playground/internal/util"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -166,13 +167,61 @@ func (h *TransactionHandler) GetByMerchantID(c *gin.Context) {
 		return
 	}
 
-	transactions, err := h.transactionService.GetByMerchantID(c.Request.Context(), uuid.MustParse(merchantID))
+	// Parse pagination parameters
+	page := 1
+	limit := 10
+	if pageStr := c.Query("page"); pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+
+	// Calculate offset
+	offset := (page - 1) * limit
+
+	var transactions []*domain.Transaction
+	var total int64
+	var err error
+
+	if merchantID == "null" || merchantID == "all" || merchantID == "" {
+		userIDStr, _ := c.Get("user_id")
+		userID, err := uuid.Parse(userIDStr.(string))
+		if err != nil {
+			util.HandleError(c, err)
+			return
+		}
+		log.Printf("User Id is %v", userID)
+		transactions, total, err = h.transactionService.GetByUserIDWithPagination(c.Request.Context(), userID, offset, limit)
+	} else {
+		transactions, total, err = h.transactionService.GetByMerchantIDWithPagination(c.Request.Context(), uuid.MustParse(merchantID), offset, limit)
+	}
+
 	if err != nil {
+		log.Printf("error: %v", err)
 		util.HandleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, transactions)
+	// Calculate total pages
+	totalPages := (total + int64(limit) - 1) / int64(limit)
+
+	// Prepare response with pagination metadata
+	response := gin.H{
+		"transactions": transactions,
+		"pagination": gin.H{
+			"current_page": page,
+			"per_page":     limit,
+			"total_items":  total,
+			"total_pages":  totalPages,
+		},
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *TransactionHandler) UpdateStatus(c *gin.Context) {

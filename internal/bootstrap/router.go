@@ -65,10 +65,12 @@ func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo red
 		"internal/static/pages/dashboard.html",
 		"internal/static/pages/profile.html",
 		"internal/static/pages/billing.html",
-		"internal/static/pages/tables.html",
+		"internal/static/pages/transactions.html",
+		"internal/static/pages/merchants.html",
 		"internal/static/pages/components/navbar.tmpl",
 		"internal/static/pages/components/sidenav.tmpl",
 		"internal/static/pages/components/sidenav-card.tmpl",
+		"internal/static/pages/components/add-merchant-modal.html",
 	)
 
 	// Serve static files
@@ -172,6 +174,7 @@ func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo red
 			merchants.GET("/:id", h.MerchantHandler.GetByID)
 			merchants.PUT("/:id", h.MerchantHandler.Update)
 			merchants.DELETE("/:id", h.MerchantHandler.Delete)
+			merchants.GET("/user/:user_id", h.MerchantHandler.GetMerchantsByUserID)
 		}
 
 		// Merchant Customers routes
@@ -211,7 +214,10 @@ func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo red
 		c.HTML(http.StatusOK, "profile.html", nil)
 	})
 	r.GET("/transactions", middleware.AuthMiddleware(authRepo, sessionRepo), middleware.CSRFMiddleware(), func(c *gin.Context) {
-		c.HTML(http.StatusOK, "tables.html", nil)
+		c.HTML(http.StatusOK, "transactions.html", nil)
+	})
+	r.GET("/merchants", middleware.AuthMiddleware(authRepo, sessionRepo), middleware.CSRFMiddleware(), func(c *gin.Context) {
+		c.HTML(http.StatusOK, "merchants.html", nil)
 	})
 	r.GET("/billing", middleware.AuthMiddleware(authRepo, sessionRepo), middleware.CSRFMiddleware(), func(c *gin.Context) {
 		c.HTML(http.StatusOK, "billing.html", nil)

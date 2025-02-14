@@ -66,7 +66,8 @@ type TransactionRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*Transaction, error)
 	GetByCustomerID(ctx context.Context, customerID uuid.UUID) ([]*Transaction, error)
 	GetByCustomerIDWithPagination(ctx context.Context, customerID uuid.UUID, offset, limit int) ([]*Transaction, int64, error)
-	GetByMerchantID(ctx context.Context, merchantID uuid.UUID) ([]*Transaction, error)
+	GetByMerchantIDWithPagination(ctx context.Context, merchantID uuid.UUID, offset, limit int) ([]*Transaction, int64, error)
+	GetByUserIDWithPagination(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*Transaction, int64, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status string) error
 }
 
@@ -132,9 +133,19 @@ type ProgramService interface {
 type MerchantService interface {
 	Create(ctx context.Context, req *CreateMerchantRequest) (*Merchant, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*Merchant, error)
-	GetAll(ctx context.Context) ([]*Merchant, error)
+	GetAll(ctx context.Context, userID uuid.UUID) ([]*MerchantList, error)
 	Update(ctx context.Context, id uuid.UUID, req *UpdateMerchantRequest) (*Merchant, error)
 	Delete(ctx context.Context, id uuid.UUID) error
+	GetMerchantsByUserID(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*Merchant, int, error)
+}
+
+type MerchantRepository interface {
+	Create(ctx context.Context, merchant *Merchant) (*Merchant, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*Merchant, error)
+	GetAll(ctx context.Context, userID uuid.UUID) ([]*MerchantList, error)
+	Update(ctx context.Context, merchant *Merchant) error
+	Delete(ctx context.Context, id uuid.UUID) error
+	GetMerchantsByUserID(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*Merchant, int, error)
 }
 
 type ProgramRulesService interface {
@@ -173,6 +184,7 @@ type TransactionService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*Transaction, error)
 	GetByCustomerID(ctx context.Context, customerID uuid.UUID) ([]*Transaction, error)
 	GetByCustomerIDWithPagination(ctx context.Context, customerID uuid.UUID, offset, limit int) ([]*Transaction, int64, error)
-	GetByMerchantID(ctx context.Context, merchantID uuid.UUID) ([]*Transaction, error)
 	UpdateStatus(ctx context.Context, id string, status string) error
+	GetByMerchantIDWithPagination(ctx context.Context, merchantID uuid.UUID, offset, limit int) ([]*Transaction, int64, error)
+	GetByUserIDWithPagination(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*Transaction, int64, error)
 }

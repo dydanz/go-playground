@@ -97,8 +97,8 @@ class MultipleLoginUser(HttpUser):
     def login_and_profile_flow(self):
         # Use fixed test credentials for login
         login_data = {
-            "email": "john@doe.com",
-            "password": "12345678"
+            "email": "user_test_001@example.com",
+            "password": "Password123!"
         }
 
         # Step 1: Login
@@ -199,8 +199,8 @@ class MerchantOnboarding(HttpUser):
     def merchant_onboarding_flow(self):
         # Step 0: Login to get authentication token
         login_data = {
-            "email": "john@doe.com",  # Replace with admin credentials
-            "password": "12345678"
+            "email": "user_test_001@example.com",
+            "password": "Password123!"
         }
         login_response = self.client.post(
             "/api/auth/login",
@@ -228,7 +228,8 @@ class MerchantOnboarding(HttpUser):
         # Step 1: Create a merchant (bank)
         merchant_data = {
             "merchant_name": "Sample Bank",
-            "merchant_type": "bank"
+            "merchant_type": "bank",
+            "user_id": user_id
         }
         merchant_response = self.client.post(
             "/api/merchants",

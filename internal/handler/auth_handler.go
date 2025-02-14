@@ -88,11 +88,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	authToken, err := h.authService.Login(c.Request.Context(), &req)
 	if err != nil {
+		log.Println("error on AuthHandler.Login: ", err)
 		util.HandleError(c, err)
 		return
 	}
-
-	log.Println("user name: ", authToken.UserName)
 
 	// Set secure cookie with session token and user ID
 	middleware.SetSecureCookie(c, authToken.TokenHash, authToken.UserID, authToken.UserName)

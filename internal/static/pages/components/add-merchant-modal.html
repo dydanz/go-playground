@@ -1,0 +1,32 @@
+<!-- Add Merchant Modal -->
+<div class="modal fade" id="addMerchantModal" tabindex="-1" role="dialog" aria-labelledby="addMerchantModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addMerchantModalLabel">Add New Merchant</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addMerchantForm">
+          <div class="form-group">
+            <label for="merchantName" class="form-control-label">Merchant Name</label>
+            <input class="form-control" type="text" id="merchantName" name="merchant_name" required>
+          </div>
+          <div class="form-group">
+            <label for="merchantType" class="form-control-label">Merchant Type</label>
+            <select class="form-control" id="merchantType" name="merchant_type" required>
+              <option value="">Select Type</option>
+              <option value="bank">Bank</option>
+              <option value="e-commerce">E-commerce</option>
+              <option value="repair_shop">Repair Shop</option>
+            </select>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn bg-gradient-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn bg-gradient-primary">Add Merchant</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

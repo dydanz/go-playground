@@ -156,17 +156,13 @@ func (s *TransactionService) GetByCustomerIDWithPagination(ctx context.Context, 
 	return s.transactionRepo.GetByCustomerIDWithPagination(ctx, customerID, offset, limit)
 }
 
-func (s *TransactionService) GetByMerchantID(ctx context.Context, merchantID uuid.UUID) ([]*domain.Transaction, error) {
-	transactions, err := s.transactionRepo.GetByMerchantID(ctx, merchantID)
-	if err != nil {
-		return nil, domain.NewSystemError("TransactionService.GetByMerchantID", err, "failed to get transactions")
-	}
-	if len(transactions) == 0 {
-		return []*domain.Transaction{}, nil
-	}
-	return transactions, nil
+func (s *TransactionService) GetByMerchantIDWithPagination(ctx context.Context, merchantID uuid.UUID, offset, limit int) ([]*domain.Transaction, int64, error) {
+	return s.transactionRepo.GetByMerchantIDWithPagination(ctx, merchantID, offset, limit)
 }
 
+func (s *TransactionService) GetByUserIDWithPagination(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*domain.Transaction, int64, error) {
+	return s.transactionRepo.GetByUserIDWithPagination(ctx, userID, offset, limit)
+}
 func (s *TransactionService) UpdateStatus(ctx context.Context, id string, status string) error {
 	txID, err := uuid.Parse(id)
 	if err != nil {

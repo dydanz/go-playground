@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"go-playground/internal/domain"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,9 +20,9 @@ func NewMerchantRepository(db *sql.DB) *MerchantRepository {
 }
 
 func (r *MerchantRepository) Create(ctx context.Context, merchant *domain.Merchant) (*domain.Merchant, error) {
-	query := `INSERT INTO merchants (user_id, name, type, created_at, updated_at) 
+	query := `INSERT INTO merchants (user_id, merchant_name, merchant_type, created_at, updated_at) 
 			  VALUES ($1, $2, $3, $4, $5)
-			  RETURNING id, user_id, name, type, created_at, updated_at`
+			  RETURNING id, user_id, merchant_name, merchant_type, created_at, updated_at`
 
 	result := domain.Merchant{}
 	err := r.db.QueryRowContext(ctx, query,
@@ -51,8 +52,8 @@ func (r *MerchantRepository) Create(ctx context.Context, merchant *domain.Mercha
 }
 
 func (r *MerchantRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Merchant, error) {
-	query := `SELECT id, user_id, name, type, created_at, updated_at 
-			  FROM merchants WHERE id = $1`
+	query := `SELECT id, user_id, merchant_name, merchant_type, created_at, updated_at 
+			  FROM merchants WHERE id = $1 AND status = 'active'`
 
 	merchant := &domain.Merchant{}
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
@@ -74,13 +75,26 @@ func (r *MerchantRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain
 	return merchant, nil
 }
 
-func (r *MerchantRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]*domain.Merchant, error) {
-	query := `SELECT id, user_id, name, type, created_at, updated_at 
-			  FROM merchants WHERE user_id = $1`
-
-	rows, err := r.db.QueryContext(ctx, query, userID)
+func (r *MerchantRepository) GetMerchantsByUserID(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*domain.Merchant, int, error) {
+	// First, get total count
+	var total int
+	countQuery := `SELECT COUNT(*) FROM merchants WHERE user_id = $1`
+	err := r.db.QueryRowContext(ctx, countQuery, userID).Scan(&total)
 	if err != nil {
-		return nil, domain.NewSystemError("MerchantRepository.GetByUserID", err, "failed to query merchants")
+		return nil, 0, domain.NewSystemError("MerchantRepository.GetMerchantsByUserID", err, "failed to get total count")
+	}
+
+	// Then get paginated results
+	query := `SELECT id, user_id, merchant_name, merchant_type, created_at, updated_at, status
+			  FROM merchants 
+			  WHERE user_id = $1 
+			  ORDER BY created_at DESC
+			  LIMIT $2 OFFSET $3`
+
+	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
+	if err != nil {
+		log.Printf("Error querying merchants: %v", err)
+		return nil, 0, domain.NewSystemError("MerchantRepository.GetMerchantsByUserID", err, "failed to query merchants")
 	}
 	defer rows.Close()
 
@@ -94,42 +108,42 @@ func (r *MerchantRepository) GetByUserID(ctx context.Context, userID uuid.UUID) 
 			&merchant.Type,
 			&merchant.CreatedAt,
 			&merchant.UpdatedAt,
+			&merchant.Status,
 		)
 		if err != nil {
-			return nil, domain.NewSystemError("MerchantRepository.GetByUserID", err, "failed to scan merchant")
+			log.Printf("Error scanning merchant: %v", err)
+			return nil, 0, domain.NewSystemError("MerchantRepository.GetMerchantsByUserID", err, "failed to scan merchant")
 		}
 		merchants = append(merchants, merchant)
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, domain.NewSystemError("MerchantRepository.GetByUserID", err, "error iterating merchants")
+		log.Printf("Error iterating merchants: %v", err)
+		return nil, 0, domain.NewSystemError("MerchantRepository.GetMerchantsByUserID", err, "error iterating merchants")
 	}
 
-	return merchants, nil
+	return merchants, total, nil
 }
 
-func (r *MerchantRepository) GetAll(ctx context.Context) ([]*domain.Merchant, error) {
+func (r *MerchantRepository) GetAll(ctx context.Context, userID uuid.UUID) ([]*domain.MerchantList, error) {
 	query := `
-		SELECT id, user_id, merchant_name, merchant_type, created_at, updated_at
+		SELECT id, merchant_name
 		FROM merchants
+		WHERE user_id = $1 AND status = 'active'
 		ORDER BY merchant_name
 	`
-	rows, err := r.db.QueryContext(ctx, query)
+	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var merchants []*domain.Merchant
+	var merchants []*domain.MerchantList
 	for rows.Next() {
-		merchant := &domain.Merchant{}
+		merchant := &domain.MerchantList{}
 		err := rows.Scan(
 			&merchant.ID,
-			&merchant.UserID,
 			&merchant.Name,
-			&merchant.Type,
-			&merchant.CreatedAt,
-			&merchant.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -159,6 +173,20 @@ func (r *MerchantRepository) Update(ctx context.Context, merchant *domain.Mercha
 }
 
 func (r *MerchantRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	query := `
+		UPDATE merchants
+		SET status=$1, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $2
+	`
+	_, err := r.db.ExecContext(
+		ctx,
+		query,
+		"deactivated",
+		id,
+	)
+	if err != nil {
+		return domain.NewSystemError("MerchantRepository.Delete", err, "failed to delete merchant")
+	}
 	return nil
 }
 

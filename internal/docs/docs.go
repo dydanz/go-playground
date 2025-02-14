@@ -333,15 +333,40 @@ const docTemplate = `{
             }
         },
         "/merchant-customers": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "UserIdAuth": []
-                    }
+            "get": {
+                "description": "Get all customers for a merchant",
+                "produces": [
+                    "application/json"
                 ],
+                "tags": [
+                    "merchant-customers"
+                ],
+                "summary": "Get merchant customers by merchant ID",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.MerchantCustomer"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
                 "description": "Create a new merchant customer",
                 "consumes": [
                     "application/json"
@@ -356,7 +381,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "description": "Customer details",
-                        "name": "request",
+                        "name": "customer",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -374,19 +399,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/util.ErrorResponse"
                         }
                     }
                 }
@@ -461,81 +486,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/merchant-customers/merchant/{merchant_id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "UserIdAuth": []
-                    }
-                ],
-                "description": "Get all customers for a specific merchant",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "merchant-customers"
-                ],
-                "summary": "Get merchant customers by merchant ID",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Merchant ID",
-                        "name": "merchant_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.MerchantCustomer"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/merchant-customers/{id}": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "UserIdAuth": []
-                    }
-                ],
                 "description": "Get merchant customer details by ID",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
@@ -562,41 +515,24 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/util.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/util.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/util.ErrorResponse"
                         }
                     }
                 }
             },
             "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "UserIdAuth": []
-                    }
-                ],
                 "description": "Update merchant customer details",
                 "consumes": [
                     "application/json"
@@ -617,8 +553,8 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Customer details to update",
-                        "name": "request",
+                        "description": "Customer details",
+                        "name": "customer",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -636,28 +572,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/util.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/util.ErrorResponse"
                         }
                     }
                 }
@@ -735,6 +668,65 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/merchants/user/{user_id}": {
+            "get": {
+                "description": "Get all Merchants for a User with pagination",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "merchants"
+                ],
+                "summary": "Get all merchants for a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of items per page (default: 10)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.PaginatedMerchants"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/util.ErrorResponse"
                         }
@@ -2967,16 +2959,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "merchant_type": {
-                    "enum": [
-                        "bank",
-                        "e-commerce",
-                        "repair_shop"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.MerchantType"
-                        }
-                    ]
+                    "$ref": "#/definitions/domain.MerchantType"
                 },
                 "user_id": {
                     "type": "string"
@@ -3195,6 +3178,9 @@ const docTemplate = `{
                 "merchant_type": {
                     "$ref": "#/definitions/domain.MerchantType"
                 },
+                "status": {
+                    "type": "string"
+                },
                 "updated_at": {
                     "type": "string"
                 },
@@ -3244,6 +3230,37 @@ const docTemplate = `{
                 "MerchantTypeEcommerce",
                 "MerchantTypeRepairShop"
             ]
+        },
+        "domain.PaginatedMerchants": {
+            "type": "object",
+            "properties": {
+                "merchants": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Merchant"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/domain.Pagination"
+                }
+            }
+        },
+        "domain.Pagination": {
+            "type": "object",
+            "properties": {
+                "current_page": {
+                    "type": "integer"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
+                }
+            }
         },
         "domain.PointsLedger": {
             "type": "object",
@@ -3521,16 +3538,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "merchant_type": {
-                    "enum": [
-                        "bank",
-                        "e-commerce",
-                        "repair_shop"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.MerchantType"
-                        }
-                    ]
+                    "$ref": "#/definitions/domain.MerchantType"
                 }
             }
         },
