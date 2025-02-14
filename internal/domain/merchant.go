@@ -24,6 +24,11 @@ type Merchant struct {
 	Status    string       `json:"status"`
 }
 
+type MerchantList struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"merchant_name"`
+}
+
 type CreateMerchantRequest struct {
 	UserID uuid.UUID    `json:"user_id" binding:"required"`
 	Name   string       `json:"merchant_name" binding:"required"`

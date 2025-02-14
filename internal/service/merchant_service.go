@@ -53,15 +53,15 @@ func (s *MerchantService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Me
 	return merchant, nil
 }
 
-func (s *MerchantService) GetAll(ctx context.Context) ([]*domain.Merchant, error) {
-	merchants, err := s.merchantRepo.GetAll(ctx)
+func (s *MerchantService) GetAll(ctx context.Context, userID uuid.UUID) ([]*domain.MerchantList, error) {
+	merchants, err := s.merchantRepo.GetAll(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(merchants) == 0 {
 		// Return empty slice instead of nil for consistent response
-		return []*domain.Merchant{}, nil
+		return []*domain.MerchantList{}, nil
 	}
 
 	return merchants, nil

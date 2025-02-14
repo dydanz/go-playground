@@ -125,29 +125,25 @@ func (r *MerchantRepository) GetMerchantsByUserID(ctx context.Context, userID uu
 	return merchants, total, nil
 }
 
-func (r *MerchantRepository) GetAll(ctx context.Context) ([]*domain.Merchant, error) {
+func (r *MerchantRepository) GetAll(ctx context.Context, userID uuid.UUID) ([]*domain.MerchantList, error) {
 	query := `
-		SELECT id, user_id, merchant_name, merchant_type, created_at, updated_at
+		SELECT id, merchant_name
 		FROM merchants
-		WHERE status = 'active'
+		WHERE user_id = $1 AND status = 'active'
 		ORDER BY merchant_name
 	`
-	rows, err := r.db.QueryContext(ctx, query)
+	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var merchants []*domain.Merchant
+	var merchants []*domain.MerchantList
 	for rows.Next() {
-		merchant := &domain.Merchant{}
+		merchant := &domain.MerchantList{}
 		err := rows.Scan(
 			&merchant.ID,
-			&merchant.UserID,
 			&merchant.Name,
-			&merchant.Type,
-			&merchant.CreatedAt,
-			&merchant.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err

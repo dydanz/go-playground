@@ -3178,6 +3178,9 @@ const docTemplate = `{
                 "merchant_type": {
                     "$ref": "#/definitions/domain.MerchantType"
                 },
+                "status": {
+                    "type": "string"
+                },
                 "updated_at": {
                     "type": "string"
                 },

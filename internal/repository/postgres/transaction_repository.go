@@ -150,7 +150,16 @@ func (r *TransactionRepository) GetByCustomerIDWithPagination(ctx context.Contex
 	return transactions, total, nil
 }
 
-func (r *TransactionRepository) GetByMerchantID(ctx context.Context, merchantID uuid.UUID) ([]*domain.Transaction, error) {
+func (r *TransactionRepository) GetByMerchantIDWithPagination(ctx context.Context, merchantID uuid.UUID, offset, limit int) ([]*domain.Transaction, int64, error) {
+	// Get total count
+	var total int64
+	countQuery := `SELECT COUNT(*) FROM transactions WHERE merchant_id = $1`
+	err := r.db.RR.QueryRowContext(ctx, countQuery, merchantID).Scan(&total)
+	if err != nil {
+		return nil, 0, domain.NewSystemError("TransactionRepository.GetByMerchantIDWithPagination", err, "failed to get total count")
+	}
+
+	// Build query with pagination
 	query := `
 		SELECT transaction_id, merchant_id, merchant_customers_id, program_id,
 			   transaction_type, transaction_amount, transaction_date,
@@ -159,9 +168,17 @@ func (r *TransactionRepository) GetByMerchantID(ctx context.Context, merchantID 
 		WHERE merchant_id = $1
 		ORDER BY transaction_date DESC
 	`
-	rows, err := r.db.RR.QueryContext(ctx, query, merchantID)
+
+	var rows *sql.Rows
+	if limit > 0 {
+		query += ` LIMIT $2 OFFSET $3`
+		rows, err = r.db.RR.QueryContext(ctx, query, merchantID, limit, offset)
+	} else {
+		rows, err = r.db.RR.QueryContext(ctx, query, merchantID)
+	}
+
 	if err != nil {
-		return nil, domain.NewSystemError("TransactionRepository.GetByMerchantID", err, "failed to query transactions")
+		return nil, 0, domain.NewSystemError("TransactionRepository.GetByMerchantIDWithPagination", err, "failed to query transactions")
 	}
 	defer rows.Close()
 
@@ -181,16 +198,81 @@ func (r *TransactionRepository) GetByMerchantID(ctx context.Context, merchantID 
 			&tx.CreatedAt,
 		)
 		if err != nil {
-			return nil, domain.NewSystemError("TransactionRepository.GetByMerchantID", err, "failed to scan transaction")
+			return nil, 0, domain.NewSystemError("TransactionRepository.GetByMerchantIDWithPagination", err, "failed to scan transaction")
 		}
 		transactions = append(transactions, tx)
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, domain.NewSystemError("TransactionRepository.GetByMerchantID", err, "error iterating transactions")
+		return nil, 0, domain.NewSystemError("TransactionRepository.GetByMerchantIDWithPagination", err, "error iterating transactions")
 	}
 
-	return transactions, nil
+	return transactions, total, nil
+}
+
+func (r *TransactionRepository) GetByUserIDWithPagination(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*domain.Transaction, int64, error) {
+	// Get total count using a subquery to join merchants and transactions
+	var total int64
+	countQuery := `
+		SELECT COUNT(*) FROM transactions t
+		INNER JOIN merchants m ON t.merchant_id = m.id
+		WHERE m.user_id = $1
+	`
+	err := r.db.RR.QueryRowContext(ctx, countQuery, userID).Scan(&total)
+	if err != nil {
+		return nil, 0, domain.NewSystemError("TransactionRepository.GetByUserIDWithPagination", err, "failed to get total count")
+	}
+
+	// Build query with pagination
+	query := `
+		SELECT t.transaction_id, t.merchant_id, t.merchant_customers_id, t.program_id,
+			   t.transaction_type, t.transaction_amount, t.transaction_date,
+			   t.branch_id, t.status, t.created_at
+		FROM transactions t
+		INNER JOIN merchants m ON t.merchant_id = m.id
+		WHERE m.user_id = $1
+		ORDER BY t.transaction_date DESC
+	`
+
+	var rows *sql.Rows
+	if limit > 0 {
+		query += ` LIMIT $2 OFFSET $3`
+		rows, err = r.db.RR.QueryContext(ctx, query, userID, limit, offset)
+	} else {
+		rows, err = r.db.RR.QueryContext(ctx, query, userID)
+	}
+
+	if err != nil {
+		return nil, 0, domain.NewSystemError("TransactionRepository.GetByUserIDWithPagination", err, "failed to query transactions")
+	}
+	defer rows.Close()
+
+	var transactions []*domain.Transaction
+	for rows.Next() {
+		tx := &domain.Transaction{}
+		err := rows.Scan(
+			&tx.TransactionID,
+			&tx.MerchantID,
+			&tx.MerchantCustomersID,
+			&tx.ProgramID,
+			&tx.TransactionType,
+			&tx.TransactionAmount,
+			&tx.TransactionDate,
+			&tx.BranchID,
+			&tx.Status,
+			&tx.CreatedAt,
+		)
+		if err != nil {
+			return nil, 0, domain.NewSystemError("TransactionRepository.GetByUserIDWithPagination", err, "failed to scan transaction")
+		}
+		transactions = append(transactions, tx)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, 0, domain.NewSystemError("TransactionRepository.GetByUserIDWithPagination", err, "error iterating transactions")
+	}
+
+	return transactions, total, nil
 }
 
 // Notes: Table Transactions should be can not be updated/deleted.

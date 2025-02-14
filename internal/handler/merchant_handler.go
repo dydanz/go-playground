@@ -91,13 +91,27 @@ func (h *MerchantHandler) GetByID(c *gin.Context) {
 // @Failure 500 {object} util.ErrorResponse
 // @Router /merchants [get]
 func (h *MerchantHandler) GetAll(c *gin.Context) {
-	merchants, err := h.merchantService.GetAll(c.Request.Context())
+	// Get user ID from context (set by auth middleware)
+	userIDStr, exists := c.Get("user_id")
+	userID, err := uuid.Parse(userIDStr.(string))
 	if err != nil {
+		return
+	}
+	if !exists {
+		log.Printf("%v error to check: \n%v", exists, userID)
+		util.HandleError(c, domain.NewAuthenticationError("user not authenticated"))
+		return
+	}
+
+	merchants, err := h.merchantService.GetAll(c.Request.Context(), userID)
+	if err != nil {
+		log.Printf("error: %v", err)
 		util.HandleError(c, err)
 		return
 	}
 
 	if len(merchants) == 0 {
+		log.Printf("no merchants found")
 		util.EmptyResponse(c)
 		return
 	}
