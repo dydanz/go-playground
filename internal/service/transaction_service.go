@@ -12,20 +12,20 @@ import (
 type TransactionService struct {
 	transactionRepo      domain.TransactionRepository
 	pointsService        domain.PointsService
-	eventRepo            domain.EventLogRepository
+	eventLoggerService   domain.EventLoggerService
 	merchantCustomerRepo domain.MerchantCustomersRepository
 }
 
 func NewTransactionService(
 	transactionRepo domain.TransactionRepository,
 	pointsService domain.PointsService,
-	eventRepo domain.EventLogRepository,
+	eventLoggerService domain.EventLoggerService,
 	merchantCustomerRepo domain.MerchantCustomersRepository,
 ) *TransactionService {
 	return &TransactionService{
 		transactionRepo:      transactionRepo,
 		pointsService:        pointsService,
-		eventRepo:            eventRepo,
+		eventLoggerService:   eventLoggerService,
 		merchantCustomerRepo: merchantCustomerRepo,
 	}
 }
@@ -61,6 +61,7 @@ func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTrans
 		ProgramID:           req.ProgramID,
 		TransactionType:     req.TransactionType,
 		TransactionAmount:   req.TransactionAmount,
+		TransactionDate:     req.TransactionDate,
 	}
 
 	createdTx, err := s.transactionRepo.Create(ctx, transaction)
@@ -110,22 +111,7 @@ func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTrans
 	}
 
 	// Log the transaction event
-	event := &domain.EventLog{
-		EventType:   string(domain.TransactionCreated),
-		ActorID:     req.MerchantCustomersID.String(),
-		ActorType:   string(domain.MerchantUserActorType),
-		ReferenceID: func() *string { s := createdTx.TransactionID.String(); return &s }(),
-		Details: map[string]interface{}{
-			"transaction_id":     createdTx.TransactionID,
-			"merchant_id":        merchantID,
-			"program_id":         req.ProgramID,
-			"transaction_type":   req.TransactionType,
-			"transaction_amount": req.TransactionAmount,
-			"points_earned":      points,
-		},
-	}
-
-	go s.eventRepo.Create(ctx, event)
+	go s.eventLoggerService.SaveTransactionEvents(ctx, domain.TransactionCreated, createdTx, points)
 
 	return createdTx, nil
 }

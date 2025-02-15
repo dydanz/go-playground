@@ -13,7 +13,7 @@ type RedemptionService struct {
 	rewardsRepo        domain.RewardsRepository
 	pointsService      domain.PointsService
 	transactionService domain.TransactionService
-	eventRepo          domain.EventLogRepository
+	eventLoggerService domain.EventLoggerService
 }
 
 func NewRedemptionService(
@@ -21,14 +21,14 @@ func NewRedemptionService(
 	rewardsRepo domain.RewardsRepository,
 	pointsService domain.PointsService,
 	transactionService domain.TransactionService,
-	eventRepo domain.EventLogRepository,
+	eventLoggerService domain.EventLoggerService,
 ) *RedemptionService {
 	return &RedemptionService{
 		redemptionRepo:     redemptionRepo,
 		rewardsRepo:        rewardsRepo,
 		pointsService:      pointsService,
 		transactionService: transactionService,
-		eventRepo:          eventRepo,
+		eventLoggerService: eventLoggerService,
 	}
 }
 
@@ -77,6 +77,7 @@ func (s *RedemptionService) Create(ctx context.Context, redemption *domain.Redem
 		ProgramID:           reward.ProgramID,
 		TransactionType:     "redemption",
 		TransactionAmount:   float64(reward.PointsRequired),
+		TransactionDate:     redemption.RedemptionDate,
 	})
 	if err != nil {
 		log.Printf("error creating redemption transaction for redemption id: %s, error: %v", redemption.ID, err)
@@ -86,20 +87,7 @@ func (s *RedemptionService) Create(ctx context.Context, redemption *domain.Redem
 	log.Println("transaction record for redemption id: ", redemption.ID, "paired tx-id: ", transaction.TransactionID)
 
 	// Log the redemption event
-	event := &domain.EventLog{
-		EventType:   string(domain.RewardRedeemed),
-		ActorID:     redemption.MerchantCustomersID.String(),
-		ActorType:   string(domain.MerchantUserActorType),
-		ReferenceID: func() *string { s := redemption.ID.String(); return &s }(),
-		Details: map[string]interface{}{
-			"reward_id":     redemption.RewardID,
-			"points_used":   reward.PointsRequired,
-			"redemption_id": redemption.ID,
-			"program_id":    reward.ProgramID,
-		},
-	}
-
-	go s.eventRepo.Create(ctx, event)
+	go s.eventLoggerService.SaveRedemptionEvents(ctx, domain.RewardRedeemed, redemption, reward)
 
 	return nil
 }

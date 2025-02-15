@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type RewardsHandler struct {
@@ -151,4 +152,36 @@ func (h *RewardsHandler) Delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Reward deleted successfully"})
+}
+
+// @Summary Get rewards by program ID
+// @Description Get all rewards associated with a specific program
+// @Tags rewards
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Security UserIdAuth
+// @Param program_id path string true "Program ID"
+// @Success 200 {array} domain.Reward
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /rewards/program/{program_id} [get]
+func (h *RewardsHandler) GetByProgramID(c *gin.Context) {
+	programIDStr := c.Param("program_id")
+	programID, err := uuid.Parse(programIDStr)
+	if err != nil {
+		util.HandleError(c, domain.ValidationError{
+			Field:   "program_id",
+			Message: "invalid program ID",
+		})
+		return
+	}
+
+	rewards, err := h.rewardsService.GetByProgramID(c.Request.Context(), programID)
+	if err != nil {
+		util.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, rewards)
 }

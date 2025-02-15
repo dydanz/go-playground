@@ -23,7 +23,7 @@ func (r *TransactionRepository) Create(ctx context.Context, tx *domain.Transacti
 			merchant_id, merchant_customers_id, program_id,
 			transaction_type, transaction_amount, transaction_date,
 			branch_id, status, created_at
-		) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6, $7, CURRENT_TIMESTAMP)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
 		RETURNING transaction_id, transaction_date, created_at
 	`
 	createdTx := &domain.Transaction{}
@@ -35,6 +35,7 @@ func (r *TransactionRepository) Create(ctx context.Context, tx *domain.Transacti
 		tx.ProgramID,
 		tx.TransactionType,
 		tx.TransactionAmount,
+		tx.TransactionDate,
 		tx.BranchID,
 		tx.Status,
 	).Scan(
@@ -75,7 +76,7 @@ func (r *TransactionRepository) GetByID(ctx context.Context, transactionID uuid.
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, domain.NewResourceNotFoundError("transaction", transactionID.String(), "transaction not found")
+			return nil, nil
 		}
 		return nil, domain.NewSystemError("TransactionRepository.GetByID", err, "failed to get transaction")
 	}
@@ -96,6 +97,9 @@ func (r *TransactionRepository) GetByCustomerIDWithPagination(ctx context.Contex
 	countQuery := `SELECT COUNT(*) FROM transactions WHERE merchant_customers_id = $1`
 	err := r.db.RR.QueryRowContext(ctx, countQuery, merchantCustomersID).Scan(&total)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, 0, nil
+		}
 		return nil, 0, domain.NewSystemError("TransactionRepository.GetByCustomerIDWithPagination", err, "failed to get total count")
 	}
 
@@ -118,6 +122,9 @@ func (r *TransactionRepository) GetByCustomerIDWithPagination(ctx context.Contex
 	}
 
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, 0, nil
+		}
 		return nil, 0, domain.NewSystemError("TransactionRepository.GetByCustomerIDWithPagination", err, "failed to query transactions")
 	}
 	defer rows.Close()
@@ -156,6 +163,9 @@ func (r *TransactionRepository) GetByMerchantIDWithPagination(ctx context.Contex
 	countQuery := `SELECT COUNT(*) FROM transactions WHERE merchant_id = $1`
 	err := r.db.RR.QueryRowContext(ctx, countQuery, merchantID).Scan(&total)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, 0, nil
+		}
 		return nil, 0, domain.NewSystemError("TransactionRepository.GetByMerchantIDWithPagination", err, "failed to get total count")
 	}
 
@@ -178,6 +188,9 @@ func (r *TransactionRepository) GetByMerchantIDWithPagination(ctx context.Contex
 	}
 
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, 0, nil
+		}
 		return nil, 0, domain.NewSystemError("TransactionRepository.GetByMerchantIDWithPagination", err, "failed to query transactions")
 	}
 	defer rows.Close()
@@ -220,6 +233,9 @@ func (r *TransactionRepository) GetByUserIDWithPagination(ctx context.Context, u
 	`
 	err := r.db.RR.QueryRowContext(ctx, countQuery, userID).Scan(&total)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, 0, nil
+		}
 		return nil, 0, domain.NewSystemError("TransactionRepository.GetByUserIDWithPagination", err, "failed to get total count")
 	}
 
@@ -243,6 +259,9 @@ func (r *TransactionRepository) GetByUserIDWithPagination(ctx context.Context, u
 	}
 
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, 0, nil
+		}
 		return nil, 0, domain.NewSystemError("TransactionRepository.GetByUserIDWithPagination", err, "failed to query transactions")
 	}
 	defer rows.Close()

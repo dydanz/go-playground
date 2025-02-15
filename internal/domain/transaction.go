@@ -25,6 +25,7 @@ type CreateTransactionRequest struct {
 	ProgramID           uuid.UUID  `json:"program_id" binding:"required"`
 	TransactionType     string     `json:"transaction_type" binding:"required,oneof=purchase refund bonus"`
 	TransactionAmount   float64    `json:"transaction_amount" binding:"required,gt=0"`
+	TransactionDate     time.Time  `json:"transaction_date" binding:"required"`
 	BranchID            *uuid.UUID `json:"branch_id,omitempty"`
 	Status              string     `json:"status" binding:"required,oneof=pending completed failed cancelled"`
 }

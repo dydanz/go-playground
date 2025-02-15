@@ -1,4 +1,4 @@
- package handler
+package handler
 
 import (
 	"go-playground/internal/domain"
@@ -38,7 +38,9 @@ func (h *RedemptionHandler) Create(c *gin.Context) {
 	redemption := &domain.Redemption{
 		MerchantCustomersID: req.MerchantCustomersID,
 		RewardID:            req.RewardID,
-		Status:              "pending",
+		PointsUsed:          req.PointsUsed,
+		RedemptionDate:      req.RedemptionDate,
+		Status:              domain.RedemptionStatus(req.RedemptionStatus),
 	}
 
 	if err := h.redemptionService.Create(c.Request.Context(), redemption); err != nil {

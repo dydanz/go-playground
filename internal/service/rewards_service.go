@@ -56,6 +56,14 @@ func (s *RewardsService) GetByID(ctx context.Context, id string) (*domain.Reward
 	return reward, nil
 }
 
+func (s *RewardsService) GetByProgramID(ctx context.Context, programID uuid.UUID) ([]*domain.Reward, error) {
+	rewards, err := s.rewardsRepo.GetByProgramID(ctx, programID)
+	if err!= nil {
+		return nil, domain.NewSystemError("RewardsService.GetByProgramID", err, "failed to get rewards")
+	}
+	return rewards, nil
+}
+
 func (s *RewardsService) Update(ctx context.Context, id string, req *domain.UpdateRewardRequest) (*domain.Reward, error) {
 	reward, err := s.rewardsRepo.GetByID(ctx, uuid.MustParse(id))
 	if err != nil {
