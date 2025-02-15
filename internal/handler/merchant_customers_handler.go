@@ -90,10 +90,11 @@ func (h *MerchantCustomersHandler) GetByID(c *gin.Context) {
 // @Description Get all customers for a merchant
 // @Tags merchant-customers
 // @Produce json
+// @Param merchant_id path string true "Merchant ID"
 // @Success 200 {array} domain.MerchantCustomer
 // @Failure 401 {object} util.ErrorResponse
 // @Failure 500 {object} util.ErrorResponse
-// @Router /merchant-customers [get]
+// @Router /merchant-customers/merchant/{merchant_id} [get]
 func (h *MerchantCustomersHandler) GetByMerchantID(c *gin.Context) {
 	merchantID, err := uuid.Parse(c.Param("merchant_id"))
 	if err != nil {

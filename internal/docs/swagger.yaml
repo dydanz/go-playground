@@ -725,28 +725,6 @@ paths:
       tags:
       - auth
   /merchant-customers:
-    get:
-      description: Get all customers for a merchant
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/domain.MerchantCustomer'
-            type: array
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/util.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/util.ErrorResponse'
-      summary: Get merchant customers by merchant ID
-      tags:
-      - merchant-customers
     post:
       consumes:
       - application/json
@@ -894,6 +872,35 @@ paths:
       - BearerAuth: []
       - UserIdAuth: []
       summary: Validate customer credentials
+      tags:
+      - merchant-customers
+  /merchant-customers/merchant/{merchant_id}:
+    get:
+      description: Get all customers for a merchant
+      parameters:
+      - description: Merchant ID
+        in: path
+        name: merchant_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.MerchantCustomer'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+      summary: Get merchant customers by merchant ID
       tags:
       - merchant-customers
   /merchants:
@@ -2036,6 +2043,44 @@ paths:
       - BearerAuth: []
       - UserIdAuth: []
       summary: Update reward
+      tags:
+      - rewards
+  /rewards/program/{program_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get all rewards associated with a specific program
+      parameters:
+      - description: Program ID
+        in: path
+        name: program_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Reward'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      - UserIdAuth: []
+      summary: Get rewards by program ID
       tags:
       - rewards
   /transactions:

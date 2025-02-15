@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"go-playground/internal/domain"
+	"log"
 )
 
 type UserRepository struct {
@@ -145,9 +146,11 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
+
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, domain.NewResourceNotFoundError("user", email, "user not found")
+			log.Printf("No user found with the given ID.")
+			return nil, nil
 		}
 		return nil, domain.NewSystemError("UserRepository.GetByEmail", err, "failed to get user")
 	}
@@ -162,7 +165,12 @@ func (r *UserRepository) GetAll(ctx context.Context) ([]*domain.User, error) {
 		FROM users
 	`
 	rows, err := r.db.QueryContext(ctx, query)
+
 	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Printf("No user(s) found.")
+			return nil, nil
+		}
 		return nil, domain.NewSystemError("UserRepository.GetAll", err, "failed to query users")
 	}
 	defer rows.Close()
@@ -258,10 +266,10 @@ func (r *UserRepository) GetRandomActiveUser(ctx context.Context) (*domain.User,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)
-
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, domain.NewResourceNotFoundError("user", "active", "no active users found")
+			log.Printf("no active users found")
+			return nil, nil
 		}
 		return nil, domain.NewSystemError("UserRepository.GetRandomActiveUser", err, "failed to get random active user")
 	}

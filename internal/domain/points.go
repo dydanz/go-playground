@@ -80,6 +80,9 @@ type CreateRedemptionRequest struct {
 	MerchantCustomersID uuid.UUID `json:"merchant_customers_id" binding:"required"`
 	RewardID            uuid.UUID `json:"reward_id" binding:"required"`
 	PointsUsed          int       `json:"points_used" binding:"required,gt=0"`
+	PointsRequired      int       `json:"points_required" binding:"required,gt=0"`
+	RedemptionDate      time.Time `json:"redemption_date" binding:"required"`
+	RedemptionStatus    string    `json:"status" binding:"required,oneof=pending completed failed"`
 }
 
 type UpdateRedemptionRequest struct {

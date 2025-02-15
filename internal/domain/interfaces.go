@@ -78,6 +78,7 @@ type RewardsRepository interface {
 	Update(ctx context.Context, reward *Reward) (*Reward, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	GetAll(ctx context.Context, activeOnly bool) ([]Reward, error)
+	GetByProgramID(ctx context.Context, programID uuid.UUID) ([]*Reward, error)
 }
 
 // RedemptionRepository handles redemption operations
@@ -162,6 +163,7 @@ type RewardsService interface {
 	GetByID(ctx context.Context, id string) (*Reward, error)
 	Update(ctx context.Context, id string, req *UpdateRewardRequest) (*Reward, error)
 	Delete(ctx context.Context, id string) error
+	GetByProgramID(ctx context.Context, programID uuid.UUID) ([]*Reward, error)
 }
 
 type RedemptionService interface {
@@ -176,6 +178,16 @@ type EventLogRepository interface {
 	GetByID(id string) (*EventLog, error)
 	GetByUserID(userID string) ([]EventLog, error)
 	GetByReferenceID(referenceID string) (*EventLog, error)
+}
+
+type EventLoggerService interface {
+	SaveTransactionEvents(ctx context.Context, eventType EventLogType, transaction *Transaction, pointsEarned int) error
+	SaveRedemptionEvents(ctx context.Context, eventType EventLogType, redemption *Redemption, reward *Reward) error
+	SaveUserUpdateEvents(ctx context.Context, eventType EventLogType, user *User) error
+	SaveMerchantUpdateEvents(ctx context.Context, eventType EventLogType, merchant *Merchant) error
+	SaveProgramUpdateEvents(ctx context.Context, eventType EventLogType, program *Program) error
+	SaveProgramRulesEvents(ctx context.Context, eventType EventLogType, programRule *ProgramRule) error
+	SavePointUpdateEvents(ctx context.Context, eventType EventLogType, ledger *PointsLedger) error
 }
 
 // TransactionRepository handles transaction operations

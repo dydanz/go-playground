@@ -71,7 +71,7 @@ func (r *ProgramsRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, domain.NewResourceNotFoundError("program", id.String(), "program not found")
+			return nil, nil
 		}
 		return nil, domain.NewSystemError("ProgramsRepository.GetByID", err, "failed to get program")
 	}
@@ -113,6 +113,11 @@ func (r *ProgramsRepository) GetAll(ctx context.Context) ([]*domain.Program, err
 
 	if err = rows.Err(); err != nil {
 		return nil, domain.NewSystemError("ProgramsRepository.GetAll", err, "error iterating programs")
+	}
+
+	// Return empty slice and nil error if no programs found
+	if len(programs) == 0 {
+		return nil, nil
 	}
 
 	return programs, nil
@@ -190,6 +195,11 @@ func (r *ProgramsRepository) GetByMerchantID(ctx context.Context, merchantID uui
 
 	if err = rows.Err(); err != nil {
 		return nil, domain.NewSystemError("ProgramsRepository.GetByMerchantID", err, "error iterating programs")
+	}
+
+	// Return empty slice and nil error if no programs found
+	if len(programs) == 0 {
+		return nil, nil
 	}
 
 	return programs, nil

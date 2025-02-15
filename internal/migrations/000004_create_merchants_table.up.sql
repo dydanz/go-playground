@@ -1,5 +1,5 @@
 -- Create merchant type enum
-CREATE TYPE merchant_type AS ENUM ('bank', 'e-commerce', 'repair_shop');
+CREATE TYPE merchant_type AS ENUM ('bank', 'e-commerce', 'repair_shop', 'retailer');
 
 -- Merchant (Stores or Business Units Under a Client)
 --- A merchant represents a specific brand, store, or business that operates under a client.

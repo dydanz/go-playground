@@ -24,11 +24,19 @@ type EventLogType string
 const (
 	TransactionCreated   EventLogType = "transaction_created"
 	ProgramIDCreated     EventLogType = "program_id_created"
-	ProgramRuleCreated   EventLogType = "program_rule_created"
+	ProgramIDUpdated     EventLogType = "program_id_updated"
 	PointsEarned         EventLogType = "points_earned"
 	PointsRedeemed       EventLogType = "points_redeemed"
 	PointsBalanceUpdated EventLogType = "points_balance_updated"
 	RewardRedeemed       EventLogType = "reward_redeemed"
+	UserCreated          EventLogType = "user_created"
+	UserUpdated          EventLogType = "user_updated"
+	MerchantCreated      EventLogType = "merchant_created"
+	MerchantUpdated      EventLogType = "merchant_updated"
+	ProgramCreated       EventLogType = "program_created"
+	ProgramUpdated       EventLogType = "program_updated"
+	ProgramRuleCreated   EventLogType = "program_rule_created"
+	ProgramRuleUpdated   EventLogType = "program_rule_updated"
 )
 
 // Reference : ~/internal/migrations/000007_create_event_log_table.up.sql

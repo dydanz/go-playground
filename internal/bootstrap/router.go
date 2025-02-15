@@ -155,6 +155,7 @@ func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo red
 			rewards.GET("/:id", h.RewardsHandler.GetByID)
 			rewards.PUT("/:id", h.RewardsHandler.Update)
 			rewards.DELETE("/:id", h.RewardsHandler.Delete)
+			rewards.GET("/program/:program_id", h.RewardsHandler.GetByProgramID)
 		}
 
 		// Redemptions routes
