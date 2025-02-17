@@ -220,6 +220,9 @@ func SetupRouter(h *Handlers, authRepo *postgres.AuthRepository, sessionRepo red
 	r.GET("/merchants", middleware.AuthMiddleware(authRepo, sessionRepo), middleware.CSRFMiddleware(), func(c *gin.Context) {
 		c.HTML(http.StatusOK, "merchants.html", nil)
 	})
+	r.GET("/programs", middleware.AuthMiddleware(authRepo, sessionRepo), middleware.CSRFMiddleware(), func(c *gin.Context) {
+		c.HTML(http.StatusOK, "programs.html", nil)
+	})
 	r.GET("/billing", middleware.AuthMiddleware(authRepo, sessionRepo), middleware.CSRFMiddleware(), func(c *gin.Context) {
 		c.HTML(http.StatusOK, "billing.html", nil)
 	})

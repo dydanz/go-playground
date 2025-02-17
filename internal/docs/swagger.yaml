@@ -96,6 +96,8 @@ definitions:
         type: string
       transaction_amount:
         type: number
+      transaction_date:
+        type: string
       transaction_type:
         enum:
         - purchase
@@ -108,6 +110,7 @@ definitions:
     - program_id
     - status
     - transaction_amount
+    - transaction_date
     - transaction_type
     type: object
   domain.CreateUserRequest:

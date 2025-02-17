@@ -2,6 +2,7 @@ package handler
 
 import (
 	"go-playground/internal/domain"
+	"go-playground/internal/service"
 	"go-playground/internal/util"
 	"net/http"
 
@@ -9,11 +10,13 @@ import (
 )
 
 type ProgramRulesHandler struct {
-	programRulesService domain.ProgramRulesService
+	programRulesService *service.ProgramRulesService
 }
 
-func NewProgramRulesHandler(programRulesService domain.ProgramRulesService) *ProgramRulesHandler {
-	return &ProgramRulesHandler{programRulesService: programRulesService}
+func NewProgramRulesHandler(service *service.ProgramRulesService) *ProgramRulesHandler {
+	return &ProgramRulesHandler{
+		programRulesService: service,
+	}
 }
 
 // CreateProgramRule godoc
@@ -202,6 +205,39 @@ func (h *ProgramRulesHandler) GetActiveRules(c *gin.Context) {
 	rules, err := h.programRulesService.GetActiveRules(programID)
 	if err != nil {
 		util.HandleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, rules)
+}
+
+// GetProgramRulesByMerchantId godoc
+// @Summary Get all program rules for a merchant
+// @Description Get all program rules across all programs for a specific merchant
+// @Tags program-rules
+// @Accept json
+// @Produce json
+// @Param merchant_id path string true "Merchant ID"
+// @Success 200 {array} service.ProgramRuleWithProgram
+// @Failure 400 {object} domain.ErrorResponse "Invalid merchant ID format"
+// @Failure 500 {object} domain.ErrorResponse "Internal server error"
+// @Router /merchants/{merchant_id}/program-rules [get]
+func (h *ProgramRulesHandler) GetProgramRulesByMerchantId(c *gin.Context) {
+	merchantID := c.Param("merchant_id")
+	if merchantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "merchant_id is required"})
+		return
+	}
+
+	rules, err := h.programRulesService.GetProgramRulesByMerchantId(merchantID)
+	if err != nil {
+		// Handle different types of errors
+		switch err.(type) {
+		case *domain.ValidationError:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		}
 		return
 	}
 

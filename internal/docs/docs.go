@@ -3108,6 +3108,7 @@ const docTemplate = `{
                 "program_id",
                 "status",
                 "transaction_amount",
+                "transaction_date",
                 "transaction_type"
             ],
             "properties": {
@@ -3134,6 +3135,9 @@ const docTemplate = `{
                 },
                 "transaction_amount": {
                     "type": "number"
+                },
+                "transaction_date": {
+                    "type": "string"
                 },
                 "transaction_type": {
                     "type": "string",
