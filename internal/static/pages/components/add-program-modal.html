@@ -1,0 +1,32 @@
+<!-- Add Program Modal -->
+<div class="modal fade" id="addProgramModal" tabindex="-1" role="dialog" aria-labelledby="addProgramModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addProgramModalLabel">Add New Program</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addProgramForm">
+          <div class="form-group">
+            <label for="programName" class="form-control-label">Program Name</label>
+            <input class="form-control" type="text" id="programName" name="program_name" required>
+          </div>
+          <div class="form-group">
+            <label for="programType" class="form-control-label">Program Type</label>
+            <select class="form-control" id="programType" name="program_type" required>
+              <option value="">Select Type</option>
+              <option value="bank">Bank</option>
+              <option value="e-commerce">E-commerce</option>
+              <option value="repair_shop">Repair Shop</option>
+            </select>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn bg-gradient-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="submit" class="btn bg-gradient-primary">Add Program</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
