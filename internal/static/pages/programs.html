@@ -69,10 +69,20 @@
         <div class="col-12">
           <div class="card mb-4">
             <div class="card-header pb-0 d-flex align-items-center">
-              <button type="button" class="btn bg-gradient-primary mb-0 me-3" data-bs-toggle="modal" data-bs-target="#addProgramsModal">
+              <!-- <button type="button" class="btn bg-gradient-primary mb-0 me-3" data-bs-toggle="modal" data-bs-target="#addProgramsModal">
                 <i class="fas fa-plus"></i>&nbsp;&nbsp;Add Program
-              </button>
+              </button> -->
+              <div class="dropdown me-2">
+                <button class="btn bg-gradient-primary dropdown-toggle" type="button" id="merchantDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                  Merchant Name
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="merchantDropdown">
+                  <li><a class="dropdown-item" href="#">Merchant 1</a></li>
+                  <li><a class="dropdown-item" href="#">Merchant 2</a></li>
+                </ul>
+              </div>
             </div>
+            
             <div class="card-body px-0 pt-0 pb-2">
               <!-- Include Add Program Modal -->
               {{template "add-program-modal.html" .}}
@@ -81,11 +91,11 @@
                   <thead>
                     <tr>
                       <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Programs</th>
-                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Type</th>
-                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Created At</th>
-                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Updated At</th>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Conditions</th>
+                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Multiplier</th>
+                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Points Awarded</th>
+                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Expiry Start/End</th>
                       <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
-                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Actions</th>
                     </tr>
                   </thead>
                   <tbody id="programsTableBody">
@@ -247,6 +257,7 @@
   <script src="/static/assets/js/argon-dashboard.min.js?v=2.1.0"></script>  
   <!-- Add auth.js script -->
   <script src="/static/assets/js/auth.js"></script>
+  <script src="/static/assets/js/programs.js"></script>
 </body>
 
 </html>

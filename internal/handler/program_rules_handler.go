@@ -4,6 +4,7 @@ import (
 	"go-playground/internal/domain"
 	"go-playground/internal/service"
 	"go-playground/internal/util"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -219,15 +220,17 @@ func (h *ProgramRulesHandler) GetActiveRules(c *gin.Context) {
 // @Produce json
 // @Param merchant_id path string true "Merchant ID"
 // @Success 200 {array} service.ProgramRuleWithProgram
-// @Failure 400 {object} domain.ErrorResponse "Invalid merchant ID format"
-// @Failure 500 {object} domain.ErrorResponse "Internal server error"
-// @Router /merchants/{merchant_id}/program-rules [get]
+// @Failure 400 {object} util.ErrorResponse "Invalid merchant ID format"
+// @Failure 500 {object} util.ErrorResponse "Internal server error"
+// @Router /program-rules/by-merchant/{merchant_id} [get]
 func (h *ProgramRulesHandler) GetProgramRulesByMerchantId(c *gin.Context) {
 	merchantID := c.Param("merchant_id")
 	if merchantID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "merchant_id is required"})
 		return
 	}
+
+	log.Printf("merchantID: %v", merchantID)
 
 	rules, err := h.programRulesService.GetProgramRulesByMerchantId(merchantID)
 	if err != nil {

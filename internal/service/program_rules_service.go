@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"go-playground/internal/domain"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -181,21 +182,29 @@ type ProgramRuleWithProgram struct {
 func (s *ProgramRulesService) GetProgramRulesByMerchantId(merchantID string) ([]ProgramRuleWithProgram, error) {
 	mID, err := uuid.Parse(merchantID)
 	if err != nil {
+		log.Printf("invalid merchant ID format. error: %v", err)
 		return nil, domain.NewValidationError("merchant_id", "invalid merchant ID format")
 	}
+
+	log.Printf("merchant ID: %v", mID)
 
 	// Get all programs for the merchant
 	programs, err := s.programRepo.GetByMerchantID(context.Background(), mID)
 	if err != nil {
+		log.Printf("failed to get merchant programs. error: %v", err)
 		return nil, domain.NewSystemError("ProgramRulesService.GetProgramRulesByMerchantId", err, "failed to get merchant programs")
 	}
+
+	log.Printf("programs: %v", programs)
 
 	var result []ProgramRuleWithProgram
 
 	// For each program, get its rules
 	for _, program := range programs {
+
 		rules, err := s.programRuleRepo.GetByProgramID(context.Background(), program.ID)
 		if err != nil {
+			log.Printf("failed to get program rules. error: %v", err)
 			return nil, domain.NewSystemError("ProgramRulesService.GetProgramRulesByMerchantId", err, "failed to get program rules")
 		}
 
