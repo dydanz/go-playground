@@ -214,13 +214,15 @@ func (h *ProgramRulesHandler) GetActiveRules(c *gin.Context) {
 
 // GetProgramRulesByMerchantId godoc
 // @Summary Get all program rules for a merchant
-// @Description Get all program rules across all programs for a specific merchant
+// @Description Get all program rules across all programs for a specific merchant with pagination
 // @Tags program-rules
 // @Accept json
 // @Produce json
 // @Param merchant_id path string true "Merchant ID"
-// @Success 200 {array} service.ProgramRuleWithProgram
-// @Failure 400 {object} util.ErrorResponse "Invalid merchant ID format"
+// @Param page query integer false "Page number (default: 1)"
+// @Param limit query integer false "Items per page (default: 10, max: 100)"
+// @Success 200 {object} domain.PaginatedResponse
+// @Failure 400 {object} util.ErrorResponse "Invalid merchant ID format or pagination parameters"
 // @Failure 500 {object} util.ErrorResponse "Internal server error"
 // @Router /program-rules/by-merchant/{merchant_id} [get]
 func (h *ProgramRulesHandler) GetProgramRulesByMerchantId(c *gin.Context) {
@@ -230,9 +232,15 @@ func (h *ProgramRulesHandler) GetProgramRulesByMerchantId(c *gin.Context) {
 		return
 	}
 
-	log.Printf("merchantID: %v", merchantID)
+	var pagination domain.PaginationRequest
+	if err := c.ShouldBindQuery(&pagination); err != nil {
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
+		return
+	}
 
-	rules, err := h.programRulesService.GetProgramRulesByMerchantId(merchantID)
+	log.Printf("merchantID: %v, page: %d, limit: %d", merchantID, pagination.Page, pagination.Limit)
+
+	rules, total, err := h.programRulesService.GetProgramRulesByMerchantId(merchantID, pagination.Page, pagination.Limit)
 	if err != nil {
 		// Handle different types of errors
 		switch err.(type) {
@@ -244,5 +252,6 @@ func (h *ProgramRulesHandler) GetProgramRulesByMerchantId(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, rules)
+	response := domain.NewPaginatedResponse(rules, total, pagination.Page, pagination.Limit)
+	c.JSON(http.StatusOK, response)
 }

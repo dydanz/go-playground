@@ -104,6 +104,18 @@ function updateTable(data) {
     tableBody.appendChild(row);
   });
 
+  	
+// Response body
+// {
+//   "pagination": {
+//     "current_page": 1,
+//     "per_page": 10,
+//     "total_items": 0,
+//     "total_pages": 0
+//   },
+//   "transactions": null
+// }
+
   // Update pagination if pagination data exists
   if (data.pagination) {
     document.getElementById('currentPage').textContent = data.pagination.current_page || 1;

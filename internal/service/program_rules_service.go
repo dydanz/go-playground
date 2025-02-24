@@ -179,20 +179,23 @@ type ProgramRuleWithProgram struct {
 	EffectiveTo    *time.Time `json:"effective_to,omitempty"`
 }
 
-func (s *ProgramRulesService) GetProgramRulesByMerchantId(merchantID string) ([]ProgramRuleWithProgram, error) {
+func (s *ProgramRulesService) GetProgramRulesByMerchantId(merchantID string, page, limit int) ([]ProgramRuleWithProgram, int64, error) {
 	mID, err := uuid.Parse(merchantID)
 	if err != nil {
 		log.Printf("invalid merchant ID format. error: %v", err)
-		return nil, domain.NewValidationError("merchant_id", "invalid merchant ID format")
+		return nil, 0, domain.NewValidationError("merchant_id", "invalid merchant ID format")
 	}
 
 	log.Printf("merchant ID: %v", mID)
+
+	// Calculate offset
+	offset := (page - 1) * limit
 
 	// Get all programs for the merchant
 	programs, err := s.programRepo.GetByMerchantID(context.Background(), mID)
 	if err != nil {
 		log.Printf("failed to get merchant programs. error: %v", err)
-		return nil, domain.NewSystemError("ProgramRulesService.GetProgramRulesByMerchantId", err, "failed to get merchant programs")
+		return nil, 0, domain.NewSystemError("ProgramRulesService.GetProgramRulesByMerchantId", err, "failed to get merchant programs")
 	}
 
 	log.Printf("programs: %v", programs)
@@ -201,11 +204,10 @@ func (s *ProgramRulesService) GetProgramRulesByMerchantId(merchantID string) ([]
 
 	// For each program, get its rules
 	for _, program := range programs {
-
 		rules, err := s.programRuleRepo.GetByProgramID(context.Background(), program.ID)
 		if err != nil {
 			log.Printf("failed to get program rules. error: %v", err)
-			return nil, domain.NewSystemError("ProgramRulesService.GetProgramRulesByMerchantId", err, "failed to get program rules")
+			return nil, 0, domain.NewSystemError("ProgramRulesService.GetProgramRulesByMerchantId", err, "failed to get program rules")
 		}
 
 		// Map each rule to the response format
@@ -225,8 +227,21 @@ func (s *ProgramRulesService) GetProgramRulesByMerchantId(merchantID string) ([]
 	}
 
 	if len(result) == 0 {
-		return []ProgramRuleWithProgram{}, nil
+		return []ProgramRuleWithProgram{}, 0, nil
 	}
 
-	return result, nil
+	// Calculate total count
+	total := int64(len(result))
+
+	// Apply pagination, TODO: IMPROVE PAGINATION PROPERLY
+	start := offset
+	end := offset + limit
+	if start >= len(result) {
+		return []ProgramRuleWithProgram{}, total, nil
+	}
+	if end > len(result) {
+		end = len(result)
+	}
+
+	return result[start:end], total, nil
 }
