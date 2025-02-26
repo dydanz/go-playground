@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"go-playground/internal/config"
 	"go-playground/internal/domain"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -91,6 +92,7 @@ func (r *ProgramRuleRepository) GetByProgramID(ctx context.Context, programID uu
 	`
 	rows, err := r.db.RR.QueryContext(ctx, query, programID)
 	if err != nil {
+		log.Printf("Error querying program rules: %v\n", err)
 		return nil, domain.NewSystemError("ProgramRuleRepository.GetByProgramID", err, "failed to query program rules")
 	}
 	defer rows.Close()
@@ -112,12 +114,14 @@ func (r *ProgramRuleRepository) GetByProgramID(ctx context.Context, programID uu
 			&rule.UpdatedAt,
 		)
 		if err != nil {
+			log.Printf("failed to scan program rule: %v\n", err)
 			return nil, domain.NewSystemError("ProgramRuleRepository.GetByProgramID", err, "failed to scan program rule")
 		}
 		rules = append(rules, rule)
 	}
 
 	if err = rows.Err(); err != nil {
+		log.Printf("error iterating program rules: %v\n", err)
 		return nil, domain.NewSystemError("ProgramRuleRepository.GetByProgramID", err, "error iterating program rules")
 	}
 

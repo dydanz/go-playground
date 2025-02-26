@@ -1266,6 +1266,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/program-rules/by-merchant/{merchant_id}": {
+            "get": {
+                "description": "Get all program rules across all programs for a specific merchant",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "program-rules"
+                ],
+                "summary": "Get all program rules for a merchant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Merchant ID",
+                        "name": "merchant_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/service.ProgramRuleWithProgram"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid merchant ID format",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/util.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/program-rules/program/{program_id}": {
             "get": {
                 "security": [
@@ -3108,6 +3155,7 @@ const docTemplate = `{
                 "program_id",
                 "status",
                 "transaction_amount",
+                "transaction_date",
                 "transaction_type"
             ],
             "properties": {
@@ -3134,6 +3182,9 @@ const docTemplate = `{
                 },
                 "transaction_amount": {
                     "type": "number"
+                },
+                "transaction_date": {
+                    "type": "string"
                 },
                 "transaction_type": {
                     "type": "string",
@@ -3720,6 +3771,38 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "otp": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.ProgramRuleWithProgram": {
+            "type": "object",
+            "properties": {
+                "condition_type": {
+                    "type": "string"
+                },
+                "condition_value": {
+                    "type": "string"
+                },
+                "effective_from": {
+                    "type": "string"
+                },
+                "effective_to": {
+                    "type": "string"
+                },
+                "multiplier": {
+                    "type": "number"
+                },
+                "points_awarded": {
+                    "type": "integer"
+                },
+                "program_id": {
+                    "type": "string"
+                },
+                "program_name": {
+                    "type": "string"
+                },
+                "rule_name": {
                     "type": "string"
                 }
             }

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"go-playground/internal/domain"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,10 +11,14 @@ import (
 
 type ProgramRulesService struct {
 	programRuleRepo domain.ProgramRuleRepository
+	programRepo     domain.ProgramRepository
 }
 
-func NewProgramRulesService(repo domain.ProgramRuleRepository) *ProgramRulesService {
-	return &ProgramRulesService{programRuleRepo: repo}
+func NewProgramRulesService(ruleRepo domain.ProgramRuleRepository, programRepo domain.ProgramRepository) *ProgramRulesService {
+	return &ProgramRulesService{
+		programRuleRepo: ruleRepo,
+		programRepo:     programRepo,
+	}
 }
 
 func (s *ProgramRulesService) Create(req *domain.CreateProgramRuleRequest) (*domain.ProgramRule, error) {
@@ -160,4 +165,83 @@ func (s *ProgramRulesService) GetActiveRules(programID string) ([]*domain.Progra
 	}
 
 	return rules, nil
+}
+
+type ProgramRuleWithProgram struct {
+	ProgramID      uuid.UUID  `json:"program_id"`
+	ProgramName    string     `json:"program_name"`
+	RuleName       string     `json:"rule_name"`
+	ConditionType  string     `json:"condition_type"`
+	ConditionValue string     `json:"condition_value"`
+	Multiplier     float64    `json:"multiplier"`
+	PointsAwarded  int        `json:"points_awarded"`
+	EffectiveFrom  time.Time  `json:"effective_from"`
+	EffectiveTo    *time.Time `json:"effective_to,omitempty"`
+}
+
+func (s *ProgramRulesService) GetProgramRulesByMerchantId(merchantID string, page, limit int) ([]ProgramRuleWithProgram, int64, error) {
+	mID, err := uuid.Parse(merchantID)
+	if err != nil {
+		log.Printf("invalid merchant ID format. error: %v", err)
+		return nil, 0, domain.NewValidationError("merchant_id", "invalid merchant ID format")
+	}
+
+	log.Printf("merchant ID: %v", mID)
+
+	// Calculate offset
+	offset := (page - 1) * limit
+
+	// Get all programs for the merchant
+	programs, err := s.programRepo.GetByMerchantID(context.Background(), mID)
+	if err != nil {
+		log.Printf("failed to get merchant programs. error: %v", err)
+		return nil, 0, domain.NewSystemError("ProgramRulesService.GetProgramRulesByMerchantId", err, "failed to get merchant programs")
+	}
+
+	log.Printf("programs: %v", programs)
+
+	var result []ProgramRuleWithProgram
+
+	// For each program, get its rules
+	for _, program := range programs {
+		rules, err := s.programRuleRepo.GetByProgramID(context.Background(), program.ID)
+		if err != nil {
+			log.Printf("failed to get program rules. error: %v", err)
+			return nil, 0, domain.NewSystemError("ProgramRulesService.GetProgramRulesByMerchantId", err, "failed to get program rules")
+		}
+
+		// Map each rule to the response format
+		for _, rule := range rules {
+			result = append(result, ProgramRuleWithProgram{
+				ProgramID:      program.ID,
+				ProgramName:    program.ProgramName,
+				RuleName:       rule.RuleName,
+				ConditionType:  rule.ConditionType,
+				ConditionValue: rule.ConditionValue,
+				Multiplier:     rule.Multiplier,
+				PointsAwarded:  rule.PointsAwarded,
+				EffectiveFrom:  rule.EffectiveFrom,
+				EffectiveTo:    rule.EffectiveTo,
+			})
+		}
+	}
+
+	if len(result) == 0 {
+		return []ProgramRuleWithProgram{}, 0, nil
+	}
+
+	// Calculate total count
+	total := int64(len(result))
+
+	// Apply pagination, TODO: IMPROVE PAGINATION PROPERLY
+	start := offset
+	end := offset + limit
+	if start >= len(result) {
+		return []ProgramRuleWithProgram{}, total, nil
+	}
+	if end > len(result) {
+		end = len(result)
+	}
+
+	return result[start:end], total, nil
 }

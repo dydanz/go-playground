@@ -29,30 +29,31 @@ func InitializeServices(repos *Repositories) *Services {
 		eventLoggerService,
 		repos.MerchantCustomersRepo,
 	)
+	redemptionService := service.NewRedemptionService(
+		repos.RedemptionRepo,
+		repos.RewardsRepo,
+		pointsService,
+		transactionService,
+		eventLoggerService,
+	)
 
 	return &Services{
 		UserService: service.NewUserService(
 			repos.UserRepo,
 			repos.CacheRepo,
 		),
-		AuthService:        service.NewAuthService(
-			repos.UserRepo, 
-			repos.AuthRepo, 
+		AuthService: service.NewAuthService(
+			repos.UserRepo,
+			repos.AuthRepo,
 			repos.SessionRepo,
 		),
-		PointsService:      pointsService,
-		TransactionService: transactionService,
-		RewardsService:     service.NewRewardsService(repos.RewardsRepo),
-		RedemptionService: service.NewRedemptionService(
-			repos.RedemptionRepo,
-			repos.RewardsRepo,
-			pointsService,
-			transactionService,
-			eventLoggerService,
-		),
+		PointsService:            pointsService,
+		TransactionService:       transactionService,
+		RewardsService:           service.NewRewardsService(repos.RewardsRepo),
+		RedemptionService:        redemptionService,
 		MerchantService:          merchantService,
 		MerchantCustomersService: service.NewMerchantCustomersService(repos.MerchantCustomersRepo),
 		ProgramService:           service.NewProgramService(repos.ProgramRepo),
-		ProgramRuleService:       service.NewProgramRulesService(repos.ProgramRuleRepo),
+		ProgramRuleService:       service.NewProgramRulesService(repos.ProgramRuleRepo, repos.ProgramRepo),
 	}
 }

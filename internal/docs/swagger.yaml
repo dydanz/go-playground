@@ -96,6 +96,8 @@ definitions:
         type: string
       transaction_amount:
         type: number
+      transaction_date:
+        type: string
       transaction_type:
         enum:
         - purchase
@@ -108,6 +110,7 @@ definitions:
     - program_id
     - status
     - transaction_amount
+    - transaction_date
     - transaction_type
     type: object
   domain.CreateUserRequest:
@@ -498,6 +501,27 @@ definitions:
     required:
     - email
     - otp
+    type: object
+  service.ProgramRuleWithProgram:
+    properties:
+      condition_type:
+        type: string
+      condition_value:
+        type: string
+      effective_from:
+        type: string
+      effective_to:
+        type: string
+      multiplier:
+        type: number
+      points_awarded:
+        type: integer
+      program_id:
+        type: string
+      program_name:
+        type: string
+      rule_name:
+        type: string
     type: object
   util.ErrorResponse:
     properties:
@@ -1437,6 +1461,37 @@ paths:
       - BearerAuth: []
       - UserIdAuth: []
       summary: Update program rule
+      tags:
+      - program-rules
+  /program-rules/by-merchant/{merchant_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get all program rules across all programs for a specific merchant
+      parameters:
+      - description: Merchant ID
+        in: path
+        name: merchant_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/service.ProgramRuleWithProgram'
+            type: array
+        "400":
+          description: Invalid merchant ID format
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/util.ErrorResponse'
+      summary: Get all program rules for a merchant
       tags:
       - program-rules
   /program-rules/program/{program_id}:

@@ -2,18 +2,22 @@ package handler
 
 import (
 	"go-playground/internal/domain"
+	"go-playground/internal/service"
 	"go-playground/internal/util"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 type ProgramRulesHandler struct {
-	programRulesService domain.ProgramRulesService
+	programRulesService *service.ProgramRulesService
 }
 
-func NewProgramRulesHandler(programRulesService domain.ProgramRulesService) *ProgramRulesHandler {
-	return &ProgramRulesHandler{programRulesService: programRulesService}
+func NewProgramRulesHandler(service *service.ProgramRulesService) *ProgramRulesHandler {
+	return &ProgramRulesHandler{
+		programRulesService: service,
+	}
 }
 
 // CreateProgramRule godoc
@@ -206,4 +210,48 @@ func (h *ProgramRulesHandler) GetActiveRules(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, rules)
+}
+
+// GetProgramRulesByMerchantId godoc
+// @Summary Get all program rules for a merchant
+// @Description Get all program rules across all programs for a specific merchant with pagination
+// @Tags program-rules
+// @Accept json
+// @Produce json
+// @Param merchant_id path string true "Merchant ID"
+// @Param page query integer false "Page number (default: 1)"
+// @Param limit query integer false "Items per page (default: 10, max: 100)"
+// @Success 200 {object} domain.PaginatedResponse
+// @Failure 400 {object} util.ErrorResponse "Invalid merchant ID format or pagination parameters"
+// @Failure 500 {object} util.ErrorResponse "Internal server error"
+// @Router /program-rules/by-merchant/{merchant_id} [get]
+func (h *ProgramRulesHandler) GetProgramRulesByMerchantId(c *gin.Context) {
+	merchantID := c.Param("merchant_id")
+	if merchantID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "merchant_id is required"})
+		return
+	}
+
+	var pagination domain.PaginationRequest
+	if err := c.ShouldBindQuery(&pagination); err != nil {
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
+		return
+	}
+
+	log.Printf("merchantID: %v, page: %d, limit: %d", merchantID, pagination.Page, pagination.Limit)
+
+	rules, total, err := h.programRulesService.GetProgramRulesByMerchantId(merchantID, pagination.Page, pagination.Limit)
+	if err != nil {
+		// Handle different types of errors
+		switch err.(type) {
+		case *domain.ValidationError:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		}
+		return
+	}
+
+	response := domain.NewPaginatedResponse(rules, total, pagination.Page, pagination.Limit)
+	c.JSON(http.StatusOK, response)
 }
