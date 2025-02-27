@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
-	"go-playground/internal/bootstrap"
-	"go-playground/internal/config"
+	"go-playground/server/bootstrap"
+	"go-playground/server/config"
 	"go-playground/pkg/database"
 	"log"
 	"time"
 
-	_ "go-playground/internal/docs" // This is required for swagger
+	_ "go-playground/server/docs" // This is required for swagger
 )
 
 // @title           Go-Playground
