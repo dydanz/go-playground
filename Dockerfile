@@ -31,8 +31,8 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copy migrations folder and binary
-COPY --from=builder /app/internal/migrations ./internal/migrations
-COPY --from=builder /app/internal/docs ./internal/docs
+COPY --from=builder /app/server/migrations ./server/migrations
+COPY --from=builder /app/server/docs ./server/docs
 COPY --from=builder /app/loyalty_engine .
 COPY --from=builder /app/.env .
 

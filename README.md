@@ -124,7 +124,7 @@ go-playground/
 ├── cmd/
 │   └── api/
 │       └── main.go
-├── internal/
+├── server/
 │   ├── bootstrap/ # Initializes the application
 │   │   ├── database.go
 │   │   ├── repository.go
@@ -167,13 +167,7 @@ go-playground/
 │   │   ├── merchant_service.go
 │   │   ├── points_service.go
 │   │   ├── redemption_service.go
-│   │   ├── ... (more service files)
-│   ├── static/ # Static files for simple web pages, fool proof you can add reactjs etc within go/gin project.
-│   │   ├── css/
-│   │   ├── js/
-│   │   ├── dashboard.html
-│   │   ├── login.html
-│   │   └── register.html
+│   │   └── ... (more service files)
 │   └── util/
 │       └── entitlement.go
 ├── pkg/
@@ -185,10 +179,21 @@ go-playground/
 │   │   └── redis.go
 │   └── kafka/
 │       └── kafka.go
+├── web/ # Static files for simple web pages, fool proof you can add reactjs etc within go/gin project.
+│   ├── assets/
+│   │   ├── css/
+│   │   ├── js/
+│   └── pages/
+│       ├── components/ # reusable components
+│       ├── dashboard.html
+│       ├── sign-in.html
+│       ├── sign-up.html
+│       └── transactions.html
 ├── locust-test/ # Locust load testing files, run separately under python-venv
 │   ├── common/
-│   ├── locustfile.py
-│   └── requirements.txt
+│   ├── locustfile.py # locust load-test file
+│   ├── requirements.txt
+│   └── itgtest.py # run integration test
 ├── docker-compose.yml
 ├── Dockerfile
 ├── .env
@@ -205,9 +210,9 @@ To run the test, you can use these commands:
 Run all tests in the project:
 ``` $ go test ./... -v ```
 Run specific test file:
-``` $ go test ./internal/service/user_service_test.go ```
+``` $ go test ./server/service/user_service_test.go ```
 Run with verbose output:
-``` $ go test -v ./internal/service ```
+``` $ go test -v ./server/service ```
 
 
 ### Common Issues
@@ -272,7 +277,7 @@ go install github.com/swaggo/swag/cmd/swag@latest
 
 2. Generate documentation:
 ```bash
-swag init -g cmd/api/main.go -o internal/docs
+swag init -g cmd/api/main.go -o server/docs
 ```
 
 3. Access the documentation at [Swagger URL](http://localhost:8080/swagger/index.html) after starting the server
@@ -297,9 +302,9 @@ This project uses `golang-migrate` for database schema management.
 
 ### Migration Files
 
-Migrations are stored in `internal/migrations/` directory:
+Migrations are stored in `server/migrations/` directory:
 ```
-internal/migrations/
+server/migrations/
 ├── 000001_create_users_table.up.sql   # Create tables
 └── 000001_create_users_table.down.sql  # Rollback changes
 ```
@@ -316,17 +321,17 @@ go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@lat
 2. Run migrations:
 ```bash
 # Apply migrations
-migrate -path internal/migrations -database "postgres://postgres:your_password_here@localhost:5432/go_cursor?sslmode=disable" up
+migrate -path server/migrations -database "postgres://postgres:your_password_here@localhost:5432/go_cursor?sslmode=disable" up
 
 # Rollback migrations
-migrate -path internal/migrations -database "postgres://postgres:your_password_here@localhost:5432/go_cursor?sslmode=disable" down
+migrate -path server/migrations -database "postgres://postgres:your_password_here@localhost:5432/go_cursor?sslmode=disable" down
 ```
 
 ### Creating New Migrations
 
 To create a new migration:
 ```bash
-migrate create -ext sql -dir internal/migrations -seq add_new_feature
+migrate create -ext sql -dir server/migrations -seq add_new_feature
 ```
 
 This creates two files:
@@ -337,29 +342,29 @@ This creates two files:
 
 ```bash
 # Apply all migrations
-migrate -path internal/migrations -database ${DATABASE_URL} up
+migrate -path server/migrations -database ${DATABASE_URL} up
 
 # Rollback last migration
-migrate -path internal/migrations -database ${DATABASE_URL} down 1
+migrate -path server/migrations -database ${DATABASE_URL} down 1
 
 # Rollback all migrations
-migrate -path internal/migrations -database ${DATABASE_URL} down
+migrate -path server/migrations -database ${DATABASE_URL} down
 
 # Force a specific version
-migrate -path internal/migrations -database ${DATABASE_URL} force VERSION
+migrate -path server/migrations -database ${DATABASE_URL} force VERSION
 ```
 
 ### Common Migration Issues
 
 1. "Dirty" Database State
 ```bash
-migrate -path internal/migrations -database ${DATABASE_URL} force VERSION
+migrate -path server/migrations -database ${DATABASE_URL} force VERSION
 ```
 
 2. Version Mismatch
 ```bash
 # Check current version
-migrate -path internal/migrations -database ${DATABASE_URL} version
+migrate -path server/migrations -database ${DATABASE_URL} version
 ```
 
 3. Connection Issues
