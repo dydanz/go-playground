@@ -1,9 +1,9 @@
 package middleware
 
 import (
+	"go-playground/pkg/logging"
 	"go-playground/server/repository/postgres"
 	"go-playground/server/repository/redis"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -32,6 +32,8 @@ import (
 //   - Database errors during token validation (401 Unauthorized)
 //   - Expired or non-existent tokens (401 Unauthorized)
 func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.SessionRepository) gin.HandlerFunc {
+	logger := logging.GetLogger()
+
 	return func(c *gin.Context) {
 		// First try to get token from cookie
 		tokenCookie, err := c.Cookie(sessionCookieName)
@@ -40,7 +42,10 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 			authHeader := c.GetHeader("Authorization")
 
 			if authHeader == "" {
-				log.Printf("no authorization header")
+				logger.Error().
+					Str("method", c.Request.Method).
+					Str("url", c.Request.URL.RequestURI()).
+					Msg("No authorization header")
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 				c.Abort()
 				return
@@ -48,7 +53,11 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 
 			parts := strings.Split(authHeader, " ")
 			if len(parts) != 2 || parts[0] != "Bearer" {
-				log.Printf("invalid authorization format")
+				logger.Error().
+					Str("method", c.Request.Method).
+					Str("url", c.Request.URL.RequestURI()).
+					Str("auth_header", authHeader).
+					Msg("Invalid authorization format")
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization format"})
 				c.Abort()
 				return
@@ -68,7 +77,10 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 		}
 
 		if userID == "" {
-			log.Printf("User-ID is required")
+			logger.Error().
+				Str("method", c.Request.Method).
+				Str("url", c.Request.URL.RequestURI()).
+				Msg("User-ID is required")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User-ID is required"})
 			c.Abort()
 			return
@@ -77,7 +89,12 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 		// Check session in Redis cache first
 		session, err := sessionRepo.GetSession(c.Request.Context(), userID)
 		if err != nil {
-			log.Printf("Error getting session from Redis: %v\n", err)
+			logger.Error().
+				Err(err).
+				Str("method", c.Request.Method).
+				Str("url", c.Request.URL.RequestURI()).
+				Str("user_id", userID).
+				Msg("Error getting session from Redis")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "session validation failed"})
 			c.Abort()
 			return
@@ -86,6 +103,12 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 		if session != nil {
 			// Validate User-ID matches session
 			if session.UserID != userID {
+				logger.Error().
+					Str("method", c.Request.Method).
+					Str("url", c.Request.URL.RequestURI()).
+					Str("session_user_id", session.UserID).
+					Str("request_user_id", userID).
+					Msg("User-ID mismatch")
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "User-ID mismatch"})
 				c.Abort()
 				return
@@ -103,14 +126,23 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 		// If session not found in cache, check database
 		token, err := authRepo.GetTokenByHash(c.Request.Context(), tokenCookie)
 		if err != nil {
-			log.Printf("Error getting token from database: %v\n", err)
+			logger.Error().
+				Err(err).
+				Str("method", c.Request.Method).
+				Str("url", c.Request.URL.RequestURI()).
+				Str("user_id", userID).
+				Msg("Error getting token from database")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token validation failed"})
 			c.Abort()
 			return
 		}
 
 		if token == nil {
-			log.Printf("Token not found or expired")
+			logger.Error().
+				Str("method", c.Request.Method).
+				Str("url", c.Request.URL.RequestURI()).
+				Str("user_id", userID).
+				Msg("Token not found or expired")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token not found or expired"})
 			c.Abort()
 			return
@@ -118,7 +150,12 @@ func AuthMiddleware(authRepo *postgres.AuthRepository, sessionRepo redis.Session
 
 		// Validate User-ID matches token
 		if token.UserID != userID {
-			log.Printf("User-ID mismatch")
+			logger.Error().
+				Str("method", c.Request.Method).
+				Str("url", c.Request.URL.RequestURI()).
+				Str("token_user_id", token.UserID).
+				Str("request_user_id", userID).
+				Msg("User-ID mismatch")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User-ID mismatch"})
 			c.Abort()
 			return
