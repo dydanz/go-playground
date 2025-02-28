@@ -1,20 +1,27 @@
 package handler
 
 import (
+	"go-playground/pkg/logging"
 	"go-playground/server/domain"
 	"go-playground/server/util"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 )
 
 type PointsHandler struct {
 	pointsService domain.PointsService
+	logger        zerolog.Logger
 }
 
 func NewPointsHandler(pointsService domain.PointsService) *PointsHandler {
-	return &PointsHandler{pointsService: pointsService}
+	return &PointsHandler{
+		pointsService: pointsService,
+		logger:        logging.GetLogger(),
+	}
 }
 
 // GetLedger godoc
@@ -32,10 +39,21 @@ func NewPointsHandler(pointsService domain.PointsService) *PointsHandler {
 // @Failure 500 {object} map[string]string
 // @Router /points/{customer_id}/{program_id}/ledger [get]
 func (h *PointsHandler) GetLedger(c *gin.Context) {
+	h.logger.Info().
+		Str("method", c.Request.Method).
+		Str("url", c.Request.URL.RequestURI()).
+		Str("user_agent", c.Request.UserAgent()).
+		Dur("elapsed_ms", time.Since(time.Now())).
+		Msg("incoming get points ledger request")
+
 	customerID := c.Param("customer_id")
 	programID := c.Param("program_id")
 
 	if customerID == "" || programID == "" {
+		h.logger.Error().
+			Str("customer_id", customerID).
+			Str("program_id", programID).
+			Msg("Missing required parameters")
 		util.HandleError(c, domain.ValidationError{
 			Message: "customer_id and program_id are required",
 		})
@@ -44,9 +62,20 @@ func (h *PointsHandler) GetLedger(c *gin.Context) {
 
 	ledger, err := h.pointsService.GetLedger(c.Request.Context(), uuid.MustParse(customerID), uuid.MustParse(programID))
 	if err != nil {
+		h.logger.Error().
+			Err(err).
+			Str("customer_id", customerID).
+			Str("program_id", programID).
+			Msg("Failed to get points ledger")
 		util.HandleError(c, err)
 		return
 	}
+
+	h.logger.Info().
+		Str("customer_id", customerID).
+		Str("program_id", programID).
+		Int("entries_count", len(ledger)).
+		Msg("Points ledger retrieved successfully")
 
 	c.JSON(http.StatusOK, ledger)
 }
@@ -66,10 +95,21 @@ func (h *PointsHandler) GetLedger(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /points/{customer_id}/{program_id}/balance [get]
 func (h *PointsHandler) GetBalance(c *gin.Context) {
+	h.logger.Info().
+		Str("method", c.Request.Method).
+		Str("url", c.Request.URL.RequestURI()).
+		Str("user_agent", c.Request.UserAgent()).
+		Dur("elapsed_ms", time.Since(time.Now())).
+		Msg("incoming get points balance request")
+
 	customerID := c.Param("customer_id")
 	programID := c.Param("program_id")
 
 	if customerID == "" || programID == "" {
+		h.logger.Error().
+			Str("customer_id", customerID).
+			Str("program_id", programID).
+			Msg("Missing required parameters")
 		util.HandleError(c, domain.ValidationError{
 			Message: "customer_id and program_id are required",
 		})
@@ -78,9 +118,20 @@ func (h *PointsHandler) GetBalance(c *gin.Context) {
 
 	balance, err := h.pointsService.GetBalance(c.Request.Context(), uuid.MustParse(customerID), uuid.MustParse(programID))
 	if err != nil {
+		h.logger.Error().
+			Err(err).
+			Str("customer_id", customerID).
+			Str("program_id", programID).
+			Msg("Failed to get points balance")
 		util.HandleError(c, err)
 		return
 	}
+
+	h.logger.Info().
+		Str("customer_id", customerID).
+		Str("program_id", programID).
+		Interface("balance", balance).
+		Msg("Points balance retrieved successfully")
 
 	c.JSON(http.StatusOK, balance)
 }
@@ -101,10 +152,21 @@ func (h *PointsHandler) GetBalance(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /points/{customer_id}/{program_id}/earn [post]
 func (h *PointsHandler) EarnPoints(c *gin.Context) {
+	h.logger.Info().
+		Str("method", c.Request.Method).
+		Str("url", c.Request.URL.RequestURI()).
+		Str("user_agent", c.Request.UserAgent()).
+		Dur("elapsed_ms", time.Since(time.Now())).
+		Msg("incoming earn points request")
+
 	customerID := c.Param("customer_id")
 	programID := c.Param("program_id")
 
 	if customerID == "" || programID == "" {
+		h.logger.Error().
+			Str("customer_id", customerID).
+			Str("program_id", programID).
+			Msg("Missing required parameters")
 		util.HandleError(c, domain.ValidationError{
 			Message: "customer_id and program_id are required",
 		})
@@ -113,6 +175,9 @@ func (h *PointsHandler) EarnPoints(c *gin.Context) {
 
 	var req domain.EarnPointsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error().
+			Err(err).
+			Msg("Failed to bind earn points request")
 		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
@@ -127,9 +192,22 @@ func (h *PointsHandler) EarnPoints(c *gin.Context) {
 		TransactionID: "",
 	})
 	if err != nil {
+		h.logger.Error().
+			Err(err).
+			Str("customer_id", customerID).
+			Str("program_id", programID).
+			Int("points", req.Points).
+			Msg("Failed to earn points")
 		util.HandleError(c, err)
 		return
 	}
+
+	h.logger.Info().
+		Str("customer_id", customerID).
+		Str("program_id", programID).
+		Int("points", req.Points).
+		Interface("result", result).
+		Msg("Points earned successfully")
 
 	c.JSON(http.StatusOK, result)
 }
@@ -150,10 +228,21 @@ func (h *PointsHandler) EarnPoints(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /points/{customer_id}/{program_id}/redeem [post]
 func (h *PointsHandler) RedeemPoints(c *gin.Context) {
+	h.logger.Info().
+		Str("method", c.Request.Method).
+		Str("url", c.Request.URL.RequestURI()).
+		Str("user_agent", c.Request.UserAgent()).
+		Dur("elapsed_ms", time.Since(time.Now())).
+		Msg("incoming redeem points request")
+
 	customerID := c.Param("customer_id")
 	programID := c.Param("program_id")
 
 	if customerID == "" || programID == "" {
+		h.logger.Error().
+			Str("customer_id", customerID).
+			Str("program_id", programID).
+			Msg("Missing required parameters")
 		util.HandleError(c, domain.ValidationError{
 			Message: "customer_id and program_id are required",
 		})
@@ -162,6 +251,9 @@ func (h *PointsHandler) RedeemPoints(c *gin.Context) {
 
 	var req domain.RedeemPointsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Error().
+			Err(err).
+			Msg("Failed to bind redeem points request")
 		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
@@ -176,9 +268,22 @@ func (h *PointsHandler) RedeemPoints(c *gin.Context) {
 		TransactionID: "",
 	})
 	if err != nil {
+		h.logger.Error().
+			Err(err).
+			Str("customer_id", customerID).
+			Str("program_id", programID).
+			Int("points", req.Points).
+			Msg("Failed to redeem points")
 		util.HandleError(c, err)
 		return
 	}
+
+	h.logger.Info().
+		Str("customer_id", customerID).
+		Str("program_id", programID).
+		Int("points", req.Points).
+		Interface("result", result).
+		Msg("Points redeemed successfully")
 
 	c.JSON(http.StatusOK, result)
 }
