@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 	"time"
 
 	"go-playground/server/config"
@@ -21,10 +22,16 @@ func NewPostgresConnection(cfg *config.Config) (*sql.DB, error) {
 	}
 
 	// Set connection pool settings
-	db.SetMaxOpenConns(25)             // Max open connections
-	db.SetMaxIdleConns(10)             // Max idle connections
-	db.SetConnMaxLifetime(5 * time.Minute)  // Max connection lifetime
-	db.SetConnMaxIdleTime(2 * time.Minute)  // Max idle time before closing
+
+	maxOpenConns, _ := strconv.Atoi(cfg.DBSetMaxOpenConn)
+	maxIdleConns, _ := strconv.Atoi(cfg.DBSetMaxIdleConn)
+	maxLifeTime, _ := strconv.Atoi(cfg.DBSetMaxLifeTimeConn)
+	maxIdleTime, _ := strconv.Atoi(cfg.DBSetMaxIdleTimeConn)
+
+	db.SetMaxOpenConns(maxOpenConns)
+	db.SetMaxIdleConns(maxIdleConns)
+	db.SetConnMaxLifetime(time.Duration(maxLifeTime) * time.Minute)
+	db.SetConnMaxIdleTime(time.Duration(maxIdleTime) * time.Minute)
 
 	// Check the database connection
 	if err := db.Ping(); err != nil {
@@ -46,10 +53,15 @@ func NewPostgresReplicationConnection(cfg *config.Config) (*sql.DB, error) {
 	}
 
 	// Set connection pool settings
-	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(10 * time.Minute)
-	db.SetConnMaxIdleTime(3 * time.Minute)
+	maxOpenConns, _ := strconv.Atoi(cfg.DBReplicationSetMaxOpenConn)
+	maxIdleConns, _ := strconv.Atoi(cfg.DBReplicationSetMaxIdleConn)
+	maxLifeTime, _ := strconv.Atoi(cfg.DBReplicationSetMaxLifeTimeConn)
+	maxIdleTime, _ := strconv.Atoi(cfg.DBReplicationSetMaxIdleTimeConn)
+
+	db.SetMaxOpenConns(maxOpenConns)
+	db.SetMaxIdleConns(maxIdleConns)
+	db.SetConnMaxLifetime(time.Duration(maxLifeTime) * time.Minute)
+	db.SetConnMaxIdleTime(time.Duration(maxIdleTime) * time.Minute)
 
 	if err := db.Ping(); err != nil {
 		db.Close()

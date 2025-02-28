@@ -22,16 +22,25 @@ type DbConnection struct {
 
 type Config struct {
 	// PostgreSQL Primary settings
-	DBHost     string
-	DBPort     string
-	DBUser     string
-	DBPassword string
-	DBName     string
+	DBHost               string
+	DBPort               string
+	DBUser               string
+	DBPassword           string
+	DBName               string
+	DBSetMaxOpenConn     string
+	DBSetMaxIdleConn     string
+	DBSetMaxLifeTimeConn string
+	DBSetMaxIdleTimeConn string
 
 	// PostgreSQL Replication settings
 	DBReplicationUser     string
 	DBReplicationPassword string
 	DBReplicationPort     string
+
+	DBReplicationSetMaxOpenConn     string
+	DBReplicationSetMaxIdleConn     string
+	DBReplicationSetMaxLifeTimeConn string
+	DBReplicationSetMaxIdleTimeConn string
 
 	// Redis settings
 	RedisHost     string
@@ -49,16 +58,24 @@ func LoadConfig() *Config {
 
 	return &Config{
 		// PostgreSQL settings
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnv("DB_PORT", "5432"),
-		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", "postgres"),
-		DBName:     getEnv("DB_NAME", "go_cursor"),
+		DBHost:               getEnv("DB_HOST", "localhost"),
+		DBPort:               getEnv("DB_PORT", "5432"),
+		DBUser:               getEnv("DB_USER", "postgres"),
+		DBPassword:           getEnv("DB_PASSWORD", "postgres"),
+		DBName:               getEnv("DB_NAME", "go_cursor"),
+		DBSetMaxOpenConn:     getEnv("DB_SET_MAX_OPEN_CONN", "10"),
+		DBSetMaxIdleConn:     getEnv("DB_SET_MAX_IDLE_CONN", "10"),
+		DBSetMaxLifeTimeConn: getEnv("DB_SET_MAX_LIFETIME", "5"),
+		DBSetMaxIdleTimeConn: getEnv("DB_SET_MAX_DLE_TIMEOUT", "2"),
 
 		// PostgreSQL Replication settings
-		DBReplicationUser:     getEnv("DB_REPLICATION_USER", "replicator"),
-		DBReplicationPassword: getEnv("DB_REPLICATION_PASSWORD", "replicator_password"),
-		DBReplicationPort:     getEnv("DB_REPLICATION_PORT", "5433"),
+		DBReplicationUser:               getEnv("DB_REPLICATION_USER", "replicator"),
+		DBReplicationPassword:           getEnv("DB_REPLICATION_PASSWORD", "replicator_password"),
+		DBReplicationPort:               getEnv("DB_REPLICATION_PORT", "5433"),
+		DBReplicationSetMaxOpenConn:     getEnv("DB_REPLICATION_SET_MAX_OPEN_CONN", "10"),
+		DBReplicationSetMaxIdleConn:     getEnv("DB_REPLICATION_SET_MAX_IDLE_CONN", "10"),
+		DBReplicationSetMaxLifeTimeConn: getEnv("DB_REPLICATION_SET_MAX_LIFETIME", "5"),
+		DBReplicationSetMaxIdleTimeConn: getEnv("DB_REPLICATION_SET_MAX_DLE_TIMEOUT", "2"),
 
 		// Redis settings
 		RedisHost:     getEnv("REDIS_HOST", "localhost"),

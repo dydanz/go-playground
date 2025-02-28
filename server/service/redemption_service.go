@@ -2,10 +2,11 @@ package service
 
 import (
 	"context"
+	"go-playground/pkg/logging"
 	"go-playground/server/domain"
-	"log"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 )
 
 type RedemptionService struct {
@@ -14,6 +15,7 @@ type RedemptionService struct {
 	pointsService      domain.PointsService
 	transactionService domain.TransactionService
 	eventLoggerService domain.EventLoggerService
+	logger             zerolog.Logger
 }
 
 func NewRedemptionService(
@@ -29,6 +31,7 @@ func NewRedemptionService(
 		pointsService:      pointsService,
 		transactionService: transactionService,
 		eventLoggerService: eventLoggerService,
+		logger:             logging.GetLogger(),
 	}
 }
 
@@ -36,27 +39,45 @@ func (s *RedemptionService) Create(ctx context.Context, redemption *domain.Redem
 	// Check if reward exists and is active
 	reward, err := s.rewardsRepo.GetByID(ctx, redemption.RewardID)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Failed to get reward")
 		return domain.NewSystemError("RedemptionService.Create", err, "failed to get reward")
 	}
 	if reward == nil {
+		s.logger.Error().
+			Str("reward_id", redemption.RewardID.String()).
+			Msg("Failed to get reward")
 		return domain.NewResourceNotFoundError("reward", redemption.RewardID.String(), "reward not found")
 	}
 	if !reward.IsActive {
+		s.logger.Error().
+			Str("reward_id", redemption.RewardID.String()).
+			Msg("Failed to get reward")
 		return domain.NewBusinessLogicError("REWARD_INACTIVE", "reward is not available")
 	}
 
 	// Parse user ID and program ID to UUID
 	customerID, err := uuid.Parse(redemption.MerchantCustomersID.String())
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Failed to parse customer ID")
 		return domain.NewValidationError("customer_id", "invalid customer ID format")
 	}
 
 	// Check if user has enough points
 	balance, err := s.pointsService.GetBalance(ctx, customerID, reward.ProgramID)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Failed to get points balance")
 		return domain.NewSystemError("RedemptionService.Create", err, "failed to get points balance")
 	}
 	if balance.Balance < reward.PointsRequired {
+		s.logger.Error().
+			Str("reward_id", redemption.RewardID.String()).
+			Msg("Failed to get reward")
 		return domain.NewBusinessLogicError("INSUFFICIENT_POINTS", "insufficient points")
 	}
 
@@ -66,6 +87,9 @@ func (s *RedemptionService) Create(ctx context.Context, redemption *domain.Redem
 	// Create redemption record
 	redemptions, err := s.redemptionRepo.Create(ctx, redemption)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Failed to create redemption")
 		return domain.NewSystemError("RedemptionService.Create", err, "failed to create redemption")
 	}
 	redemption = redemptions[0]
@@ -80,11 +104,16 @@ func (s *RedemptionService) Create(ctx context.Context, redemption *domain.Redem
 		TransactionDate:     redemption.RedemptionDate,
 	})
 	if err != nil {
-		log.Printf("error creating redemption transaction for redemption id: %s, error: %v", redemption.ID, err)
+		s.logger.Error().
+			Err(err).
+			Msg("Failed to create redemption transaction")
 		return domain.NewSystemError("RedemptionService.Create", err, "failed to create redemption transaction")
 	}
 
-	log.Println("transaction record for redemption id: ", redemption.ID, "paired tx-id: ", transaction.TransactionID)
+	s.logger.Info().
+		Str("redemption_id", redemption.ID.String()).
+		Str("paired_tx_id", transaction.TransactionID.String()).
+		Msg("transaction record for redemption")
 
 	// Log the redemption event
 	go s.eventLoggerService.SaveRedemptionEvents(ctx, domain.RewardRedeemed, redemption, reward)
@@ -95,9 +124,15 @@ func (s *RedemptionService) Create(ctx context.Context, redemption *domain.Redem
 func (s *RedemptionService) GetByID(id string) (*domain.Redemption, error) {
 	redemption, err := s.redemptionRepo.GetByID(context.Background(), uuid.MustParse(id))
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Failed to get redemption")
 		return nil, domain.NewSystemError("RedemptionService.GetByID", err, "failed to get redemption")
 	}
 	if redemption == nil {
+		s.logger.Error().
+			Str("redemption_id", id).
+			Msg("Failed to get redemption")
 		return nil, domain.NewResourceNotFoundError("redemption", id, "redemption not found")
 	}
 	return redemption, nil
