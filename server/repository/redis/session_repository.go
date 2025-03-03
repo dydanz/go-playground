@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"go-playground/pkg/logging"
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/rs/zerolog"
 )
 
 // SessionRepository defines the methods for session management
@@ -29,10 +30,13 @@ type Session struct {
 // SessionRepository struct for actual implementation
 type sessionRepository struct {
 	client *redis.Client
+	logger zerolog.Logger
 }
 
 func NewSessionRepository(client *redis.Client) SessionRepository {
-	return &sessionRepository{client: client}
+	return &sessionRepository{client: client,
+		logger: logging.GetLogger(),
+	}
 }
 
 func (r *sessionRepository) StoreSession(ctx context.Context, userID, tokenHash string, expiresAt time.Time) error {
@@ -44,6 +48,9 @@ func (r *sessionRepository) StoreSession(ctx context.Context, userID, tokenHash 
 
 	sessionJSON, err := json.Marshal(session)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to marshal session")
 		return fmt.Errorf("failed to marshal session: %w", err)
 	}
 
@@ -64,11 +71,17 @@ func (r *sessionRepository) GetSession(ctx context.Context, userID string) (*Ses
 		return nil, nil
 	}
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get session")
 		return nil, err
 	}
 
 	var session Session
 	if err := json.Unmarshal([]byte(sessionJSON), &session); err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to unmarshal session")
 		return nil, fmt.Errorf("failed to unmarshal session: %w", err)
 	}
 
@@ -79,10 +92,14 @@ func (r *sessionRepository) DeleteSession(ctx context.Context, userID string) er
 	key := fmt.Sprintf("session:userid:%s", userID)
 	err := r.client.Del(ctx, key).Err()
 	if err != nil {
-		log.Printf("Failed to delete session for userID %s: %v", userID, err)
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to delete session")
 		return fmt.Errorf("failed to delete session: %w", err)
 	}
-	log.Printf("Successfully deleted session for userID %s", userID)
+	r.logger.Info().
+		Str("user_id", userID).
+		Msg("Successfully deleted session")
 	return nil
 }
 
@@ -93,6 +110,8 @@ func (r *sessionRepository) RefreshSession(ctx context.Context, userID, newToken
 	}
 
 	if session == nil {
+		r.logger.Error().
+			Msg("Session not found")
 		return errors.New("session not found")
 	}
 
@@ -103,6 +122,9 @@ func (r *sessionRepository) RefreshSession(ctx context.Context, userID, newToken
 	pipe := r.client.TxPipeline()
 	sessionJSON, err := json.Marshal(session)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to marshal session")
 		return err
 	}
 
@@ -110,7 +132,13 @@ func (r *sessionRepository) RefreshSession(ctx context.Context, userID, newToken
 	pipe.Del(ctx, "session:userid:"+userID)
 
 	_, err = pipe.Exec(ctx)
-	return err
+	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to refresh session")
+		return err
+	}
+	return nil
 }
 
 func (r *sessionRepository) DeleteAllSession(ctx context.Context) error {
@@ -132,9 +160,13 @@ func (r *sessionRepository) DeleteAllSession(ctx context.Context) error {
 	// Execute all delete commands
 	_, err := pipe.Exec(ctx)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to delete all sessions")
 		return fmt.Errorf("error deleting sessions: %w", err)
 	}
 
-	log.Printf("Successfully deleted all sessions")
+	r.logger.Info().
+		Msg("Successfully refreshed all sessions")
 	return nil
 }

@@ -97,6 +97,9 @@ func (r *MerchantRepository) GetMerchantsByUserID(ctx context.Context, userID uu
 	countQuery := `SELECT COUNT(*) FROM merchants WHERE user_id = $1`
 	err := r.db.QueryRowContext(ctx, countQuery, userID).Scan(&total)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get total count")
 		return nil, 0, domain.NewSystemError("MerchantRepository.GetMerchantsByUserID", err, "failed to get total count")
 	}
 

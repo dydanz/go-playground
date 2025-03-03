@@ -3,18 +3,23 @@ package postgres
 import (
 	"context"
 	"database/sql"
-
+	"go-playground/pkg/logging"
 	"go-playground/server/domain"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 )
 
 type PointsRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	logger zerolog.Logger
 }
 
 func NewPointsRepository(db *sql.DB) *PointsRepository {
-	return &PointsRepository{db: db}
+	return &PointsRepository{
+		db:     db,
+		logger: logging.GetLogger(),
+	}
 }
 
 // Create inserts a new points ledger entry into the database
@@ -87,6 +92,9 @@ func (r *PointsRepository) Create(ctx context.Context, ledger *domain.PointsLedg
 	)
 
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to create points ledger entry")
 		return nil, domain.NewSystemError("PointsRepository.Create", err, "failed to create points ledger entry")
 	}
 
@@ -110,6 +118,9 @@ func (r *PointsRepository) GetByCustomerAndProgram(ctx context.Context, merchant
 	`
 	rows, err := r.db.QueryContext(ctx, query, merchantCustomersID, programID)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to query points ledger")
 		return nil, domain.NewSystemError("PointsRepository.GetByCustomerAndProgram", err, "failed to query points ledger")
 	}
 	defer rows.Close()
@@ -128,12 +139,18 @@ func (r *PointsRepository) GetByCustomerAndProgram(ctx context.Context, merchant
 			&ledger.CreatedAt,
 		)
 		if err != nil {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to scan points ledger entry")
 			return nil, domain.NewSystemError("PointsRepository.GetByCustomerAndProgram", err, "failed to scan points ledger entry")
 		}
 		ledgers = append(ledgers, ledger)
 	}
 
 	if err = rows.Err(); err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to iterate points ledger entries")
 		return nil, domain.NewSystemError("PointsRepository.GetByCustomerAndProgram", err, "error iterating points ledger entries")
 	}
 
@@ -156,6 +173,9 @@ func (r *PointsRepository) GetCurrentBalance(ctx context.Context, merchantCustom
 		return 0, nil
 	}
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get points balance")
 		return 0, domain.NewSystemError("PointsRepository.GetCurrentBalance", err, "failed to get points balance")
 	}
 	return balance, nil
@@ -187,14 +207,20 @@ func (r *PointsRepository) GetByTransactionID(ctx context.Context, transactionID
 		&ledger.CreatedAt,
 	)
 	if err == sql.ErrNoRows {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get points ledger entry")
 		return nil, domain.NewResourceNotFoundError("points ledger", transactionID.String(), "points ledger entry not found")
 	}
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get points ledger entry")
 		return nil, domain.NewSystemError("PointsRepository.GetByTransactionID", err, "failed to get points ledger entry")
 	}
 	return ledger, nil
 }
 
 func (r *PointsRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return nil
+	return nil // Delete operation are not allowed
 }

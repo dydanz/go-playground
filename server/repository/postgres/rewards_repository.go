@@ -3,17 +3,23 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"go-playground/pkg/logging"
 	"go-playground/server/domain"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 )
 
 type RewardsRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	logger zerolog.Logger
 }
 
 func NewRewardsRepository(db *sql.DB) *RewardsRepository {
-	return &RewardsRepository{db: db}
+	return &RewardsRepository{
+		db:     db,
+		logger: logging.GetLogger(),
+	}
 }
 
 func (r *RewardsRepository) Create(ctx context.Context, reward *domain.Reward) (*domain.Reward, error) {
@@ -48,8 +54,14 @@ func (r *RewardsRepository) Create(ctx context.Context, reward *domain.Reward) (
 
 	if err != nil {
 		if isPgUniqueViolation(err) {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to create reward")
 			return nil, domain.NewResourceConflictError("reward", "reward with this name already exists")
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to create reward")
 		return nil, domain.NewSystemError("RewardsRepository.Create", err, "failed to create reward")
 	}
 
@@ -86,8 +98,14 @@ func (r *RewardsRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.
 
 	if err != nil {
 		if err == sql.ErrNoRows {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to get reward")
 			return nil, domain.NewResourceNotFoundError("reward", id.String(), "reward not found")
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get reward")
 		return nil, domain.NewSystemError("RewardsRepository.GetByID", err, "failed to get reward")
 	}
 
@@ -113,6 +131,9 @@ func (r *RewardsRepository) GetAll(ctx context.Context, activeOnly bool) ([]doma
 
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to query rewards")
 		return nil, domain.NewSystemError("RewardsRepository.GetAll", err, "failed to query rewards")
 	}
 	defer rows.Close()
@@ -135,6 +156,9 @@ func (r *RewardsRepository) GetAll(ctx context.Context, activeOnly bool) ([]doma
 			&reward.UpdatedAt,
 		)
 		if err != nil {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to scan reward")
 			return nil, domain.NewSystemError("RewardsRepository.GetAll", err, "failed to scan reward")
 		}
 
@@ -147,6 +171,9 @@ func (r *RewardsRepository) GetAll(ctx context.Context, activeOnly bool) ([]doma
 	}
 
 	if err = rows.Err(); err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to iterate rewards")
 		return nil, domain.NewSystemError("RewardsRepository.GetAll", err, "error iterating rewards")
 	}
 
@@ -176,17 +203,28 @@ func (r *RewardsRepository) Update(ctx context.Context, reward *domain.Reward) (
 
 	if err != nil {
 		if isPgUniqueViolation(err) {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to update reward")
 			return nil, domain.NewResourceConflictError("reward", "reward with this name already exists")
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to update reward")
 		return nil, domain.NewSystemError("RewardsRepository.Update", err, "failed to update reward")
 	}
 
 	affected, err := result.RowsAffected()
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get affected rows")
 		return nil, domain.NewSystemError("RewardsRepository.Update", err, "failed to get affected rows")
 	}
 
 	if affected == 0 {
+		r.logger.Error().
+			Msg("Failed to update reward")
 		return nil, domain.NewResourceNotFoundError("reward", reward.ID.String(), "reward not found")
 	}
 
@@ -201,15 +239,23 @@ func (r *RewardsRepository) Delete(ctx context.Context, id uuid.UUID) error {
 		id,
 	)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to delete reward")
 		return domain.NewSystemError("RewardsRepository.Delete", err, "failed to delete reward")
 	}
 
 	affected, err := result.RowsAffected()
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get affected rows")
 		return domain.NewSystemError("RewardsRepository.Delete", err, "failed to get affected rows")
 	}
 
 	if affected == 0 {
+		r.logger.Error().
+			Msg("Failed to delete reward")
 		return domain.NewResourceNotFoundError("reward", id.String(), "reward not found")
 	}
 
@@ -232,6 +278,9 @@ func (r *RewardsRepository) GetByProgramID(ctx context.Context, programID uuid.U
 		programID,
 	)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to query rewards")
 		return nil, domain.NewSystemError("RewardsRepository.GetByProgramID", err, "failed to query rewards")
 	}
 	defer rows.Close()
@@ -254,6 +303,9 @@ func (r *RewardsRepository) GetByProgramID(ctx context.Context, programID uuid.U
 			&reward.UpdatedAt,
 		)
 		if err != nil {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to scan reward")
 			return nil, domain.NewSystemError("RewardsRepository.GetByProgramID", err, "failed to scan reward")
 		}
 
@@ -266,6 +318,9 @@ func (r *RewardsRepository) GetByProgramID(ctx context.Context, programID uuid.U
 	}
 
 	if err = rows.Err(); err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to iterate rewards")
 		return nil, domain.NewSystemError("RewardsRepository.GetByProgramID", err, "error iterating rewards")
 	}
 
