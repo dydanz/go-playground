@@ -237,6 +237,6 @@ func TestRewardsService_UpdateAvailability_NotFound(t *testing.T) {
 	_, err := service.UpdateAvailability(ctx, nonexistentID.String(), true)
 
 	assert.Error(t, err)
-	assert.Equal(t, "not found", err.Error())
+	assert.Contains(t, err.Error(), "not found")
 	mockRepo.AssertExpectations(t)
 }

@@ -4,7 +4,6 @@ import (
 	"go-playground/pkg/logging"
 	"go-playground/server/domain"
 	"go-playground/server/middleware"
-	"go-playground/server/service"
 	"go-playground/server/util"
 	"net/http"
 	"strings"
@@ -15,11 +14,11 @@ import (
 )
 
 type AuthHandler struct {
-	authService *service.AuthService
+	authService domain.AuthService
 	logger      zerolog.Logger
 }
 
-func NewAuthHandler(authService *service.AuthService) *AuthHandler {
+func NewAuthHandler(authService domain.AuthService) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
 		logger:      logging.GetLogger(),
