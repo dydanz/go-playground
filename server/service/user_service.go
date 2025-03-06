@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"fmt"
+	"go-playground/pkg/logging"
 	"go-playground/server/domain"
 	"go-playground/server/util"
-	"log"
 	"time"
+
+	"github.com/rs/zerolog"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -14,12 +16,14 @@ import (
 type UserService struct {
 	userRepo  domain.UserRepository
 	cacheRepo domain.CacheRepository
+	logger    zerolog.Logger
 }
 
 func NewUserService(userRepo domain.UserRepository, cacheRepo domain.CacheRepository) *UserService {
 	return &UserService{
 		userRepo:  userRepo,
 		cacheRepo: cacheRepo,
+		logger:    logging.GetLogger(),
 	}
 }
 
@@ -56,6 +60,8 @@ func (s *UserService) Create(ctx context.Context, req *domain.CreateUserRequest)
 
 	result := decoratedFn()
 	if result == nil {
+		s.logger.Error().
+			Msg("Failed to create user")
 		return nil, fmt.Errorf("failed to create user")
 	}
 	return result, nil
@@ -80,7 +86,9 @@ func (s *UserService) GetByID(ctx context.Context, id string) (*domain.User, err
 
 		// Store in cache for future requests
 		if err := s.cacheRepo.SetUser(user); err != nil {
-			log.Printf("Failed to cache user: %v", err)
+			s.logger.Error().
+				Err(err).
+				Msg("Failed to cache user")
 		}
 
 		return user
@@ -88,6 +96,8 @@ func (s *UserService) GetByID(ctx context.Context, id string) (*domain.User, err
 
 	result := decoratedFn()
 	if result == nil {
+		s.logger.Error().
+			Msg("User not found")
 		return nil, fmt.Errorf("user not found")
 	}
 	return result, nil
@@ -111,6 +121,8 @@ func (s *UserService) GetAll(ctx context.Context) ([]domain.User, error) {
 
 	result := decoratedFn()
 	if result == nil {
+		s.logger.Error().
+			Msg("Failed to get users")
 		return nil, fmt.Errorf("failed to get users")
 	}
 	return result, nil
@@ -140,6 +152,8 @@ func (s *UserService) Update(ctx context.Context, id string, req *domain.UpdateU
 
 	result := decoratedFn()
 	if result == nil {
+		s.logger.Error().
+			Msg("Failed to update user")
 		return nil, fmt.Errorf("failed to update user")
 	}
 	return result, nil
@@ -160,6 +174,8 @@ func (s *UserService) Delete(ctx context.Context, id string) error {
 	})
 
 	if !decoratedFn() {
+		s.logger.Error().
+			Msg("Failed to delete user")
 		return fmt.Errorf("failed to delete user")
 	}
 	return nil
