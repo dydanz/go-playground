@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"go-playground/pkg/logging"
 	"go-playground/server/domain"
 	"go-playground/server/repository/redis"
 	"math/big"
@@ -11,8 +12,8 @@ import (
 	"time"
 
 	"context"
-	"log"
 
+	"github.com/rs/zerolog"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -20,6 +21,7 @@ type AuthService struct {
 	userRepo    domain.UserRepository
 	authRepo    domain.AuthRepository
 	sessionRepo redis.SessionRepository
+	logger      zerolog.Logger
 }
 
 func NewAuthService(userRepo domain.UserRepository, authRepo domain.AuthRepository, sessionRepo redis.SessionRepository) *AuthService {
@@ -27,12 +29,15 @@ func NewAuthService(userRepo domain.UserRepository, authRepo domain.AuthReposito
 		userRepo:    userRepo,
 		authRepo:    authRepo,
 		sessionRepo: sessionRepo,
+		logger:      logging.GetLogger(),
 	}
 }
 
 func (s *AuthService) Register(ctx context.Context, req *domain.RegistrationRequest) (*domain.User, error) {
 	// Validate input
 	if req.Email == "" {
+		s.logger.Error().
+			Msg("Email is required")
 		return nil, domain.ValidationError{
 			Field:   "email",
 			Message: "Email is required",
@@ -41,6 +46,8 @@ func (s *AuthService) Register(ctx context.Context, req *domain.RegistrationRequ
 
 	// Basic email format validation
 	if !isValidEmail(req.Email) {
+		s.logger.Error().
+			Msg("Invalid email format")
 		return nil, domain.ValidationError{
 			Field:   "email",
 			Message: "Invalid email format",
@@ -50,12 +57,17 @@ func (s *AuthService) Register(ctx context.Context, req *domain.RegistrationRequ
 	// Check if email already exists
 	existingUser, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error checking email")
 		return nil, domain.ResourceNotFoundError{
 			Resource: "user",
 			Message:  fmt.Sprintf("Error checking email: %v", err),
 		}
 	}
 	if existingUser != nil {
+		s.logger.Error().
+			Msg("Email already exists")
 		return nil, domain.ResourceConflictError{
 			Resource: "user",
 			Message:  "email already exists",
@@ -65,6 +77,9 @@ func (s *AuthService) Register(ctx context.Context, req *domain.RegistrationRequ
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error hashing password")
 		return nil, domain.SystemError{
 			Op:      fmt.Sprintf("error hashing password: %v", err),
 			Err:     err,
@@ -82,6 +97,9 @@ func (s *AuthService) Register(ctx context.Context, req *domain.RegistrationRequ
 
 	user, err := s.userRepo.Create(ctx, createReq)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error creating user")
 		return nil, domain.SystemError{
 			Op:      fmt.Sprintf("error creating user: %v", err),
 			Err:     err,
@@ -98,6 +116,9 @@ func (s *AuthService) Register(ctx context.Context, req *domain.RegistrationRequ
 	}
 
 	if err := s.authRepo.CreateVerification(ctx, verification); err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error creating verification")
 		return nil, domain.SystemError{
 			Op:      fmt.Sprintf("error creating verification: %v", err),
 			Err:     err,
@@ -106,7 +127,10 @@ func (s *AuthService) Register(ctx context.Context, req *domain.RegistrationRequ
 	}
 
 	// TODO: Send OTP via email
-	log.Printf("OTP for %s: %s", user.Email, otp)
+	s.logger.Info().
+		Str("email", user.Email).
+		Str("otp", otp).
+		Msg("OTP sent")
 
 	return user, nil
 }
@@ -128,12 +152,17 @@ func isValidEmail(email string) bool {
 func (s *AuthService) VerifyRegistration(ctx context.Context, req *domain.VerificationRequest) error {
 	user, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error getting user")
 		return domain.ResourceNotFoundError{
 			Resource: "user",
 			Message:  fmt.Sprintf("Error getting user: %v", err),
 		}
 	}
 	if user == nil {
+		s.logger.Error().
+			Msg("User not found")
 		return domain.ResourceNotFoundError{
 			Resource: "user",
 			Message:  "User not found",
@@ -141,6 +170,8 @@ func (s *AuthService) VerifyRegistration(ctx context.Context, req *domain.Verifi
 	}
 
 	if user.Status == domain.UserStatusActive {
+		s.logger.Error().
+			Msg("User already verified")
 		return domain.ResourceConflictError{
 			Resource: "user",
 			Message:  "User already verified",
@@ -149,6 +180,9 @@ func (s *AuthService) VerifyRegistration(ctx context.Context, req *domain.Verifi
 
 	verification, err := s.authRepo.GetVerification(ctx, user.ID, req.OTP)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error getting verification")
 		return domain.ValidationError{
 			Field:   "otp",
 			Message: "Invalid or expired OTP",
@@ -158,6 +192,9 @@ func (s *AuthService) VerifyRegistration(ctx context.Context, req *domain.Verifi
 	// Start transaction
 	tx, err := s.authRepo.BeginTx(ctx)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error beginning transaction")
 		return domain.SystemError{
 			Op:      fmt.Sprintf("error beginning transaction: %v", err),
 			Err:     err,
@@ -177,6 +214,9 @@ func (s *AuthService) VerifyRegistration(ctx context.Context, req *domain.Verifi
 	// Mark verification as used
 	if err := s.authRepo.MarkVerificationUsedTx(ctx, tx, verification.ID); err != nil {
 		txErr = err
+		s.logger.Error().
+			Err(err).
+			Msg("Error marking verification as used")
 		return domain.SystemError{
 			Op:      fmt.Sprintf("error marking verification as used: %v", err),
 			Err:     err,
@@ -188,6 +228,9 @@ func (s *AuthService) VerifyRegistration(ctx context.Context, req *domain.Verifi
 	user.Status = domain.UserStatusActive
 	if err := s.userRepo.UpdateTx(ctx, tx, user); err != nil {
 		txErr = err
+		s.logger.Error().
+			Err(err).
+			Msg("Error updating user")
 		return domain.SystemError{
 			Op:      fmt.Sprintf("error updating user: %v", err),
 			Err:     err,
@@ -197,6 +240,9 @@ func (s *AuthService) VerifyRegistration(ctx context.Context, req *domain.Verifi
 
 	if err := s.authRepo.Commit(ctx, tx); err != nil {
 		txErr = err
+		s.logger.Error().
+			Err(err).
+			Msg("Error committing transaction")
 		return domain.SystemError{
 			Op:      fmt.Sprintf("error committing transaction: %v", err),
 			Err:     err,
@@ -211,12 +257,17 @@ func (s *AuthService) Login(ctx context.Context, req *domain.LoginRequest) (*dom
 	// Check login attempts
 	attempt, err := s.authRepo.UpdateLoginAttempts(ctx, req.Email, true)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error checking login attempts")
 		return nil, domain.AuthenticationError{
 			Message: fmt.Sprintf("error checking login attempts: %v", err),
 		}
 	}
 
 	if attempt != nil && attempt.LockedUntil.After(time.Now()) {
+		s.logger.Error().
+			Msg("Account temporarily locked")
 		return nil, domain.AuthenticationError{
 			Message: fmt.Sprintf("account temporarily locked. Try again after %v", attempt.LockedUntil),
 		}
@@ -224,15 +275,22 @@ func (s *AuthService) Login(ctx context.Context, req *domain.LoginRequest) (*dom
 
 	user, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error getting user")
 		return nil, err
 	}
 	if user == nil {
+		s.logger.Error().
+			Msg("User not found")
 		return nil, domain.AuthenticationError{
 			Message: "invalid credentials",
 		}
 	}
 
 	if user.Status != domain.UserStatusActive {
+		s.logger.Error().
+			Msg("Account not verified")
 		return nil, domain.AuthenticationError{
 			Message: "Account not verified",
 		}

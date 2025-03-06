@@ -2,22 +2,30 @@ package service
 
 import (
 	"context"
+	"go-playground/pkg/logging"
 	"go-playground/server/domain"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 )
 
 type MerchantService struct {
 	merchantRepo domain.MerchantRepository
+	logger       zerolog.Logger
 }
 
 func NewMerchantService(merchantRepo domain.MerchantRepository) *MerchantService {
-	return &MerchantService{merchantRepo: merchantRepo}
+	return &MerchantService{merchantRepo: merchantRepo,
+		logger: logging.GetLogger(),
+	}
 }
 
 func (s *MerchantService) Create(ctx context.Context, req *domain.CreateMerchantRequest) (*domain.Merchant, error) {
 	// Validate merchant type
 	if !isValidMerchantType(req.Type) {
+		s.logger.Error().
+			Str("type", string(req.Type)).
+			Msg("Invalid merchant type")
 		return nil, domain.NewValidationError("type", "invalid merchant type")
 	}
 
@@ -31,6 +39,9 @@ func (s *MerchantService) Create(ctx context.Context, req *domain.CreateMerchant
 
 	// Business logic validation
 	if err := s.validateMerchantCreation(ctx, merchant); err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error validating merchant creation")
 		return nil, err
 	}
 
@@ -38,6 +49,9 @@ func (s *MerchantService) Create(ctx context.Context, req *domain.CreateMerchant
 	merchant, err := s.merchantRepo.Create(ctx, merchant)
 	if err != nil {
 		// Repository layer will return appropriate error types
+		s.logger.Error().
+			Err(err).
+			Msg("Error creating merchant")
 		return nil, err
 	}
 
@@ -47,6 +61,9 @@ func (s *MerchantService) Create(ctx context.Context, req *domain.CreateMerchant
 func (s *MerchantService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Merchant, error) {
 	merchant, err := s.merchantRepo.GetByID(ctx, id)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error getting merchant")
 		return nil, err // Repository layer will return appropriate error types
 	}
 
@@ -71,11 +88,17 @@ func (s *MerchantService) Update(ctx context.Context, id uuid.UUID, req *domain.
 	// Check if merchant exists
 	merchant, err := s.merchantRepo.GetByID(ctx, id)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error getting merchant")
 		return nil, err // Repository layer will handle not found error
 	}
 
 	// Validate merchant type if provided
 	if !isValidMerchantType(req.Type) {
+		s.logger.Error().
+			Str("type", string(req.Type)).
+			Msg("Invalid merchant type")
 		return nil, domain.NewValidationError("type", "invalid merchant type")
 	}
 
@@ -85,11 +108,17 @@ func (s *MerchantService) Update(ctx context.Context, id uuid.UUID, req *domain.
 
 	// Business logic validation
 	if err := s.validateMerchantUpdate(merchant); err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error validating merchant update")
 		return nil, err
 	}
 
 	// Attempt to update
 	if err := s.merchantRepo.Update(ctx, merchant); err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error updating merchant")
 		return nil, err
 	}
 
@@ -100,11 +129,17 @@ func (s *MerchantService) Delete(ctx context.Context, id uuid.UUID) error {
 	// Check if merchant exists
 	merchant, err := s.merchantRepo.GetByID(ctx, id)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error getting merchant")
 		return err // Repository layer will handle not found error
 	}
 
 	// Business logic validation before deletion
 	if err := s.validateMerchantDeletion(merchant); err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error validating merchant deletion")
 		return err
 	}
 
@@ -114,6 +149,9 @@ func (s *MerchantService) Delete(ctx context.Context, id uuid.UUID) error {
 func (s *MerchantService) GetMerchantsByUserID(ctx context.Context, userID uuid.UUID, offset, limit int) ([]*domain.Merchant, int, error) {
 	merchants, total, err := s.merchantRepo.GetMerchantsByUserID(ctx, userID, offset, limit)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error getting merchants")
 		return nil, 0, domain.NewSystemError("MerchantService.GetMerchantsByUserID", err, "failed to get merchants")
 	}
 	if len(merchants) == 0 {
@@ -128,6 +166,9 @@ func (s *MerchantService) validateMerchantCreation(ctx context.Context, merchant
 	// Example business rule: Check if user already has maximum allowed merchants
 	merchants, _, err := s.merchantRepo.GetMerchantsByUserID(ctx, merchant.UserID, 1, 50)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error getting merchants")
 		return domain.NewSystemError("MerchantService.validateMerchantCreation", err, "failed to check existing merchants")
 	}
 

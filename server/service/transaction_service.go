@@ -2,11 +2,12 @@ package service
 
 import (
 	"context"
-	"log"
 
+	"go-playground/pkg/logging"
 	"go-playground/server/domain"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 )
 
 type TransactionService struct {
@@ -14,6 +15,7 @@ type TransactionService struct {
 	pointsService        domain.PointsService
 	eventLoggerService   domain.EventLoggerService
 	merchantCustomerRepo domain.MerchantCustomersRepository
+	logger               zerolog.Logger
 }
 
 func NewTransactionService(
@@ -27,15 +29,21 @@ func NewTransactionService(
 		pointsService:        pointsService,
 		eventLoggerService:   eventLoggerService,
 		merchantCustomerRepo: merchantCustomerRepo,
+		logger:               logging.GetLogger(),
 	}
 }
 
 func (s *TransactionService) getMerchantIDByCustomerID(ctx context.Context, customerID uuid.UUID) (uuid.UUID, error) {
 	customer, err := s.merchantCustomerRepo.GetByID(ctx, customerID)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error getting merchant customer")
 		return uuid.Nil, domain.NewSystemError("TransactionService.getMerchantIDByCustomerID", err, "failed to get merchant customer")
 	}
 	if customer == nil {
+		s.logger.Error().
+			Msg("Customer not found")
 		return uuid.Nil, domain.NewResourceNotFoundError("merchant customer", customerID.String(), "customer not found")
 	}
 	return customer.MerchantID, nil
@@ -43,15 +51,18 @@ func (s *TransactionService) getMerchantIDByCustomerID(ctx context.Context, cust
 
 func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTransactionRequest) (*domain.Transaction, error) {
 	if req.TransactionAmount <= 0 {
-		log.Println("TransactionService: Transaction amount must be greater than 0")
+		s.logger.Error().
+			Msg("Transaction amount must be greater than 0")
 		return nil, domain.NewValidationError("transaction_amount", "transaction amount must be greater than 0")
 	}
 
 	// Get merchant ID from customer ID
 	merchantID, err := s.getMerchantIDByCustomerID(ctx, req.MerchantCustomersID)
 	if err != nil {
-		log.Println("TransactionService: Error getting merchant ID: ", err)
-		return nil, err
+		s.logger.Error().
+			Err(err).
+			Msg("Error getting merchant ID")
+		return nil, domain.NewSystemError("TransactionService.Create", err, "failed to get merchant ID")
 	}
 
 	transaction := &domain.Transaction{
@@ -66,7 +77,9 @@ func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTrans
 
 	createdTx, err := s.transactionRepo.Create(ctx, transaction)
 	if err != nil {
-		log.Println("TransactionService: Error creating transaction: ", err)
+		s.logger.Error().
+			Err(err).
+			Msg("Error creating transaction")
 		return nil, domain.NewSystemError("TransactionService.Create", err, "failed to create transaction")
 	}
 
@@ -95,8 +108,10 @@ func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTrans
 			Points:        points,
 			TransactionID: createdTx.TransactionID.String(),
 		}); err != nil {
-			log.Println("TransactionService: Error earning points: ", err)
-			return nil, err
+			s.logger.Error().
+				Err(err).
+				Msg("Error earning points")
+			return nil, domain.NewSystemError("TransactionService.Create", err, "failed to earn points")
 		}
 	} else if points < 0 {
 		if _, err := s.pointsService.RedeemPoints(ctx, &domain.PointsTransaction{
@@ -105,8 +120,10 @@ func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTrans
 			Points:        points,
 			TransactionID: createdTx.TransactionID.String(),
 		}); err != nil {
-			log.Println("TransactionService: Error redeeming points: ", err)
-			return nil, err
+			s.logger.Error().
+				Err(err).
+				Msg("Error redeeming points")
+			return nil, domain.NewSystemError("TransactionService.Create", err, "failed to redeem points")
 		}
 	}
 
@@ -119,9 +136,14 @@ func (s *TransactionService) Create(ctx context.Context, req *domain.CreateTrans
 func (s *TransactionService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Transaction, error) {
 	transaction, err := s.transactionRepo.GetByID(ctx, id)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error getting transaction")
 		return nil, domain.NewSystemError("TransactionService.GetByID", err, "failed to get transaction")
 	}
 	if transaction == nil {
+		s.logger.Error().
+			Msg("Transaction not found")
 		return nil, domain.NewResourceNotFoundError("transaction", id.String(), "transaction not found")
 	}
 	return transaction, nil
@@ -130,6 +152,9 @@ func (s *TransactionService) GetByID(ctx context.Context, id uuid.UUID) (*domain
 func (s *TransactionService) GetByCustomerID(ctx context.Context, customerID uuid.UUID) ([]*domain.Transaction, error) {
 	transactions, err := s.transactionRepo.GetByCustomerID(ctx, customerID)
 	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Msg("Error getting transactions")
 		return nil, domain.NewSystemError("TransactionService.GetByCustomerID", err, "failed to get transactions")
 	}
 	if len(transactions) == 0 {
@@ -152,7 +177,10 @@ func (s *TransactionService) GetByUserIDWithPagination(ctx context.Context, user
 func (s *TransactionService) UpdateStatus(ctx context.Context, id string, status string) error {
 	txID, err := uuid.Parse(id)
 	if err != nil {
-		return err
+		s.logger.Error().
+			Err(err).
+			Msg("Error parsing transaction ID")
+		return domain.NewSystemError("TransactionService.UpdateStatus", err, "failed to parse transaction ID")
 	}
 	return s.transactionRepo.UpdateStatus(ctx, txID, status)
 }

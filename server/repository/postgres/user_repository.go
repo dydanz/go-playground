@@ -3,16 +3,21 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"go-playground/pkg/logging"
 	"go-playground/server/domain"
-	"log"
+
+	"github.com/rs/zerolog"
 )
 
 type UserRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	logger zerolog.Logger
 }
 
 func NewUserRepository(db *sql.DB) *UserRepository {
-	return &UserRepository{db: db}
+	return &UserRepository{db: db,
+		logger: logging.GetLogger(),
+	}
 }
 
 func (r *UserRepository) Create(ctx context.Context, req *domain.CreateUserRequest) (*domain.User, error) {
@@ -43,8 +48,14 @@ func (r *UserRepository) Create(ctx context.Context, req *domain.CreateUserReque
 
 	if err != nil {
 		if isPgUniqueViolation(err) {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to create user")
 			return nil, domain.NewResourceConflictError("user", "user with this email already exists")
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to create user")
 		return nil, domain.NewSystemError("UserRepository.Create", err, "failed to create user")
 	}
 
@@ -72,8 +83,14 @@ func (r *UserRepository) GetByID(ctx context.Context, id string) (*domain.User, 
 
 	if err != nil {
 		if err == sql.ErrNoRows {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to get user")
 			return nil, domain.NewResourceNotFoundError("user", id, "user not found")
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get user")
 		return nil, domain.NewSystemError("UserRepository.GetByID", err, "failed to get user")
 	}
 
@@ -103,13 +120,22 @@ func (r *UserRepository) Update(ctx context.Context, user *domain.User) error {
 
 	if err != nil {
 		if isPgUniqueViolation(err) {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to update user")
 			return domain.NewResourceConflictError("user", "user with this email already exists")
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to update user")
 		return domain.NewSystemError("UserRepository.Update", err, "failed to update user")
 	}
 
 	affected, err := result.RowsAffected()
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get affected rows")
 		return domain.NewSystemError("UserRepository.Update", err, "failed to get affected rows")
 	}
 
@@ -149,9 +175,14 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Printf("No user found with the given ID.")
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to get user")
 			return nil, nil
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get user")
 		return nil, domain.NewSystemError("UserRepository.GetByEmail", err, "failed to get user")
 	}
 
@@ -168,9 +199,14 @@ func (r *UserRepository) GetAll(ctx context.Context) ([]*domain.User, error) {
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Printf("No user(s) found.")
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to get users")
 			return nil, nil
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get users")
 		return nil, domain.NewSystemError("UserRepository.GetAll", err, "failed to query users")
 	}
 	defer rows.Close()
@@ -190,6 +226,9 @@ func (r *UserRepository) GetAll(ctx context.Context) ([]*domain.User, error) {
 			&user.UpdatedAt,
 		)
 		if err != nil {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to scan user")
 			return nil, domain.NewSystemError("UserRepository.GetAll", err, "failed to scan user")
 		}
 		user.Status = domain.UserStatus(statusStr)
@@ -197,6 +236,9 @@ func (r *UserRepository) GetAll(ctx context.Context) ([]*domain.User, error) {
 	}
 
 	if err = rows.Err(); err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to iterate users")
 		return nil, domain.NewSystemError("UserRepository.GetAll", err, "error iterating users")
 	}
 
@@ -225,17 +267,28 @@ func (r *UserRepository) UpdateTx(ctx context.Context, tx *sql.Tx, user *domain.
 
 	if err != nil {
 		if isPgUniqueViolation(err) {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to update user")
 			return domain.NewResourceConflictError("user", "user with this email already exists")
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to update user")
 		return domain.NewSystemError("UserRepository.UpdateTx", err, "failed to update user")
 	}
 
 	affected, err := result.RowsAffected()
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get affected rows")
 		return domain.NewSystemError("UserRepository.UpdateTx", err, "failed to get affected rows")
 	}
 
 	if affected == 0 {
+		r.logger.Error().
+			Msg("Failed to update user")
 		return domain.NewResourceNotFoundError("user", user.ID, "user not found")
 	}
 
@@ -268,9 +321,14 @@ func (r *UserRepository) GetRandomActiveUser(ctx context.Context) (*domain.User,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Printf("no active users found")
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to get random active user")
 			return nil, nil
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get random active user")
 		return nil, domain.NewSystemError("UserRepository.GetRandomActiveUser", err, "failed to get random active user")
 	}
 

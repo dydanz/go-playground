@@ -3,17 +3,23 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"go-playground/pkg/logging"
 	"go-playground/server/domain"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 )
 
 type ProgramsRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	logger zerolog.Logger
 }
 
 func NewProgramsRepository(db *sql.DB) *ProgramsRepository {
-	return &ProgramsRepository{db: db}
+	return &ProgramsRepository{
+		db:     db,
+		logger: logging.GetLogger(),
+	}
 }
 
 func (r *ProgramsRepository) Create(ctx context.Context, program *domain.Program) (*domain.Program, error) {
@@ -44,8 +50,14 @@ func (r *ProgramsRepository) Create(ctx context.Context, program *domain.Program
 
 	if err != nil {
 		if isPgUniqueViolation(err) {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to create program")
 			return nil, domain.NewResourceConflictError("program", "program with this name already exists for the merchant")
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to create program")
 		return nil, domain.NewSystemError("ProgramsRepository.Create", err, "failed to create program")
 	}
 
@@ -71,8 +83,14 @@ func (r *ProgramsRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to get program")
 			return nil, nil
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get program")
 		return nil, domain.NewSystemError("ProgramsRepository.GetByID", err, "failed to get program")
 	}
 	program.ID = pID
@@ -87,6 +105,9 @@ func (r *ProgramsRepository) GetAll(ctx context.Context) ([]*domain.Program, err
 
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to query programs")
 		return nil, domain.NewSystemError("ProgramsRepository.GetAll", err, "failed to query programs")
 	}
 	defer rows.Close()
@@ -104,6 +125,9 @@ func (r *ProgramsRepository) GetAll(ctx context.Context) ([]*domain.Program, err
 			&program.UpdatedAt,
 		)
 		if err != nil {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to scan program")
 			return nil, domain.NewSystemError("ProgramsRepository.GetAll", err, "failed to scan program")
 		}
 		program.ID = pID
@@ -112,6 +136,9 @@ func (r *ProgramsRepository) GetAll(ctx context.Context) ([]*domain.Program, err
 	}
 
 	if err = rows.Err(); err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to iterate programs")
 		return nil, domain.NewSystemError("ProgramsRepository.GetAll", err, "error iterating programs")
 	}
 
@@ -140,17 +167,28 @@ func (r *ProgramsRepository) Update(ctx context.Context, program *domain.Program
 
 	if err != nil {
 		if isPgUniqueViolation(err) {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to update program")
 			return domain.NewResourceConflictError("program", "program with this name already exists for the merchant")
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to update program")
 		return domain.NewSystemError("ProgramsRepository.Update", err, "failed to update program")
 	}
 
 	affected, err := result.RowsAffected()
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get affected rows")
 		return domain.NewSystemError("ProgramsRepository.Update", err, "failed to get affected rows")
 	}
 
 	if affected == 0 {
+		r.logger.Error().
+			Msg("Failed to update program")
 		return domain.NewResourceNotFoundError("program", program.ID.String(), "program not found")
 	}
 
@@ -169,6 +207,9 @@ func (r *ProgramsRepository) GetByMerchantID(ctx context.Context, merchantID uui
 
 	rows, err := r.db.QueryContext(ctx, query, merchantID)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to query programs")
 		return nil, domain.NewSystemError("ProgramsRepository.GetByMerchantID", err, "failed to query programs")
 	}
 	defer rows.Close()
@@ -186,6 +227,9 @@ func (r *ProgramsRepository) GetByMerchantID(ctx context.Context, merchantID uui
 			&program.UpdatedAt,
 		)
 		if err != nil {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to scan program")
 			return nil, domain.NewSystemError("ProgramsRepository.GetByMerchantID", err, "failed to scan program")
 		}
 		program.ID = pID
@@ -194,6 +238,9 @@ func (r *ProgramsRepository) GetByMerchantID(ctx context.Context, merchantID uui
 	}
 
 	if err = rows.Err(); err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to iterate programs")
 		return nil, domain.NewSystemError("ProgramsRepository.GetByMerchantID", err, "error iterating programs")
 	}
 

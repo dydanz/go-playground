@@ -1,22 +1,28 @@
 package handler
 
 import (
+	"go-playground/pkg/logging"
 	"go-playground/server/domain"
 	"go-playground/server/util"
-	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 )
 
 type MerchantHandler struct {
 	merchantService domain.MerchantService
+	logger          zerolog.Logger
 }
 
 func NewMerchantHandler(merchantService domain.MerchantService) *MerchantHandler {
-	return &MerchantHandler{merchantService: merchantService}
+	return &MerchantHandler{
+		merchantService: merchantService,
+		logger:          logging.GetLogger(),
+	}
 }
 
 // @Summary Create merchant
@@ -32,27 +38,48 @@ func NewMerchantHandler(merchantService domain.MerchantService) *MerchantHandler
 // @Failure 500 {object} util.ErrorResponse
 // @Router /merchants [post]
 func (h *MerchantHandler) Create(c *gin.Context) {
+	h.logger.Info().
+		Str("method", c.Request.Method).
+		Str("url", c.Request.URL.RequestURI()).
+		Str("user_agent", c.Request.UserAgent()).
+		Dur("elapsed_ms", time.Since(time.Now())).
+		Msg("incoming create merchant request")
+
 	var req domain.CreateMerchantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("error: %v", err)
-		util.HandleError(c, domain.NewValidationError("request", "invalid request format"))
+		h.logger.Error().
+			Err(err).
+			Msg("Failed to bind create merchant request")
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
-	// Get user ID from context (set by auth middleware)
 	userID, exists := c.Get("user_id")
 	if !exists {
-		log.Printf("%v error to check: \n%v\n%v", exists, userID, req.UserID)
+		h.logger.Error().
+			Interface("user_id", userID).
+			Interface("req_user_id", req.UserID).
+			Msg("User not authenticated")
 		util.HandleError(c, domain.NewAuthenticationError("user not authenticated"))
 		return
 	}
 
 	merchant, err := h.merchantService.Create(c.Request.Context(), &req)
 	if err != nil {
-		log.Printf("error creating merchant: %v", err)
+		h.logger.Error().
+			Err(err).
+			Interface("request", req).
+			Msg("Failed to create merchant")
 		util.HandleError(c, err)
 		return
 	}
+
+	h.logger.Info().
+		Str("merchant_id", merchant.ID.String()).
+		Str("name", merchant.Name).
+		Str("user_id", merchant.UserID.String()).
+		Str("type", string(merchant.Type)).
+		Msg("Merchant created successfully")
 
 	c.JSON(http.StatusCreated, merchant)
 }
@@ -68,17 +95,39 @@ func (h *MerchantHandler) Create(c *gin.Context) {
 // @Failure 500 {object} util.ErrorResponse
 // @Router /merchants/{id} [get]
 func (h *MerchantHandler) GetByID(c *gin.Context) {
+	h.logger.Info().
+		Str("method", c.Request.Method).
+		Str("url", c.Request.URL.RequestURI()).
+		Str("user_agent", c.Request.UserAgent()).
+		Dur("elapsed_ms", time.Since(time.Now())).
+		Msg("incoming get merchant request")
+
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
+		h.logger.Error().
+			Err(err).
+			Str("merchant_id", c.Param("id")).
+			Msg("Invalid merchant ID format")
 		util.HandleError(c, domain.NewValidationError("id", "invalid merchant ID format"))
 		return
 	}
 
 	merchant, err := h.merchantService.GetByID(c.Request.Context(), id)
 	if err != nil {
+		h.logger.Error().
+			Err(err).
+			Str("merchant_id", id.String()).
+			Msg("Failed to get merchant")
 		util.HandleError(c, err)
 		return
 	}
+
+	h.logger.Info().
+		Str("merchant_id", merchant.ID.String()).
+		Str("name", merchant.Name).
+		Str("user_id", merchant.UserID.String()).
+		Str("type", string(merchant.Type)).
+		Msg("Merchant retrieved successfully")
 
 	c.JSON(http.StatusOK, merchant)
 }
@@ -91,30 +140,52 @@ func (h *MerchantHandler) GetByID(c *gin.Context) {
 // @Failure 500 {object} util.ErrorResponse
 // @Router /merchants [get]
 func (h *MerchantHandler) GetAll(c *gin.Context) {
-	// Get user ID from context (set by auth middleware)
+	h.logger.Info().
+		Str("method", c.Request.Method).
+		Str("url", c.Request.URL.RequestURI()).
+		Str("user_agent", c.Request.UserAgent()).
+		Dur("elapsed_ms", time.Since(time.Now())).
+		Msg("incoming get all merchants request")
+
 	userIDStr, exists := c.Get("user_id")
 	userID, err := uuid.Parse(userIDStr.(string))
 	if err != nil {
+		h.logger.Error().
+			Err(err).
+			Interface("user_id", userIDStr).
+			Msg("Invalid user ID format")
 		return
 	}
 	if !exists {
-		log.Printf("%v error to check: \n%v", exists, userID)
+		h.logger.Error().
+			Interface("user_id", userID).
+			Msg("User not authenticated")
 		util.HandleError(c, domain.NewAuthenticationError("user not authenticated"))
 		return
 	}
 
 	merchants, err := h.merchantService.GetAll(c.Request.Context(), userID)
 	if err != nil {
-		log.Printf("error: %v", err)
+		h.logger.Error().
+			Err(err).
+			Str("user_id", userID.String()).
+			Msg("Failed to get merchants")
 		util.HandleError(c, err)
 		return
 	}
 
 	if len(merchants) == 0 {
-		log.Printf("no merchants found")
+		h.logger.Info().
+			Str("user_id", userID.String()).
+			Msg("No merchants found")
 		util.EmptyResponse(c)
 		return
 	}
+
+	h.logger.Info().
+		Str("user_id", userID.String()).
+		Int("merchant_count", len(merchants)).
+		Msg("Merchants retrieved successfully")
 
 	c.JSON(http.StatusOK, merchants)
 }
@@ -132,38 +203,69 @@ func (h *MerchantHandler) GetAll(c *gin.Context) {
 // @Failure 500 {object} util.ErrorResponse
 // @Router /merchants/{id} [put]
 func (h *MerchantHandler) Update(c *gin.Context) {
+	h.logger.Info().
+		Str("method", c.Request.Method).
+		Str("url", c.Request.URL.RequestURI()).
+		Str("user_agent", c.Request.UserAgent()).
+		Dur("elapsed_ms", time.Since(time.Now())).
+		Msg("incoming update merchant request")
+
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		log.Printf("error: %v", err)
+		h.logger.Error().
+			Err(err).
+			Str("merchant_id", c.Param("id")).
+			Msg("Invalid merchant ID format")
 		util.HandleError(c, domain.NewValidationError("id", "invalid merchant ID format"))
 		return
 	}
 
 	var req domain.UpdateMerchantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("error: %v", err)
-		util.HandleError(c, domain.NewValidationError("request", "invalid request format"))
+		h.logger.Error().
+			Err(err).
+			Msg("Failed to bind update merchant request")
+		util.HandleError(c, domain.ValidationError{Message: err.Error()})
 		return
 	}
 
-	// Verify user has permission to update this merchant
 	userIDStr, _ := c.Get("user_id")
 	userID, err := uuid.Parse(userIDStr.(string))
 	if err != nil {
+		h.logger.Error().
+			Err(err).
+			Interface("user_id", userIDStr).
+			Msg("Invalid user ID format")
 		return
 	}
+
 	if err := h.verifyMerchantAccess(c, userID, id); err != nil {
-		log.Printf("error: %v", err)
+		h.logger.Error().
+			Err(err).
+			Str("user_id", userID.String()).
+			Str("merchant_id", id.String()).
+			Msg("Failed to verify merchant access")
 		util.HandleError(c, err)
 		return
 	}
 
 	merchant, err := h.merchantService.Update(c.Request.Context(), id, &req)
 	if err != nil {
-		log.Printf("error: %v", err)
+		h.logger.Error().
+			Err(err).
+			Str("merchant_id", id.String()).
+			Interface("request", req).
+			Msg("Failed to update merchant")
 		util.HandleError(c, err)
 		return
 	}
+
+	h.logger.Info().
+		Str("merchant_id", merchant.ID.String()).
+		Str("name", merchant.Name).
+		Str("user_id", merchant.UserID.String()).
+		Str("type", string(merchant.Type)).
+		Msg("Merchant updated successfully")
 
 	c.JSON(http.StatusOK, merchant)
 }
@@ -179,27 +281,55 @@ func (h *MerchantHandler) Update(c *gin.Context) {
 // @Failure 500 {object} util.ErrorResponse
 // @Router /merchants/{id} [delete]
 func (h *MerchantHandler) Delete(c *gin.Context) {
+	h.logger.Info().
+		Str("method", c.Request.Method).
+		Str("url", c.Request.URL.RequestURI()).
+		Str("user_agent", c.Request.UserAgent()).
+		Dur("elapsed_ms", time.Since(time.Now())).
+		Msg("incoming delete merchant request")
+
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
+		h.logger.Error().
+			Err(err).
+			Str("merchant_id", c.Param("id")).
+			Msg("Invalid merchant ID format")
 		util.HandleError(c, domain.NewValidationError("id", "invalid merchant ID format"))
 		return
 	}
 
-	// Verify user has permission to delete this merchant
 	userIDStr, _ := c.Get("user_id")
 	userID, err := uuid.Parse(userIDStr.(string))
 	if err != nil {
+		h.logger.Error().
+			Err(err).
+			Interface("user_id", userIDStr).
+			Msg("Invalid user ID format")
 		return
 	}
+
 	if err := h.verifyMerchantAccess(c, userID, id); err != nil {
+		h.logger.Error().
+			Err(err).
+			Str("user_id", userID.String()).
+			Str("merchant_id", id.String()).
+			Msg("Failed to verify merchant access")
 		util.HandleError(c, err)
 		return
 	}
 
 	if err := h.merchantService.Delete(c.Request.Context(), id); err != nil {
+		h.logger.Error().
+			Err(err).
+			Str("merchant_id", id.String()).
+			Msg("Failed to delete merchant")
 		util.HandleError(c, err)
 		return
 	}
+
+	h.logger.Info().
+		Str("merchant_id", id.String()).
+		Msg("Merchant deleted successfully")
 
 	c.Status(http.StatusNoContent)
 }
@@ -269,16 +399,26 @@ func (h *MerchantHandler) GetMerchantsByUserID(c *gin.Context) {
 
 // Helper function to verify merchant access
 func (h *MerchantHandler) verifyMerchantAccess(c *gin.Context, userID uuid.UUID, merchantID uuid.UUID) error {
-	log.Printf("userID: %v, merchantID: %v", userID, merchantID)
-	// Get merchant by ID.
+	h.logger.Debug().
+		Str("user_id", userID.String()).
+		Str("merchant_id", merchantID.String()).
+		Msg("Verifying merchant access")
+
 	merchant, err := h.merchantService.GetByID(c.Request.Context(), merchantID)
 	if err != nil {
-		log.Printf("error: %v", err)
+		h.logger.Error().
+			Err(err).
+			Str("merchant_id", merchantID.String()).
+			Msg("Failed to get merchant for access verification")
 		return err
 	}
 
 	if merchant.UserID != userID {
-		log.Printf("error: %v", err)
+		h.logger.Warn().
+			Str("user_id", userID.String()).
+			Str("merchant_id", merchantID.String()).
+			Str("merchant_owner_id", merchant.UserID.String()).
+			Msg("User does not have permission to access this merchant")
 		return domain.NewAuthorizationError("user does not have permission to access this merchant")
 	}
 

@@ -3,22 +3,34 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"go-playground/pkg/logging"
 	"go-playground/server/config"
 	"go-playground/server/domain"
 	"log"
 	"time"
+
+	"github.com/rs/zerolog"
 )
 
 type AuthRepository struct {
 	db     *sql.DB
 	config *config.AuthConfig
+	logger zerolog.Logger
 }
 
 func NewAuthRepository(db *sql.DB, config *config.AuthConfig) *AuthRepository {
-	return &AuthRepository{db: db, config: config}
+	return &AuthRepository{
+		db:     db,
+		config: config,
+		logger: logging.GetLogger(),
+	}
 }
 
 func (r *AuthRepository) CreateVerification(ctx context.Context, verification *domain.RegistrationVerification) error {
+	r.logger.Info().
+		Str("user_id", verification.UserID).
+		Msg("Creating new verification")
+
 	query := `
 		INSERT INTO registration_verifications (user_id, otp, expires_at)
 		VALUES ($1, $2, $3)
@@ -34,15 +46,31 @@ func (r *AuthRepository) CreateVerification(ctx context.Context, verification *d
 
 	if err != nil {
 		if isPgUniqueViolation(err) {
+			r.logger.Warn().
+				Str("user_id", verification.UserID).
+				Msg("Verification already exists for user")
 			return domain.NewResourceConflictError("verification", "verification already exists for this user")
 		}
+		r.logger.Error().
+			Err(err).
+			Str("user_id", verification.UserID).
+			Msg("Failed to create verification")
 		return domain.NewSystemError("AuthRepository.CreateVerification", err, "failed to create verification")
 	}
+
+	r.logger.Info().
+		Str("user_id", verification.UserID).
+		Str("verification_id", verification.ID).
+		Msg("Successfully created verification")
 
 	return nil
 }
 
 func (r *AuthRepository) GetVerification(ctx context.Context, userID, otp string) (*domain.RegistrationVerification, error) {
+	r.logger.Info().
+		Str("user_id", userID).
+		Msg("Fetching verification")
+
 	verification := &domain.RegistrationVerification{}
 	var usedAt sql.NullTime
 
@@ -70,14 +98,26 @@ func (r *AuthRepository) GetVerification(ctx context.Context, userID, otp string
 
 	if err != nil {
 		if err == sql.ErrNoRows {
+			r.logger.Warn().
+				Str("user_id", userID).
+				Msg("Verification not found")
 			return nil, domain.NewResourceNotFoundError("verification", userID, "verification not found")
 		}
+		r.logger.Error().
+			Err(err).
+			Str("user_id", userID).
+			Msg("Failed to get verification")
 		return nil, domain.NewSystemError("AuthRepository.GetVerification", err, "failed to get verification")
 	}
 
 	if usedAt.Valid {
 		verification.UsedAt = usedAt.Time
 	}
+
+	r.logger.Info().
+		Str("user_id", userID).
+		Str("verification_id", verification.ID).
+		Msg("Successfully retrieved verification")
 
 	return verification, nil
 }
@@ -90,15 +130,26 @@ func (r *AuthRepository) MarkVerificationUsed(ctx context.Context, id string) er
 	`
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Str("verification_id", id).
+			Msg("Failed to mark verification as used")
 		return domain.NewSystemError("AuthRepository.MarkVerificationUsed", err, "failed to mark verification as used")
 	}
 
 	affected, err := result.RowsAffected()
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Str("verification_id", id).
+			Msg("Failed to get affected rows")
 		return domain.NewSystemError("AuthRepository.MarkVerificationUsed", err, "failed to get affected rows")
 	}
 
 	if affected == 0 {
+		r.logger.Error().
+			Str("verification_id", id).
+			Msg("Verification not found or already used")
 		return domain.NewResourceNotFoundError("verification", id, "verification not found or already used")
 	}
 
@@ -106,6 +157,10 @@ func (r *AuthRepository) MarkVerificationUsed(ctx context.Context, id string) er
 }
 
 func (r *AuthRepository) CreateToken(ctx context.Context, token *domain.AuthToken) error {
+	r.logger.Info().
+		Str("user_id", token.UserID).
+		Msg("Creating new auth token")
+
 	query := `
 		INSERT INTO auth_tokens (user_id, token_hash, expires_at)
 		VALUES ($1, $2, $3)
@@ -125,9 +180,15 @@ func (r *AuthRepository) CreateToken(ctx context.Context, token *domain.AuthToke
 
 	if err != nil {
 		if isPgUniqueViolation(err) {
+			r.logger.Warn().
+				Str("user_id", token.UserID).
+				Msg("Token already exists for user")
 			return domain.NewResourceConflictError("auth token", "token already exists")
 		}
-		return domain.NewSystemError("AuthRepository.CreateToken", err, "failed to create auth token")
+		r.logger.Error().
+			Err(err).
+			Str("user_id", token.UserID).
+			Msg("Failed to create auth token")
 	}
 
 	return nil
@@ -158,9 +219,15 @@ func (r *AuthRepository) GetTokenByHash(ctx context.Context, hash string) (*doma
 
 	if err != nil {
 		if err == sql.ErrNoRows {
+			r.logger.Warn().
+				Str("token_hash", hash).
+				Msg("Token not found")
 			return nil, domain.NewResourceNotFoundError("auth token", hash, "token not found")
 		}
-		return nil, domain.NewSystemError("AuthRepository.GetTokenByHash", err, "failed to get auth token")
+		r.logger.Error().
+			Err(err).
+			Str("token_hash", hash).
+			Msg("Failed to get auth token")
 	}
 
 	if lastUsedAt.Valid {
@@ -173,6 +240,9 @@ func (r *AuthRepository) GetTokenByHash(ctx context.Context, hash string) (*doma
 func (r *AuthRepository) UpdateLoginAttempts(ctx context.Context, email string, increment bool) (*domain.LoginAttempt, error) {
 	var attempt domain.LoginAttempt
 	var lastAttempt sql.NullTime
+	r.logger.Info().
+		Str("email", email).
+		Msg("Updating login attempts")
 
 	// First, try to get existing record
 	query := `
@@ -188,6 +258,10 @@ func (r *AuthRepository) UpdateLoginAttempts(ctx context.Context, email string, 
 	)
 
 	if err != nil && err != sql.ErrNoRows {
+		r.logger.Error().
+			Err(err).
+			Str("email", email).
+			Msg("Failed to get login attempts")
 		return nil, domain.NewSystemError("AuthRepository.UpdateLoginAttempts", err, "failed to get login attempts")
 	}
 
@@ -213,9 +287,15 @@ func (r *AuthRepository) UpdateLoginAttempts(ctx context.Context, email string, 
 
 		if err != nil {
 			if isPgUniqueViolation(err) {
+				r.logger.Warn().
+					Str("email", email).
+					Msg("Concurrent login attempt detected")
 				return nil, domain.NewResourceConflictError("login attempt", "concurrent login attempt detected")
 			}
-			return nil, domain.NewSystemError("AuthRepository.UpdateLoginAttempts", err, "failed to create login attempt")
+			r.logger.Error().
+				Err(err).
+				Str("email", email).
+				Msg("Failed to create login attempt")
 		}
 
 		attempt.Email = email
@@ -247,6 +327,10 @@ func (r *AuthRepository) UpdateLoginAttempts(ctx context.Context, email string, 
 	)
 
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Str("email", email).
+			Msg("Failed to update login attempts")
 		return nil, domain.NewSystemError("AuthRepository.UpdateLoginAttempts", err, "failed to update login attempts")
 	}
 
@@ -261,6 +345,9 @@ func (r *AuthRepository) CleanupExpiredAttempts(ctx context.Context) error {
 	query := `DELETE FROM login_attempts WHERE last_attempt_at < $1`
 	_, err := r.db.ExecContext(ctx, query, time.Now().Add(-r.config.LoginAttemptResetPeriod))
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to cleanup expired attempts")
 		return domain.NewSystemError("AuthRepository.CleanupExpiredAttempts", err, "failed to cleanup expired attempts")
 	}
 	return nil
@@ -269,6 +356,9 @@ func (r *AuthRepository) CleanupExpiredAttempts(ctx context.Context) error {
 func (r *AuthRepository) BeginTx(ctx context.Context) (*sql.Tx, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to begin transaction")
 		return nil, domain.NewSystemError("AuthRepository.BeginTx", err, "failed to begin transaction")
 	}
 	return tx, nil
@@ -286,15 +376,26 @@ func (r *AuthRepository) MarkVerificationUsedTx(ctx context.Context, tx *sql.Tx,
 	`
 	result, err := tx.ExecContext(ctx, query, id)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Str("verification_id", id).
+			Msg("Failed to mark verification as used")
 		return domain.NewSystemError("AuthRepository.MarkVerificationUsedTx", err, "failed to mark verification as used")
 	}
 
 	affected, err := result.RowsAffected()
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Str("verification_id", id).
+			Msg("Failed to get affected rows")
 		return domain.NewSystemError("AuthRepository.MarkVerificationUsedTx", err, "failed to get affected rows")
 	}
 
 	if affected == 0 {
+		r.logger.Error().
+			Str("verification_id", id).
+			Msg("Verification not found or already used")
 		return domain.NewResourceNotFoundError("verification", id, "verification not found or already used")
 	}
 
@@ -310,6 +411,10 @@ func (r *AuthRepository) GetUserVerificationStatus(ctx context.Context, userID s
 	`
 	err := r.db.QueryRowContext(ctx, query, userID).Scan(&count)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Str("user_id", userID).
+			Msg("Failed to get verification status")
 		return false, domain.NewSystemError("AuthRepository.GetUserVerificationStatus", err, "failed to get verification status")
 	}
 	return count > 0, nil
@@ -319,6 +424,9 @@ func (r *AuthRepository) CleanupExpiredVerifications(ctx context.Context) error 
 	query := `DELETE FROM registration_verifications WHERE expires_at < CURRENT_TIMESTAMP AND used_at IS NULL`
 	_, err := r.db.ExecContext(ctx, query)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to cleanup expired verifications")
 		return domain.NewSystemError("AuthRepository.CleanupExpiredVerifications", err, "failed to cleanup expired verifications")
 	}
 	return nil
@@ -335,19 +443,27 @@ func (r *AuthRepository) InvalidateToken(ctx context.Context, userID string) err
 	`
 	result, err := r.db.ExecContext(ctx, query, userID)
 	if err != nil {
-		log.Println("Error invalidating token for user: ", userID, err)
+		r.logger.Error().
+			Err(err).
+			Str("user_id", userID).
+			Msg("Failed to invalidate tokens")
 		return domain.NewSystemError("AuthRepository.InvalidateToken", err, "failed to invalidate tokens")
 	}
 
 	affected, err := result.RowsAffected()
 	if err != nil {
-		log.Println("Error getting affected rows for user: ", userID, err)
+		r.logger.Error().
+			Err(err).
+			Str("user_id", userID).
+			Msg("Failed to get affected rows")
 		return domain.NewSystemError("AuthRepository.InvalidateToken", err, "failed to get affected rows")
 	}
 
 	if affected == 0 {
-		log.Println("No active tokens found for user: ", userID)
-		return domain.NewValidationError("AuthRepository.InvalidateTokenn", "no  active tokens found for user")
+		r.logger.Warn().
+			Str("user_id", userID).
+			Msg("No active tokens found for user")
+		return domain.NewValidationError("AuthRepository.InvalidateToken", "no active tokens found for user")
 	}
 
 	return nil
@@ -380,8 +496,15 @@ func (r *AuthRepository) GetLatestVerification(ctx context.Context, userID strin
 
 	if err != nil {
 		if err == sql.ErrNoRows {
+			r.logger.Warn().
+				Str("user_id", userID).
+				Msg("No verification found for user")
 			return nil, domain.NewResourceNotFoundError("verification", userID, "no verification found for user")
 		}
+		r.logger.Error().
+			Err(err).
+			Str("user_id", userID).
+			Msg("Failed to get latest verification")
 		return nil, domain.NewSystemError("AuthRepository.GetLatestVerification", err, "failed to get latest verification")
 	}
 

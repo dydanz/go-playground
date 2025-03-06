@@ -4,18 +4,25 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"go-playground/pkg/logging"
 	"go-playground/server/domain"
 	"log"
+
+	"github.com/rs/zerolog"
 )
 
 // EventLogRepository struct
 type EventLogRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	logger zerolog.Logger
 }
 
 // NewEventLogRepository creates a new EventLogRepository
 func NewEventLogRepository(db *sql.DB) *EventLogRepository {
-	return &EventLogRepository{db: db}
+	return &EventLogRepository{
+		db:     db,
+		logger: logging.GetLogger(),
+	}
 }
 
 // Create inserts a new event log entry
@@ -44,7 +51,9 @@ func (r *EventLogRepository) Create(ctx context.Context, eventLog *domain.EventL
 	).Scan(&eventLog.ID, &eventLog.EventTimestamp, &eventLog.CreatedAt)
 
 	if err != nil {
-		log.Printf("Error creating event log: %v", err)
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to create event log")
 		return err
 	}
 
@@ -70,6 +79,9 @@ func (r *EventLogRepository) GetByID(id string) (*domain.EventLog, error) {
 		&eventLog.CreatedAt,
 	)
 	if err == sql.ErrNoRows {
+		r.logger.Warn().
+			Str("id", id).
+			Msg("No event log found")
 		return nil, nil
 	}
 	return eventLog, err
@@ -85,6 +97,9 @@ func (r *EventLogRepository) GetByUserID(userID string) ([]domain.EventLog, erro
 	`
 	rows, err := r.db.Query(query, userID)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get event logs by user ID")
 		return nil, err
 	}
 	defer rows.Close()
@@ -103,6 +118,9 @@ func (r *EventLogRepository) GetByUserID(userID string) ([]domain.EventLog, erro
 			&eventLog.CreatedAt,
 		)
 		if err != nil {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to get event logs by user ID")
 			return nil, err
 		}
 		eventLogs = append(eventLogs, eventLog)
@@ -129,6 +147,9 @@ func (r *EventLogRepository) GetByReferenceID(referenceID string) (*domain.Event
 		&eventLog.CreatedAt,
 	)
 	if err == sql.ErrNoRows {
+		r.logger.Warn().
+			Str("reference_id", referenceID).
+			Msg("No event log found")
 		return nil, nil
 	}
 	return eventLog, err

@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
+	"go-playground/pkg/database"
 	"go-playground/server/bootstrap"
 	"go-playground/server/config"
-	"go-playground/pkg/database"
 	"log"
 	"time"
 
@@ -41,6 +41,8 @@ import (
 func main() {
 	// Load config
 	cfg := config.LoadConfig()
+
+	bootstrap.InitializeLogging()
 
 	// Initialize database connections
 	dbConn := bootstrap.InitializeDatabase(cfg)

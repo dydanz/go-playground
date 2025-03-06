@@ -3,21 +3,25 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"log"
-	"time"
-
+	"go-playground/pkg/logging"
 	"go-playground/server/domain"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
+	"github.com/rs/zerolog"
 )
 
 type MerchantCustomersRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	logger zerolog.Logger
 }
 
 func NewMerchantCustomersRepository(db *sql.DB) *MerchantCustomersRepository {
-	return &MerchantCustomersRepository{db: db}
+	return &MerchantCustomersRepository{
+		db:     db,
+		logger: logging.GetLogger(),
+	}
 }
 
 // Create inserts a new merchant customer into the database
@@ -44,14 +48,20 @@ func (r *MerchantCustomersRepository) Create(ctx context.Context, customer *doma
 		if pqErr, ok := err.(*pq.Error); ok {
 			switch pqErr.Code.Name() {
 			case "unique_violation":
-				log.Println("Unique violation error: ", pqErr.Code.Name())
+				r.logger.Error().
+					Str("error", pqErr.Code.Name()).
+					Msg("Unique violation error")
 				return domain.NewResourceConflictError("merchant customer", "email or phone already exists")
 			case "foreign_key_violation":
-				log.Println("Foreign key violation error: ", pqErr.Code.Name())
+				r.logger.Error().
+					Str("error", pqErr.Code.Name()).
+					Msg("Foreign key violation error")
 				return domain.NewValidationError("merchant_id", "invalid merchant ID")
 			}
 		}
-		log.Println("Error creating merchant customer: ", err)
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to create merchant customer")
 		return domain.NewSystemError("MerchantCustomersRepository.Create", err, "database error")
 	}
 
@@ -80,8 +90,14 @@ func (r *MerchantCustomersRepository) GetByID(ctx context.Context, id uuid.UUID)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
+			r.logger.Warn().
+				Str("id", id.String()).
+				Msg("No merchant customer found")
 			return nil, nil
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get merchant customer by ID")
 		return nil, domain.NewSystemError("MerchantCustomersRepository.GetByID", err, "database error")
 	}
 
@@ -110,8 +126,14 @@ func (r *MerchantCustomersRepository) GetByEmail(ctx context.Context, email stri
 
 	if err != nil {
 		if err == sql.ErrNoRows {
+			r.logger.Warn().
+				Str("email", email).
+				Msg("No merchant customer found")
 			return nil, nil
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get merchant customer by email")
 		return nil, domain.NewSystemError("MerchantCustomersRepository.GetByEmail", err, "database error")
 	}
 
@@ -140,8 +162,14 @@ func (r *MerchantCustomersRepository) GetByPhone(ctx context.Context, phone stri
 
 	if err != nil {
 		if err == sql.ErrNoRows {
+			r.logger.Warn().
+				Str("phone", phone).
+				Msg("No merchant customer found")
 			return nil, nil
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get merchant customer by phone")
 		return nil, domain.NewSystemError("MerchantCustomersRepository.GetByPhone", err, "database error")
 	}
 
@@ -176,12 +204,18 @@ func (r *MerchantCustomersRepository) GetByMerchantID(ctx context.Context, merch
 			&customer.UpdatedAt,
 		)
 		if err != nil {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to get merchant customers by merchant ID")
 			return nil, domain.NewSystemError("MerchantCustomersRepository.GetByMerchantID", err, "error scanning row")
 		}
 		customers = append(customers, customer)
 	}
 
 	if err = rows.Err(); err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get merchant customers by merchant ID")
 		return nil, domain.NewSystemError("MerchantCustomersRepository.GetByMerchantID", err, "error iterating rows")
 	}
 
@@ -208,6 +242,9 @@ func (r *MerchantCustomersRepository) Update(ctx context.Context, customer *doma
 		if pqErr, ok := err.(*pq.Error); ok {
 			switch pqErr.Code.Name() {
 			case "unique_violation":
+				r.logger.Error().
+					Str("error", pqErr.Code.Name()).
+					Msg("Unique violation error")
 				return domain.NewResourceConflictError("merchant customer", "email or phone already exists")
 			}
 		}
@@ -216,10 +253,16 @@ func (r *MerchantCustomersRepository) Update(ctx context.Context, customer *doma
 
 	rows, err := result.RowsAffected()
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get affected rows")
 		return domain.NewSystemError("MerchantCustomersRepository.Update", err, "error getting affected rows")
 	}
 
 	if rows == 0 {
+		r.logger.Warn().
+			Str("id", customer.ID.String()).
+			Msg("No merchant customer found")
 		return domain.NewResourceNotFoundError("merchant customer", customer.ID.String(), "customer not found")
 	}
 

@@ -2,12 +2,14 @@ package middleware
 
 import (
 	"fmt"
+	"go-playground/pkg/logging"
 	"net/http"
 	"reflect"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/rs/zerolog"
 )
 
 // ValidationError represents a validation error
@@ -37,12 +39,14 @@ type RequestValidator interface {
 // BaseValidator provides common validation functionality
 type BaseValidator struct {
 	validate *validator.Validate
+	logger   zerolog.Logger
 }
 
 // NewBaseValidator creates a new BaseValidator instance
 func NewBaseValidator() *BaseValidator {
 	return &BaseValidator{
 		validate: validator.New(),
+		logger:   logging.GetLogger(),
 	}
 }
 
@@ -51,6 +55,12 @@ func (v *BaseValidator) ValidateStruct(obj interface{}) error {
 	if err := v.validate.Struct(obj); err != nil {
 		var errors ValidationErrors
 		for _, err := range err.(validator.ValidationErrors) {
+			v.logger.Debug().
+				Str("field", err.Field()).
+				Str("tag", err.Tag()).
+				Str("value", fmt.Sprintf("%v", err.Value())).
+				Msg("Validation error")
+
 			errors = append(errors, ValidationError{
 				Field:   strings.ToLower(err.Field()),
 				Message: getErrorMsg(err),
@@ -63,6 +73,8 @@ func (v *BaseValidator) ValidateStruct(obj interface{}) error {
 
 // RequestValidationMiddleware is a middleware that validates requests
 func RequestValidationMiddleware(validator RequestValidator) gin.HandlerFunc {
+	logger := logging.GetLogger()
+
 	return func(c *gin.Context) {
 		if err := validator.ValidateRequest(c); err != nil {
 			var validationErrors ValidationErrors
@@ -75,6 +87,12 @@ func RequestValidationMiddleware(validator RequestValidator) gin.HandlerFunc {
 				}}
 			}
 
+			logger.Error().
+				Str("method", c.Request.Method).
+				Str("url", c.Request.URL.RequestURI()).
+				Interface("errors", validationErrors).
+				Msg("Request validation failed")
+
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error":   "Validation failed",
 				"details": validationErrors,
@@ -82,6 +100,12 @@ func RequestValidationMiddleware(validator RequestValidator) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+
+		logger.Debug().
+			Str("method", c.Request.Method).
+			Str("url", c.Request.URL.RequestURI()).
+			Msg("Request validation successful")
+
 		c.Next()
 	}
 }

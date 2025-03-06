@@ -3,20 +3,24 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"go-playground/pkg/logging"
 	"go-playground/server/domain"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
+	"github.com/rs/zerolog"
 )
 
 type MerchantRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	logger zerolog.Logger
 }
 
 func NewMerchantRepository(db *sql.DB) *MerchantRepository {
-	return &MerchantRepository{db: db}
+	return &MerchantRepository{db: db,
+		logger: logging.GetLogger(),
+	}
 }
 
 func (r *MerchantRepository) Create(ctx context.Context, merchant *domain.Merchant) (*domain.Merchant, error) {
@@ -42,9 +46,15 @@ func (r *MerchantRepository) Create(ctx context.Context, merchant *domain.Mercha
 	if err != nil {
 		// Check for unique constraint violation
 		if isPgUniqueViolation(err) {
+			r.logger.Error().
+				Str("error", err.Error()).
+				Msg("Unique violation error")
 			return nil, domain.NewResourceConflictError("merchant", "merchant with this name already exists")
 		}
 		// Wrap database errors as system errors
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to create merchant")
 		return nil, domain.NewSystemError("MerchantRepository.Create", err, "failed to create merchant")
 	}
 
@@ -67,8 +77,14 @@ func (r *MerchantRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain
 
 	if err != nil {
 		if err == sql.ErrNoRows {
+			r.logger.Warn().
+				Str("id", id.String()).
+				Msg("No merchant found")
 			return nil, domain.NewResourceNotFoundError("merchant", id.String(), "merchant not found")
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get merchant by ID")
 		return nil, domain.NewSystemError("MerchantRepository.GetByID", err, "failed to get merchant")
 	}
 
@@ -81,6 +97,9 @@ func (r *MerchantRepository) GetMerchantsByUserID(ctx context.Context, userID uu
 	countQuery := `SELECT COUNT(*) FROM merchants WHERE user_id = $1`
 	err := r.db.QueryRowContext(ctx, countQuery, userID).Scan(&total)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get total count")
 		return nil, 0, domain.NewSystemError("MerchantRepository.GetMerchantsByUserID", err, "failed to get total count")
 	}
 
@@ -93,7 +112,9 @@ func (r *MerchantRepository) GetMerchantsByUserID(ctx context.Context, userID uu
 
 	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
 	if err != nil {
-		log.Printf("Error querying merchants: %v", err)
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to query merchants")
 		return nil, 0, domain.NewSystemError("MerchantRepository.GetMerchantsByUserID", err, "failed to query merchants")
 	}
 	defer rows.Close()
@@ -111,14 +132,18 @@ func (r *MerchantRepository) GetMerchantsByUserID(ctx context.Context, userID uu
 			&merchant.Status,
 		)
 		if err != nil {
-			log.Printf("Error scanning merchant: %v", err)
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to scan merchant")
 			return nil, 0, domain.NewSystemError("MerchantRepository.GetMerchantsByUserID", err, "failed to scan merchant")
 		}
 		merchants = append(merchants, merchant)
 	}
 
 	if err = rows.Err(); err != nil {
-		log.Printf("Error iterating merchants: %v", err)
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to iterate merchants")
 		return nil, 0, domain.NewSystemError("MerchantRepository.GetMerchantsByUserID", err, "error iterating merchants")
 	}
 
@@ -134,7 +159,10 @@ func (r *MerchantRepository) GetAll(ctx context.Context, userID uuid.UUID) ([]*d
 	`
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
-		return nil, err
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to query merchants")
+		return nil, domain.NewSystemError("MerchantRepository.GetAll", err, "failed to query merchants")
 	}
 	defer rows.Close()
 
@@ -146,7 +174,10 @@ func (r *MerchantRepository) GetAll(ctx context.Context, userID uuid.UUID) ([]*d
 			&merchant.Name,
 		)
 		if err != nil {
-			return nil, err
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to scan merchant")
+			return nil, domain.NewSystemError("MerchantRepository.GetAll", err, "failed to scan merchant")
 		}
 		merchants = append(merchants, merchant)
 	}
@@ -185,6 +216,9 @@ func (r *MerchantRepository) Delete(ctx context.Context, id uuid.UUID) error {
 		id,
 	)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to delete merchant")
 		return domain.NewSystemError("MerchantRepository.Delete", err, "failed to delete merchant")
 	}
 	return nil

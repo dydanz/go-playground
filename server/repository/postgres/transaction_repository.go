@@ -3,18 +3,23 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"go-playground/pkg/logging"
 	"go-playground/server/config"
 	"go-playground/server/domain"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 )
 
 type TransactionRepository struct {
-	db config.DbConnection
+	db     config.DbConnection
+	logger zerolog.Logger
 }
 
 func NewTransactionRepository(db config.DbConnection) *TransactionRepository {
-	return &TransactionRepository{db: db}
+	return &TransactionRepository{db: db,
+		logger: logging.GetLogger(),
+	}
 }
 
 func (r *TransactionRepository) Create(ctx context.Context, tx *domain.Transaction) (*domain.Transaction, error) {
@@ -45,8 +50,14 @@ func (r *TransactionRepository) Create(ctx context.Context, tx *domain.Transacti
 	)
 	if err != nil {
 		if isPgUniqueViolation(err) {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to create transaction")
 			return nil, domain.NewResourceConflictError("transaction", "duplicate transaction record")
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to create transaction")
 		return nil, domain.NewSystemError("TransactionRepository.Create", err, "failed to create transaction")
 	}
 
@@ -76,8 +87,14 @@ func (r *TransactionRepository) GetByID(ctx context.Context, transactionID uuid.
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to get transaction")
 			return nil, nil
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get transaction")
 		return nil, domain.NewSystemError("TransactionRepository.GetByID", err, "failed to get transaction")
 	}
 	return tx, nil
@@ -86,6 +103,9 @@ func (r *TransactionRepository) GetByID(ctx context.Context, transactionID uuid.
 func (r *TransactionRepository) GetByCustomerID(ctx context.Context, merchantCustomersID uuid.UUID) ([]*domain.Transaction, error) {
 	transactions, _, err := r.GetByCustomerIDWithPagination(ctx, merchantCustomersID, 0, -1)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get transactions")
 		return nil, domain.NewSystemError("TransactionRepository.GetByCustomerID", err, "failed to get transactions")
 	}
 	return transactions, nil
@@ -98,8 +118,14 @@ func (r *TransactionRepository) GetByCustomerIDWithPagination(ctx context.Contex
 	err := r.db.RR.QueryRowContext(ctx, countQuery, merchantCustomersID).Scan(&total)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to get transactions")
 			return nil, 0, nil
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get transactions")
 		return nil, 0, domain.NewSystemError("TransactionRepository.GetByCustomerIDWithPagination", err, "failed to get total count")
 	}
 
@@ -123,8 +149,14 @@ func (r *TransactionRepository) GetByCustomerIDWithPagination(ctx context.Contex
 
 	if err != nil {
 		if err == sql.ErrNoRows {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to get transactions")
 			return nil, 0, nil
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get transactions")
 		return nil, 0, domain.NewSystemError("TransactionRepository.GetByCustomerIDWithPagination", err, "failed to query transactions")
 	}
 	defer rows.Close()
@@ -145,12 +177,18 @@ func (r *TransactionRepository) GetByCustomerIDWithPagination(ctx context.Contex
 			&tx.CreatedAt,
 		)
 		if err != nil {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to scan transaction")
 			return nil, 0, domain.NewSystemError("TransactionRepository.GetByCustomerIDWithPagination", err, "failed to scan transaction")
 		}
 		transactions = append(transactions, tx)
 	}
 
 	if err = rows.Err(); err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to iterate transactions")
 		return nil, 0, domain.NewSystemError("TransactionRepository.GetByCustomerIDWithPagination", err, "error iterating transactions")
 	}
 
@@ -164,8 +202,14 @@ func (r *TransactionRepository) GetByMerchantIDWithPagination(ctx context.Contex
 	err := r.db.RR.QueryRowContext(ctx, countQuery, merchantID).Scan(&total)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to get transactions")
 			return nil, 0, nil
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get transactions")
 		return nil, 0, domain.NewSystemError("TransactionRepository.GetByMerchantIDWithPagination", err, "failed to get total count")
 	}
 
@@ -189,8 +233,14 @@ func (r *TransactionRepository) GetByMerchantIDWithPagination(ctx context.Contex
 
 	if err != nil {
 		if err == sql.ErrNoRows {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to get transactions")
 			return nil, 0, nil
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get transactions")
 		return nil, 0, domain.NewSystemError("TransactionRepository.GetByMerchantIDWithPagination", err, "failed to query transactions")
 	}
 	defer rows.Close()
@@ -211,12 +261,18 @@ func (r *TransactionRepository) GetByMerchantIDWithPagination(ctx context.Contex
 			&tx.CreatedAt,
 		)
 		if err != nil {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to scan transaction")
 			return nil, 0, domain.NewSystemError("TransactionRepository.GetByMerchantIDWithPagination", err, "failed to scan transaction")
 		}
 		transactions = append(transactions, tx)
 	}
 
 	if err = rows.Err(); err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to iterate transactions")
 		return nil, 0, domain.NewSystemError("TransactionRepository.GetByMerchantIDWithPagination", err, "error iterating transactions")
 	}
 
@@ -234,8 +290,14 @@ func (r *TransactionRepository) GetByUserIDWithPagination(ctx context.Context, u
 	err := r.db.RR.QueryRowContext(ctx, countQuery, userID).Scan(&total)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to get transactions")
 			return nil, 0, nil
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get transactions")
 		return nil, 0, domain.NewSystemError("TransactionRepository.GetByUserIDWithPagination", err, "failed to get total count")
 	}
 
@@ -260,8 +322,14 @@ func (r *TransactionRepository) GetByUserIDWithPagination(ctx context.Context, u
 
 	if err != nil {
 		if err == sql.ErrNoRows {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to get transactions")
 			return nil, 0, nil
 		}
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get transactions")
 		return nil, 0, domain.NewSystemError("TransactionRepository.GetByUserIDWithPagination", err, "failed to query transactions")
 	}
 	defer rows.Close()
@@ -282,12 +350,18 @@ func (r *TransactionRepository) GetByUserIDWithPagination(ctx context.Context, u
 			&tx.CreatedAt,
 		)
 		if err != nil {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to scan transaction")
 			return nil, 0, domain.NewSystemError("TransactionRepository.GetByUserIDWithPagination", err, "failed to scan transaction")
 		}
 		transactions = append(transactions, tx)
 	}
 
 	if err = rows.Err(); err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to iterate transactions")
 		return nil, 0, domain.NewSystemError("TransactionRepository.GetByUserIDWithPagination", err, "error iterating transactions")
 	}
 
@@ -299,15 +373,23 @@ func (r *TransactionRepository) UpdateStatus(ctx context.Context, transactionID 
 	query := `UPDATE transactions SET status = $1 WHERE transaction_id = $2`
 	result, err := r.db.RW.ExecContext(ctx, query, status, transactionID)
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to update transaction status")
 		return domain.NewSystemError("TransactionRepository.UpdateStatus", err, "failed to update transaction status")
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Failed to get affected rows")
 		return domain.NewSystemError("TransactionRepository.UpdateStatus", err, "failed to get affected rows")
 	}
 
 	if rowsAffected == 0 {
+		r.logger.Error().
+			Msg("Failed to update transaction status")
 		return domain.NewResourceNotFoundError("transaction", transactionID.String(), "transaction not found")
 	}
 
